@@ -18,7 +18,9 @@
     "format:check": "prettier --check .",
     "db:generate": "pnpm --filter @thriftage/db generate",
     "db:format": "pnpm --filter @thriftage/db prisma:format",
-    "db:validate": "pnpm --filter @thriftage/db prisma:validate"
+    "db:migrate:deploy": "pnpm --filter @thriftage/db migrate:deploy",
+    "db:validate": "pnpm --filter @thriftage/db prisma:validate",
+    "test:db": "pnpm --filter @thriftage/db test:integration"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

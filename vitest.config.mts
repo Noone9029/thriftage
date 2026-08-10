@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 
 export default defineConfig({
   resolve: {
@@ -16,6 +16,7 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
+    exclude: [...configDefaults.exclude, 'packages/db/test/**/*.integration.test.ts'],
     include: ['apps/**/*.test.ts', 'apps/**/*.spec.ts', 'packages/**/*.test.ts'],
     passWithNoTests: false,
     restoreMocks: true,
