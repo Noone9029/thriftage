@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "declaration": true,
+    "noEmit": false,
+    "outDir": "dist",
+    "paths": {
+      "@thriftage/config": ["../../packages/config/dist/index.d.ts"],
+      "@thriftage/shared": ["../../packages/shared/dist/index.d.ts"]
+    },
+    "removeComments": true,
+    "rootDir": "src",
+    "sourceMap": true
+  },
+  "exclude": ["src/**/*.spec.ts", "src/**/*.test.ts"]
+}

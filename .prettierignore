@@ -1,0 +1,9 @@
+node_modules
+AGENTS.md
+apps/admin/next-env.d.ts
+.expo
+.next
+coverage
+dist
+pnpm-lock.yaml
+packages/db/src/generated

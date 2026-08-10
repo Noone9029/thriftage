@@ -1,0 +1,12 @@
+packages:
+  - apps/*
+  - packages/*
+
+allowBuilds:
+  '@prisma/engines': true
+  prisma: true
+
+catalog:
+  typescript: ^6.0.3
+  vitest: ^4.1.10
+  zod: ^4.4.3
