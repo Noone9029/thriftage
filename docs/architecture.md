@@ -4,7 +4,7 @@ Thriftage uses a pnpm monorepo with deployable applications under `apps/` and fr
 
 - `mobile` owns the customer-facing Expo application.
 - `admin` owns the Next.js operational application.
-- `api` owns REST transport, runtime wiring, and future domain modules.
+- `api` owns REST transport, runtime wiring, identity, marketplace, social, and moderation modules.
 - `shared` contains portable contracts and pure utilities.
 - `config` validates runtime configuration at process boundaries.
 - `db` owns the PostgreSQL schema, migrations, and generated Prisma client.
@@ -15,4 +15,6 @@ The Expo application implements the Phase 1C1 email session lifecycle, protected
 
 Phase 1C2A adds server-controlled phone ownership verification and links the first verified phone to the existing Supabase and PostgreSQL identities. See [secure phone verification](./architecture/phone-verification.md).
 
-Phase 1B adds server token verification, application-user provisioning, and account-state enforcement. Profile onboarding remains deferred. New capabilities should be added as bounded vertical slices without moving authoritative business rules into clients.
+Phase 1B adds server token verification, application-user provisioning, and account-state enforcement. Profile onboarding is implemented as a privacy-safe one-to-one application profile.
+
+The marketplace foundation adds moderated listings and private media, PostgreSQL-native search, deterministic discovery feeds, social relationships, reports, and API-authorized administration. See [marketplace discovery and social](./architecture/marketplace-discovery.md). New capabilities should be added as bounded vertical slices without moving authoritative business rules into clients.

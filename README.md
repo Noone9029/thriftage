@@ -1,6 +1,6 @@
 # Thriftage
 
-Thriftage is a mobile-first peer-to-peer fashion marketplace. The repository currently contains the production-oriented engineering foundation and complete identity/onboarding subsystem: email/password authentication, secure phone linking and phone OTP login, account-state enforcement, profile onboarding/editing, controlled profile images, public profiles, and PostgreSQL-backed ADMIN authorization. Marketplace features remain deferred.
+Thriftage is a mobile-first peer-to-peer fashion marketplace. The repository contains the engineering foundation, complete identity/onboarding, and the trusted marketplace discovery layer: category taxonomy, moderated listings with private media, search and deterministic feeds, likes, saves, follows, seller profiles, reporting, and PostgreSQL-authorized admin operations.
 
 ## Repository layout
 
@@ -52,6 +52,7 @@ npm.cmd install --global pnpm@11.16.0
    pnpm.cmd db:generate
    pnpm.cmd db:validate
    pnpm.cmd db:migrate:deploy
+   pnpm.cmd db:seed:categories
    ```
 
 4. Start all applications, or run one workspace at a time:
@@ -65,9 +66,9 @@ npm.cmd install --global pnpm@11.16.0
 
 The API health check is available at `http://localhost:4000/api/v1/health`; the admin app uses port 3000, and Expo selects its available development port.
 
-Set the backend Supabase, Twilio Verify, and `PROFILE_IMAGE_BUCKET` variables from `apps/api/.env.example`. Routine token verification uses the publishable key; secure phone linking and controlled storage use a modern backend-only Supabase secret key. Twilio uses restricted API-key credentials. Protected requests use `Authorization: Bearer <access-token>`; see the [identity and onboarding architecture](./docs/architecture/identity-onboarding.md).
+Set the backend Supabase, Twilio Verify, `PROFILE_IMAGE_BUCKET`, and `LISTING_IMAGE_BUCKET` variables from `apps/api/.env.example`. Routine token verification uses the publishable key; secure phone linking and controlled storage use a modern backend-only Supabase secret key. Twilio uses restricted API-key credentials. Protected requests use `Authorization: Bearer <access-token>`; see the [identity and onboarding architecture](./docs/architecture/identity-onboarding.md) and [marketplace discovery architecture](./docs/architecture/marketplace-discovery.md).
 
-Set `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_SUPABASE_URL`, and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in `apps/mobile/.env`. Configure `thriftage://auth/callback` and `thriftage://auth/reset-password` as allowed redirects in Supabase before testing confirmation or recovery links. The Supabase project must require email confirmation, enable phone sign-in with an approved SMS provider, and contain the public `profile-images` bucket described in the architecture document. No server secret belongs in an `EXPO_PUBLIC_*` variable.
+Set `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_SUPABASE_URL`, and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in `apps/mobile/.env`. Configure `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in `apps/admin/.env.local`. Configure `thriftage://auth/callback` and `thriftage://auth/reset-password` as allowed redirects before testing confirmation or recovery links. No server secret belongs in an `EXPO_PUBLIC_*` or `NEXT_PUBLIC_*` variable.
 
 ## Quality gates
 
@@ -104,6 +105,10 @@ pnpm.cmd test:db
 The database test guard refuses non-test database names before any cleanup runs.
 For a disposable named `prisma dev` instance, set `ALLOW_PRISMA_DEV_TEST_DATABASE=true`; only non-default localhost ports are accepted by that override.
 
+## Marketplace operations
+
+Run `pnpm db:seed:categories` after migrations to upsert the approved Clothing, Shoes, and Accessories taxonomy. Sellers create private drafts, upload 3–10 validated photos, and submit for review. Only an API-authorized ADMIN may approve, reject, remove, manage taxonomy, or resolve reports. See the [marketplace discovery architecture](./docs/architecture/marketplace-discovery.md) for storage policy, state transitions, ranking, local test data, and admin bootstrapping.
+
 ## Scope boundary
 
-Change-phone, identity merging, listings, listing media, search, feed, social graph, messaging, orders, payments, shipping, moderation, reviews, seller verification, personalization, and AI are not implemented. See [AGENTS.md](./AGENTS.md) for approved phases, safety constraints, and completion rules.
+Change-phone, identity merging, messaging, orders, purchase actions, payments, shipping, reviews, seller verification documents, notification delivery, personalization, recommendations described as AI, and AI features are not implemented. Discovery's `RECOMMENDED` mode is explicitly deterministic. See [AGENTS.md](./AGENTS.md) for safety constraints and later phases.
