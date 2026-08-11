@@ -1,0 +1,28 @@
+import { z } from 'zod';
+
+export const marketplaceErrorCodeValues = [
+  'CATEGORY_IN_USE',
+  'CATEGORY_NOT_FOUND',
+  'CATEGORY_SLUG_UNAVAILABLE',
+  'CATEGORY_UNAVAILABLE',
+  'DUPLICATE_REPORT',
+  'IMAGE_INVALID',
+  'IMAGE_LIMIT_REACHED',
+  'IMAGE_NOT_FOUND',
+  'IMAGE_TOO_LARGE',
+  'LISTING_FORBIDDEN',
+  'LISTING_NOT_EDITABLE',
+  'LISTING_NOT_FOUND',
+  'LISTING_NOT_PUBLIC',
+  'LISTING_REQUIRES_IMAGES',
+  'LISTING_TRANSITION_INVALID',
+  'MARKETPLACE_SERVICE_ERROR',
+  'MEDIA_STORAGE_ERROR',
+  'REPORT_NOT_FOUND',
+  'SELLER_NOT_FOUND',
+  'SELF_INTERACTION_FORBIDDEN',
+  'VALIDATION_FAILED',
+] as const;
+
+export const marketplaceErrorCodeSchema = z.enum(marketplaceErrorCodeValues);
+export type MarketplaceErrorCode = z.infer<typeof marketplaceErrorCodeSchema>;

@@ -18,6 +18,8 @@ describe('loadApiConfig', () => {
       corsOrigins: [],
       host: '0.0.0.0',
       logFormat: 'pretty',
+      listingImageBucket: 'listing-images',
+      listingImageSignedUrlTtlSeconds: 900,
       nodeEnv: 'development',
       phoneVerificationAttemptTtlSeconds: 600,
       phoneVerificationMaxChecks: 5,

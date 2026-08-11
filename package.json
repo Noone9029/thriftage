@@ -19,6 +19,7 @@
     "db:generate": "pnpm --filter @thriftage/db generate",
     "db:format": "pnpm --filter @thriftage/db prisma:format",
     "db:migrate:deploy": "pnpm --filter @thriftage/db migrate:deploy",
+    "db:seed:categories": "pnpm --filter @thriftage/db seed:categories",
     "db:validate": "pnpm --filter @thriftage/db prisma:validate",
     "test:db": "pnpm --filter @thriftage/db test:integration && pnpm --filter @thriftage/api test:integration"
   },

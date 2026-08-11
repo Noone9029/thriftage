@@ -32,6 +32,69 @@ enum PhoneVerificationProvider {
   TWILIO_VERIFY
 }
 
+enum ListingStatus {
+  DRAFT
+  PENDING_REVIEW
+  ACTIVE
+  RESERVED
+  SOLD
+  REJECTED
+  REMOVED
+  ARCHIVED
+}
+
+enum ListingCondition {
+  NEW
+  LIKE_NEW
+  GOOD
+  FAIR
+}
+
+enum CurrencyCode {
+  PKR
+  USD
+  GBP
+  EUR
+  AED
+  SAR
+  CAD
+}
+
+enum ReportTargetType {
+  LISTING
+  USER
+}
+
+enum ReportReason {
+  COUNTERFEIT
+  FRAUD_OR_SCAM
+  PROHIBITED_ITEM
+  MISLEADING_CONTENT
+  HARASSMENT
+  SPAM
+  OTHER
+}
+
+enum ModerationReportStatus {
+  OPEN
+  UNDER_REVIEW
+  ACTIONED
+  DISMISSED
+}
+
+enum ModerationAuditAction {
+  CATEGORY_CREATED
+  CATEGORY_UPDATED
+  CATEGORY_ACTIVATED
+  CATEGORY_DEACTIVATED
+  LISTING_APPROVED
+  LISTING_REJECTED
+  LISTING_REMOVED
+  REPORT_UNDER_REVIEW
+  REPORT_ACTIONED
+  REPORT_DISMISSED
+}
+
 model User {
   id                        String                     @id @default(uuid()) @db.Uuid
   authProviderUserId        String                     @unique(map: "users_auth_provider_user_id_key") @map("auth_provider_user_id") @db.VarChar(255)
@@ -47,6 +110,15 @@ model User {
   deletedAt                 DateTime?                  @map("deleted_at") @db.Timestamptz(3)
   profile                   Profile?
   phoneVerificationAttempts PhoneVerificationAttempt[]
+  listings                  Listing[]                  @relation("ListingSeller")
+  listingLikes              ListingLike[]
+  savedListings             SavedListing[]
+  following                 Follow[]                   @relation("Follower")
+  followers                 Follow[]                   @relation("Followed")
+  reportsCreated            ModerationReport[]         @relation("ReportReporter")
+  reportsTargetingUser      ModerationReport[]         @relation("ReportTargetUser")
+  reportsAssigned           ModerationReport[]         @relation("ReportAssignedAdmin")
+  moderationAudits          ModerationAudit[]          @relation("ModerationActor")
 
   @@index([accountStatus], map: "users_account_status_idx")
   @@index([createdAt], map: "users_created_at_idx")
@@ -94,4 +166,164 @@ model Profile {
 
   @@index([createdAt], map: "profiles_created_at_idx")
   @@map("profiles")
+}
+
+model Category {
+  id               String            @id @default(uuid()) @db.Uuid
+  parentId         String?           @map("parent_id") @db.Uuid
+  slug             String            @unique(map: "categories_slug_key") @db.VarChar(60)
+  name             String            @db.VarChar(80)
+  description      String?           @db.VarChar(240)
+  isActive         Boolean           @default(true) @map("is_active")
+  sortOrder        Int               @default(0) @map("sort_order")
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+  parent           Category?         @relation("CategoryTree", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "categories_parent_id_fkey")
+  children         Category[]        @relation("CategoryTree")
+  listings         Listing[]
+  moderationAudits ModerationAudit[]
+
+  @@index([parentId, isActive, sortOrder], map: "categories_parent_active_sort_idx")
+  @@index([isActive, sortOrder], map: "categories_active_sort_idx")
+  @@map("categories")
+}
+
+model Listing {
+  id               String             @id @default(uuid()) @db.Uuid
+  sellerId         String             @map("seller_id") @db.Uuid
+  categoryId       String             @map("category_id") @db.Uuid
+  title            String             @db.VarChar(120)
+  description      String             @db.VarChar(2000)
+  priceMinor       Int                @map("price_minor")
+  currency         CurrencyCode       @default(PKR)
+  condition        ListingCondition
+  size             String             @db.VarChar(50)
+  brand            String?            @db.VarChar(80)
+  color            String?            @db.VarChar(50)
+  status           ListingStatus      @default(DRAFT)
+  rejectionReason  String?            @map("rejection_reason") @db.VarChar(500)
+  submittedAt      DateTime?          @map("submitted_at") @db.Timestamptz(3)
+  moderatedAt      DateTime?          @map("moderated_at") @db.Timestamptz(3)
+  activatedAt      DateTime?          @map("activated_at") @db.Timestamptz(3)
+  archivedAt       DateTime?          @map("archived_at") @db.Timestamptz(3)
+  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+  seller           User               @relation("ListingSeller", fields: [sellerId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "listings_seller_id_fkey")
+  category         Category           @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "listings_category_id_fkey")
+  images           ListingImage[]
+  likes            ListingLike[]
+  saves            SavedListing[]
+  reports          ModerationReport[]
+  moderationAudits ModerationAudit[]
+
+  @@index([status, createdAt, id], map: "listings_status_created_id_idx")
+  @@index([sellerId, status, updatedAt], map: "listings_seller_status_updated_idx")
+  @@index([categoryId, status, createdAt], map: "listings_category_status_created_idx")
+  @@index([status, currency, priceMinor, id], map: "listings_status_currency_price_id_idx")
+  @@index([title(ops: raw("gin_trgm_ops"))], type: Gin, map: "listings_title_trgm_idx")
+  @@index([description(ops: raw("gin_trgm_ops"))], type: Gin, map: "listings_description_trgm_idx")
+  @@index([brand(ops: raw("gin_trgm_ops"))], type: Gin, map: "listings_brand_trgm_idx")
+  @@map("listings")
+}
+
+model ListingImage {
+  id         String   @id @default(uuid()) @db.Uuid
+  listingId  String   @map("listing_id") @db.Uuid
+  storageKey String   @unique(map: "listing_images_storage_key_key") @map("storage_key") @db.VarChar(255)
+  width      Int
+  height     Int
+  position   Int
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  listing    Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "listing_images_listing_id_fkey")
+
+  @@unique([listingId, position], map: "listing_images_listing_id_position_key")
+  @@index([listingId, position], map: "listing_images_listing_position_idx")
+  @@map("listing_images")
+}
+
+model ListingLike {
+  userId    String   @map("user_id") @db.Uuid
+  listingId String   @map("listing_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "listing_likes_user_id_fkey")
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "listing_likes_listing_id_fkey")
+
+  @@id([userId, listingId], map: "listing_likes_pkey")
+  @@index([listingId, createdAt], map: "listing_likes_listing_created_idx")
+  @@map("listing_likes")
+}
+
+model SavedListing {
+  userId    String   @map("user_id") @db.Uuid
+  listingId String   @map("listing_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "saved_listings_user_id_fkey")
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "saved_listings_listing_id_fkey")
+
+  @@id([userId, listingId], map: "saved_listings_pkey")
+  @@index([listingId, createdAt], map: "saved_listings_listing_created_idx")
+  @@index([userId, createdAt, listingId], map: "saved_listings_user_created_idx")
+  @@map("saved_listings")
+}
+
+model Follow {
+  followerId String   @map("follower_id") @db.Uuid
+  followedId String   @map("followed_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  follower   User     @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "follows_follower_id_fkey")
+  followed   User     @relation("Followed", fields: [followedId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "follows_followed_id_fkey")
+
+  @@id([followerId, followedId], map: "follows_pkey")
+  @@index([followedId, createdAt], map: "follows_followed_created_idx")
+  @@map("follows")
+}
+
+model ModerationReport {
+  id               String                 @id @default(uuid()) @db.Uuid
+  reporterId       String                 @map("reporter_id") @db.Uuid
+  targetType       ReportTargetType       @map("target_type")
+  listingId        String?                @map("listing_id") @db.Uuid
+  targetUserId     String?                @map("target_user_id") @db.Uuid
+  reason           ReportReason
+  detail           String?                @db.VarChar(1000)
+  status           ModerationReportStatus @default(OPEN)
+  assignedAdminId  String?                @map("assigned_admin_id") @db.Uuid
+  resolution       String?                @db.VarChar(1000)
+  resolvedAt       DateTime?              @map("resolved_at") @db.Timestamptz(3)
+  createdAt        DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime               @updatedAt @map("updated_at") @db.Timestamptz(3)
+  reporter         User                   @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "moderation_reports_reporter_id_fkey")
+  listing          Listing?               @relation(fields: [listingId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "moderation_reports_listing_id_fkey")
+  targetUser       User?                  @relation("ReportTargetUser", fields: [targetUserId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "moderation_reports_target_user_id_fkey")
+  assignedAdmin    User?                  @relation("ReportAssignedAdmin", fields: [assignedAdminId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "moderation_reports_assigned_admin_id_fkey")
+  moderationAudits ModerationAudit[]
+
+  @@index([status, createdAt, id], map: "moderation_reports_status_created_id_idx")
+  @@index([reporterId, createdAt], map: "moderation_reports_reporter_created_idx")
+  @@index([listingId, status], map: "moderation_reports_listing_status_idx")
+  @@index([targetUserId, status], map: "moderation_reports_user_status_idx")
+  @@map("moderation_reports")
+}
+
+model ModerationAudit {
+  id            String                @id @default(uuid()) @db.Uuid
+  actorId       String                @map("actor_id") @db.Uuid
+  action        ModerationAuditAction
+  listingId     String?               @map("listing_id") @db.Uuid
+  categoryId    String?               @map("category_id") @db.Uuid
+  reportId      String?               @map("report_id") @db.Uuid
+  reason        String?               @db.VarChar(1000)
+  previousState String?               @map("previous_state") @db.VarChar(32)
+  nextState     String?               @map("next_state") @db.VarChar(32)
+  createdAt     DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  actor         User                  @relation("ModerationActor", fields: [actorId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "moderation_audits_actor_id_fkey")
+  listing       Listing?              @relation(fields: [listingId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "moderation_audits_listing_id_fkey")
+  category      Category?             @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "moderation_audits_category_id_fkey")
+  report        ModerationReport?     @relation(fields: [reportId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "moderation_audits_report_id_fkey")
+
+  @@index([actorId, createdAt], map: "moderation_audits_actor_created_idx")
+  @@index([listingId, createdAt], map: "moderation_audits_listing_created_idx")
+  @@index([categoryId, createdAt], map: "moderation_audits_category_created_idx")
+  @@index([reportId, createdAt], map: "moderation_audits_report_created_idx")
+  @@map("moderation_audits")
 }

@@ -5,6 +5,7 @@ import { AuthController } from './auth.controller';
 import { AUTHORITATIVE_AUTH_USER_PROVIDER, AUTH_TOKEN_VERIFIER } from './auth-provider.interface';
 import { AuthenticationGuard } from './authentication.guard';
 import { LinkedUserGuard } from './linked-user.guard';
+import { OptionalAuthenticationGuard } from './optional-authentication.guard';
 import { ProvisionUserService } from './provision-user.service';
 import { RoleGuard } from './role.guard';
 import { SupabaseAuthAdapter } from './supabase-auth.adapter';
@@ -16,6 +17,7 @@ import { SupabaseAuthAdapter } from './supabase-auth.adapter';
     AuthenticationGuard,
     AUTH_TOKEN_VERIFIER,
     LinkedUserGuard,
+    OptionalAuthenticationGuard,
     RoleGuard,
   ],
   providers: [
@@ -28,6 +30,7 @@ import { SupabaseAuthAdapter } from './supabase-auth.adapter';
     ApplicationUserResolver,
     AuthenticationGuard,
     LinkedUserGuard,
+    OptionalAuthenticationGuard,
     RoleGuard,
     ProvisionUserService,
   ],

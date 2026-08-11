@@ -6,6 +6,12 @@ const apiEnvironmentSchema = z.object({
   API_PORT: z.coerce.number().int().min(1).max(65_535).default(4000),
   CORS_ORIGINS: z.string().optional(),
   LOG_FORMAT: z.enum(['json', 'pretty']).default('pretty'),
+  LISTING_IMAGE_BUCKET: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9][a-z0-9-]{1,62}$/)
+    .default('listing-images'),
+  LISTING_IMAGE_SIGNED_URL_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(900),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PHONE_VERIFICATION_ATTEMPT_TTL_SECONDS: z.coerce.number().int().min(60).max(600).default(600),
   PHONE_VERIFICATION_MAX_CHECKS: z.coerce.number().int().min(1).max(10).default(5),
@@ -51,6 +57,8 @@ export interface ApiConfig {
   readonly corsOrigins: readonly string[];
   readonly host: string;
   readonly logFormat: 'json' | 'pretty';
+  readonly listingImageBucket: string;
+  readonly listingImageSignedUrlTtlSeconds: number;
   readonly nodeEnv: 'development' | 'test' | 'production';
   readonly phoneVerificationAttemptTtlSeconds: number;
   readonly phoneVerificationMaxChecks: number;
@@ -76,6 +84,8 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
     corsOrigins: parseCommaSeparatedList(parsed.CORS_ORIGINS),
     host: parsed.API_HOST,
     logFormat: parsed.LOG_FORMAT,
+    listingImageBucket: parsed.LISTING_IMAGE_BUCKET,
+    listingImageSignedUrlTtlSeconds: parsed.LISTING_IMAGE_SIGNED_URL_TTL_SECONDS,
     nodeEnv: parsed.NODE_ENV,
     phoneVerificationAttemptTtlSeconds: parsed.PHONE_VERIFICATION_ATTEMPT_TTL_SECONDS,
     phoneVerificationMaxChecks: parsed.PHONE_VERIFICATION_MAX_CHECKS,

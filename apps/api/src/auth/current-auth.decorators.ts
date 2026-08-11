@@ -43,3 +43,7 @@ export const CurrentUser = createParamDecorator(
     return currentUser;
   },
 );
+
+export const OptionalCurrentUser = createParamDecorator(
+  (_data: unknown, context: ExecutionContext): User | undefined => getRequest(context).currentUser,
+);

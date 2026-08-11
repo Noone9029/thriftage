@@ -14,7 +14,9 @@ declare module 'sharp' {
     resize(
       width: number,
       height: number,
-      options: { readonly fit: 'cover'; readonly position: 'attention' },
+      options:
+        | { readonly fit: 'cover'; readonly position: 'attention' }
+        | { readonly fit: 'inside'; readonly withoutEnlargement: boolean },
     ): Sharp;
     rotate(): Sharp;
     toBuffer(): Promise<Buffer>;

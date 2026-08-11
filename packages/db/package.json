@@ -20,6 +20,7 @@
     "migrate:deploy": "prisma migrate deploy",
     "prisma:format": "prisma format",
     "prisma:validate": "prisma validate",
+    "seed:categories": "pnpm build && node dist/seed-categories.js",
     "test:integration": "vitest run --config vitest.integration.config.mts",
     "typecheck": "pnpm generate && tsc --noEmit"
   },
