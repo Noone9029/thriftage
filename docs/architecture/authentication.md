@@ -28,6 +28,6 @@ Database unique constraints provide the final concurrency boundary. A duplicate 
 
 ## Configuration and lifecycle
 
-The API requires `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`. Server auth clients disable session persistence and refresh. Service-role and secret keys are neither required nor accepted by configuration.
+Routine access-token verification requires `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`. That server auth client disables session persistence and refresh. Phase 1C2A separately requires a modern backend-only `SUPABASE_SECRET_KEY` for the narrowly scoped Auth Admin adapter described in [secure phone verification](./phone-verification.md). The secret never participates in bearer-token verification or enters a client bundle; legacy service-role keys are not accepted.
 
 Future Orders, Payments, Reviews, Disputes, Messages, and Audit records must preserve historical marketplace integrity and must not be destructively cascade-deleted merely because a user account is deleted.

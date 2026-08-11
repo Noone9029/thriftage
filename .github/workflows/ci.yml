@@ -34,7 +34,14 @@ jobs:
       EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci-placeholder
       EXPO_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
       NEXT_TELEMETRY_DISABLED: '1'
+      SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci-placeholder
+      SUPABASE_SECRET_KEY: sb_secret_ci-placeholder
+      SUPABASE_URL: https://ci-placeholder.supabase.co
       TEST_DATABASE_URL: postgresql://thriftage:thriftage@localhost:5432/thriftage_test?schema=public
+      TWILIO_ACCOUNT_SID: AC11111111111111111111111111111111
+      TWILIO_API_KEY_SECRET: ci-restricted-key-placeholder
+      TWILIO_API_KEY_SID: SK22222222222222222222222222222222
+      TWILIO_VERIFY_SERVICE_SID: VA33333333333333333333333333333333
     steps:
       - name: Check out repository
         uses: actions/checkout@v5

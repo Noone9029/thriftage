@@ -1,6 +1,6 @@
 # Thriftage
 
-Thriftage is a mobile-first peer-to-peer fashion marketplace. The repository contains the engineering foundation, User/Profile data foundation, API authentication boundary, and Phase 1C1 mobile email authentication lifecycle. Phone identity, profile onboarding, and marketplace features remain deferred.
+Thriftage is a mobile-first peer-to-peer fashion marketplace. The repository contains the engineering foundation, User/Profile data foundation, API authentication boundary, Phase 1C1 mobile email authentication, and the Phase 1C2A secure backend phone-linking lifecycle. Mobile phone verification/login, profile onboarding, and marketplace features remain deferred.
 
 ## Repository layout
 
@@ -65,7 +65,7 @@ npm.cmd install --global pnpm@11.16.0
 
 The API health check is available at `http://localhost:4000/api/v1/health`; the admin app uses port 3000, and Expo selects its available development port.
 
-Set `SUPABASE_URL` and a project `SUPABASE_PUBLISHABLE_KEY` in `apps/api/.env`. The API does not require a Supabase service-role or secret key. Protected requests use `Authorization: Bearer <access-token>`; see the [authentication architecture](./docs/architecture/authentication.md).
+Set the backend Supabase and Twilio Verify variables from `apps/api/.env.example`. Routine token verification uses the publishable key; secure phone linking uses a modern backend-only Supabase secret key and restricted Twilio API-key credentials. Protected requests use `Authorization: Bearer <access-token>`; see the [authentication architecture](./docs/architecture/authentication.md) and [phone verification architecture](./docs/architecture/phone-verification.md).
 
 Set `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_SUPABASE_URL`, and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in `apps/mobile/.env`. Configure `thriftage://auth/callback` and `thriftage://auth/reset-password` as allowed redirects in Supabase before testing confirmation or recovery links. See [mobile email authentication](./docs/architecture/mobile-authentication.md).
 
@@ -106,4 +106,4 @@ For a disposable named `prisma dev` instance, set `ALLOW_PRISMA_DEV_TEST_DATABAS
 
 ## Scope boundary
 
-Phone authentication, profile APIs/onboarding, listings, search, messaging, payments, orders, moderation, reviews, personalization, and AI are not implemented. See [AGENTS.md](./AGENTS.md) for approved phases, safety constraints, and completion rules.
+Mobile phone verification/login, change-phone, identity merging, profile APIs/onboarding, listings, search, messaging, payments, orders, moderation, reviews, personalization, and AI are not implemented. See [AGENTS.md](./AGENTS.md) for approved phases, safety constraints, and completion rules.

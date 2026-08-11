@@ -1,4 +1,4 @@
-import { loadApiConfig } from '@thriftage/config';
+import { loadApiConfig } from '@thriftage/config/api';
 import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 

@@ -28,8 +28,8 @@ process.env.DATABASE_URL = testDatabaseUrl;
 export default defineConfig({
   resolve: {
     alias: {
-      '@thriftage/config': fileURLToPath(
-        new URL('../../packages/config/src/index.ts', import.meta.url),
+      '@thriftage/config/api': fileURLToPath(
+        new URL('../../packages/config/src/api-environment.ts', import.meta.url),
       ),
       '@thriftage/db': fileURLToPath(new URL('../../packages/db/src/index.ts', import.meta.url)),
       '@thriftage/shared': fileURLToPath(

@@ -2,7 +2,7 @@ import 'dotenv/config';
 
 import { ConsoleLogger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { loadApiConfig } from '@thriftage/config';
+import { loadApiConfig } from '@thriftage/config/api';
 import { API_SERVICE_NAME, API_VERSION_PREFIX } from '@thriftage/shared';
 import helmet from 'helmet';
 

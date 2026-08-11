@@ -19,24 +19,64 @@ enum AccountStatus {
   DEACTIVATED
 }
 
+enum PhoneVerificationAttemptStatus {
+  PENDING
+  PROVIDER_VERIFIED
+  LINKED
+  EXPIRED
+  CANCELLED
+  FAILED
+}
+
+enum PhoneVerificationProvider {
+  TWILIO_VERIFY
+}
+
 model User {
-  id                 String        @id @default(uuid()) @db.Uuid
-  authProviderUserId String        @unique(map: "users_auth_provider_user_id_key") @map("auth_provider_user_id") @db.VarChar(255)
-  email              String?       @unique(map: "users_email_key") @db.VarChar(320)
-  phone              String?       @unique(map: "users_phone_key") @db.VarChar(32)
-  fullName           String        @map("full_name") @db.VarChar(120)
-  role               UserRole      @default(USER)
-  accountStatus      AccountStatus @default(ACTIVE) @map("account_status")
-  emailVerified      Boolean       @default(false) @map("email_verified")
-  phoneVerified      Boolean       @default(false) @map("phone_verified")
-  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
-  deletedAt          DateTime?     @map("deleted_at") @db.Timestamptz(3)
-  profile            Profile?
+  id                        String                     @id @default(uuid()) @db.Uuid
+  authProviderUserId        String                     @unique(map: "users_auth_provider_user_id_key") @map("auth_provider_user_id") @db.VarChar(255)
+  email                     String?                    @unique(map: "users_email_key") @db.VarChar(320)
+  phone                     String?                    @unique(map: "users_phone_key") @db.VarChar(32)
+  fullName                  String                     @map("full_name") @db.VarChar(120)
+  role                      UserRole                   @default(USER)
+  accountStatus             AccountStatus              @default(ACTIVE) @map("account_status")
+  emailVerified             Boolean                    @default(false) @map("email_verified")
+  phoneVerified             Boolean                    @default(false) @map("phone_verified")
+  createdAt                 DateTime                   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                 DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt                 DateTime?                  @map("deleted_at") @db.Timestamptz(3)
+  profile                   Profile?
+  phoneVerificationAttempts PhoneVerificationAttempt[]
 
   @@index([accountStatus], map: "users_account_status_idx")
   @@index([createdAt], map: "users_created_at_idx")
   @@map("users")
+}
+
+model PhoneVerificationAttempt {
+  id                     String                         @id @default(uuid()) @db.Uuid
+  userId                 String                         @map("user_id") @db.Uuid
+  phone                  String                         @db.VarChar(32)
+  provider               PhoneVerificationProvider      @default(TWILIO_VERIFY)
+  providerReference      String?                        @map("provider_reference") @db.VarChar(64)
+  status                 PhoneVerificationAttemptStatus @default(PENDING)
+  sendCount              Int                            @default(1) @map("send_count")
+  verificationCheckCount Int                            @default(0) @map("verification_check_count")
+  expiresAt              DateTime                       @map("expires_at") @db.Timestamptz(3)
+  resendAvailableAt      DateTime                       @map("resend_available_at") @db.Timestamptz(3)
+  providerVerifiedAt     DateTime?                      @map("provider_verified_at") @db.Timestamptz(3)
+  linkedAt               DateTime?                      @map("linked_at") @db.Timestamptz(3)
+  cancelledAt            DateTime?                      @map("cancelled_at") @db.Timestamptz(3)
+  failedAt               DateTime?                      @map("failed_at") @db.Timestamptz(3)
+  createdAt              DateTime                       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt              DateTime                       @updatedAt @map("updated_at") @db.Timestamptz(3)
+  user                   User                           @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "phone_verification_attempts_user_id_fkey")
+
+  @@index([userId, status, createdAt], map: "phone_verification_attempts_user_status_created_idx")
+  @@index([userId, createdAt], map: "phone_verification_attempts_user_created_idx")
+  @@index([phone, status], map: "phone_verification_attempts_phone_status_idx")
+  @@index([status, expiresAt], map: "phone_verification_attempts_status_expires_idx")
+  @@map("phone_verification_attempts")
 }
 
 model Profile {

@@ -5,7 +5,12 @@ import { loadApiConfig } from './api-environment';
 describe('loadApiConfig', () => {
   const requiredAuthEnvironment = {
     SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test-placeholder',
+    SUPABASE_SECRET_KEY: 'sb_secret_test-placeholder',
     SUPABASE_URL: 'https://project-ref.supabase.co',
+    TWILIO_ACCOUNT_SID: `AC${'1'.repeat(32)}`,
+    TWILIO_API_KEY_SECRET: 'test-api-key-secret-placeholder',
+    TWILIO_API_KEY_SID: `SK${'2'.repeat(32)}`,
+    TWILIO_VERIFY_SERVICE_SID: `VA${'3'.repeat(32)}`,
   };
 
   it('returns safe local defaults', () => {
@@ -14,9 +19,20 @@ describe('loadApiConfig', () => {
       host: '0.0.0.0',
       logFormat: 'pretty',
       nodeEnv: 'development',
+      phoneVerificationAttemptTtlSeconds: 600,
+      phoneVerificationMaxChecks: 5,
+      phoneVerificationMaxSends: 5,
+      phoneVerificationMaxStarts: 5,
+      phoneVerificationResendCooldownSeconds: 60,
+      phoneVerificationStartWindowSeconds: 3600,
       port: 4000,
       supabasePublishableKey: 'sb_publishable_test-placeholder',
+      supabaseSecretKey: 'sb_secret_test-placeholder',
       supabaseUrl: 'https://project-ref.supabase.co',
+      twilioAccountSid: `AC${'1'.repeat(32)}`,
+      twilioApiKeySecret: 'test-api-key-secret-placeholder',
+      twilioApiKeySid: `SK${'2'.repeat(32)}`,
+      twilioVerifyServiceSid: `VA${'3'.repeat(32)}`,
     });
   });
 
@@ -46,8 +62,22 @@ describe('loadApiConfig', () => {
     expect(() =>
       loadApiConfig({
         SUPABASE_PUBLISHABLE_KEY: 'sb_secret_do-not-use',
+        SUPABASE_SECRET_KEY: 'sb_secret_test-placeholder',
         SUPABASE_URL: 'https://project-ref.supabase.co',
+        TWILIO_ACCOUNT_SID: `AC${'1'.repeat(32)}`,
+        TWILIO_API_KEY_SECRET: 'test-api-key-secret-placeholder',
+        TWILIO_API_KEY_SID: `SK${'2'.repeat(32)}`,
+        TWILIO_VERIFY_SERVICE_SID: `VA${'3'.repeat(32)}`,
       }),
+    ).toThrow();
+  });
+
+  it('requires modern backend-only Supabase and Twilio credentials', () => {
+    expect(() =>
+      loadApiConfig({ ...requiredAuthEnvironment, SUPABASE_SECRET_KEY: 'legacy-service-role' }),
+    ).toThrow();
+    expect(() =>
+      loadApiConfig({ ...requiredAuthEnvironment, TWILIO_API_KEY_SID: 'invalid' }),
     ).toThrow();
   });
 });

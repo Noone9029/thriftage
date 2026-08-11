@@ -20,6 +20,8 @@
     "skipLibCheck": true,
     "paths": {
       "@thriftage/config": ["./packages/config/src/index.ts"],
+      "@thriftage/config/api": ["./packages/config/src/api-environment.ts"],
+      "@thriftage/config/mobile": ["./packages/config/src/mobile-environment.ts"],
       "@thriftage/db": ["./packages/db/src/index.ts"],
       "@thriftage/shared": ["./packages/shared/src/index.ts"]
     }

@@ -13,4 +13,6 @@ Authentication uses Supabase Auth for managed identity while PostgreSQL owns app
 
 The Expo application implements the Phase 1C1 email session lifecycle, protected routing, secure native persistence, and backend provisioning described in [mobile email authentication](./architecture/mobile-authentication.md).
 
-Phase 1B adds server token verification, application-user provisioning, and account-state enforcement. Profile onboarding and client authentication UI remain deferred. New capabilities should be added as bounded vertical slices without moving authoritative business rules into clients.
+Phase 1C2A adds server-controlled phone ownership verification and links the first verified phone to the existing Supabase and PostgreSQL identities. See [secure phone verification](./architecture/phone-verification.md).
+
+Phase 1B adds server token verification, application-user provisioning, and account-state enforcement. Profile onboarding remains deferred. New capabilities should be added as bounded vertical slices without moving authoritative business rules into clients.

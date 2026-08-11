@@ -5,6 +5,12 @@ import { configDefaults, defineConfig } from 'vitest/config';
 export default defineConfig({
   resolve: {
     alias: {
+      '@thriftage/config/api': fileURLToPath(
+        new URL('./packages/config/src/api-environment.ts', import.meta.url),
+      ),
+      '@thriftage/config/mobile': fileURLToPath(
+        new URL('./packages/config/src/mobile-environment.ts', import.meta.url),
+      ),
       '@thriftage/config': fileURLToPath(
         new URL('./packages/config/src/index.ts', import.meta.url),
       ),
