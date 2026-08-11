@@ -1,6 +1,6 @@
 # Thriftage
 
-Thriftage is a mobile-first peer-to-peer fashion marketplace. The repository contains the Phase 0 engineering foundation and the Phase 1A User/Profile data foundation; login flows and marketplace features begin in later approved tasks.
+Thriftage is a mobile-first peer-to-peer fashion marketplace. The repository contains the engineering foundation, User/Profile data foundation, and Phase 1B server authentication boundary. Client login flows, profile onboarding, and marketplace features remain deferred.
 
 ## Repository layout
 
@@ -65,6 +65,8 @@ npm.cmd install --global pnpm@11.16.0
 
 The API health check is available at `http://localhost:4000/api/v1/health`; the admin app uses port 3000, and Expo selects its available development port.
 
+Set `SUPABASE_URL` and a project `SUPABASE_PUBLISHABLE_KEY` in `apps/api/.env`. The API does not require a Supabase service-role or secret key. Protected requests use `Authorization: Bearer <access-token>`; see the [authentication architecture](./docs/architecture/authentication.md).
+
 ## Quality gates
 
 Run the same checks enforced by CI:
@@ -85,6 +87,8 @@ pnpm.cmd build
 
 Supabase Auth is the initial identity provider, but it does not own application data. Supabase verifies credentials and manages sessions; PostgreSQL owns the application `User`, one-to-one `Profile`, roles, and account state. Passwords and password hashes are never stored by Prisma. See [ADR 0001](./docs/architecture/adr/0001-authentication-provider.md).
 
+Phase 1B exposes `POST /api/v1/auth/provision` for idempotent application-user linking and `GET /api/v1/auth/me` for the active linked user's privacy-safe account contract. Provisioning accepts only `fullName`; provider identity, contact verification, role, and status remain server-authoritative.
+
 Every schema change must use reviewed Prisma migrations owned by `packages/db`; never edit a shared production schema manually or commit generated credentials.
 
 Database integration tests require a dedicated database whose name contains `test`. After setting `TEST_DATABASE_URL`, apply the migration and run the constraint suite:
@@ -100,4 +104,4 @@ For a disposable named `prisma dev` instance, set `ALLOW_PRISMA_DEV_TEST_DATABAS
 
 ## Scope boundary
 
-Authentication flows and UI, profile APIs, listings, search, messaging, payments, orders, moderation, reviews, personalization, and AI are not implemented. See [AGENTS.md](./AGENTS.md) for approved phases, safety constraints, and completion rules.
+Authentication UI, profile APIs, listings, search, messaging, payments, orders, moderation, reviews, personalization, and AI are not implemented. See [AGENTS.md](./AGENTS.md) for approved phases, safety constraints, and completion rules.

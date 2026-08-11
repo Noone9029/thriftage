@@ -6,20 +6,24 @@
     "build": "nest build",
     "dev": "nest start --watch",
     "start": "node dist/main.js",
+    "test:integration": "vitest run --config vitest.integration.config.mts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@nestjs/common": "11.1.28",
     "@nestjs/core": "11.1.28",
     "@nestjs/platform-express": "11.1.28",
+    "@supabase/supabase-js": "2.112.2",
     "@thriftage/config": "workspace:*",
+    "@thriftage/db": "workspace:*",
     "@thriftage/shared": "workspace:*",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.3",
     "dotenv": "^17.2.3",
     "helmet": "^8.1.0",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.2"
+    "rxjs": "^7.8.2",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.24",

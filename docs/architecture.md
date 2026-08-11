@@ -9,6 +9,6 @@ Thriftage uses a pnpm monorepo with deployable applications under `apps/` and fr
 - `config` validates runtime configuration at process boundaries.
 - `db` owns the PostgreSQL schema, migrations, and generated Prisma client.
 
-Authentication uses Supabase Auth for managed identity while PostgreSQL owns application users, profiles, roles, and account state. See [ADR 0001](./architecture/adr/0001-authentication-provider.md).
+Authentication uses Supabase Auth for managed identity while PostgreSQL owns application users, profiles, roles, and account state. See [ADR 0001](./architecture/adr/0001-authentication-provider.md) and the [API authentication boundary](./architecture/authentication.md).
 
-Phase 1A contains only the User/Profile data foundation and privacy-safe contracts. New capabilities should be added as bounded vertical slices without moving authoritative business rules into clients.
+Phase 1B adds server token verification, application-user provisioning, and account-state enforcement. Profile onboarding and client authentication UI remain deferred. New capabilities should be added as bounded vertical slices without moving authoritative business rules into clients.

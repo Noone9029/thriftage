@@ -25,7 +25,7 @@ The Thriftage PostgreSQL database is responsible for:
 - future moderation and seller-related state; and
 - application timestamps and metadata.
 
-`User.authProviderUserId` stores the unique external subject. It is not the application primary key. Application records use UUID primary keys so marketplace foreign keys remain stable if the identity provider changes.
+`User.authProviderUserId` stores the unique external subject. It is not the application primary key. Application records use UUID primary keys so marketplace foreign keys remain stable if the identity provider changes. The API verifies routine access tokens through an application-owned interface backed by Supabase `getClaims`, and provisioning performs an authoritative `getUser` lookup before linking identity data.
 
 Thriftage will not store passwords or password hashes, and Prisma models will not mirror Supabase internal authentication tables. A later bounded authentication task will validate Supabase sessions and provision/link application users through a server-controlled service.
 
@@ -42,4 +42,4 @@ Seller and buyer rating aggregates are deferred to the reviews module. No editab
 - Authentication-provider outages affect sign-in but do not change application identity or marketplace ownership.
 - User provisioning must explicitly map a verified Supabase subject to one application `User`.
 - Replacing Supabase later requires adapting the identity integration, not rewriting marketplace foreign keys.
-- Login, signup, session middleware, and authentication UI are intentionally outside Phase 1A.
+- Login, signup, and authentication UI remain separate client tasks. Phase 1B implements only the API boundary and provisioning lifecycle.

@@ -20,7 +20,7 @@
     "db:format": "pnpm --filter @thriftage/db prisma:format",
     "db:migrate:deploy": "pnpm --filter @thriftage/db migrate:deploy",
     "db:validate": "pnpm --filter @thriftage/db prisma:validate",
-    "test:db": "pnpm --filter @thriftage/db test:integration"
+    "test:db": "pnpm --filter @thriftage/db test:integration && pnpm --filter @thriftage/api test:integration"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

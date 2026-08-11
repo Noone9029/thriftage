@@ -16,7 +16,7 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    exclude: [...configDefaults.exclude, 'packages/db/test/**/*.integration.test.ts'],
+    exclude: [...configDefaults.exclude, '**/*.integration.test.ts'],
     include: ['apps/**/*.test.ts', 'apps/**/*.spec.ts', 'packages/**/*.test.ts'],
     passWithNoTests: false,
     restoreMocks: true,
