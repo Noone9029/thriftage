@@ -1,6 +1,6 @@
 # Thriftage
 
-Thriftage is a mobile-first peer-to-peer fashion marketplace. The repository contains the engineering foundation, User/Profile data foundation, and Phase 1B server authentication boundary. Client login flows, profile onboarding, and marketplace features remain deferred.
+Thriftage is a mobile-first peer-to-peer fashion marketplace. The repository contains the engineering foundation, User/Profile data foundation, API authentication boundary, and Phase 1C1 mobile email authentication lifecycle. Phone identity, profile onboarding, and marketplace features remain deferred.
 
 ## Repository layout
 
@@ -67,6 +67,8 @@ The API health check is available at `http://localhost:4000/api/v1/health`; the 
 
 Set `SUPABASE_URL` and a project `SUPABASE_PUBLISHABLE_KEY` in `apps/api/.env`. The API does not require a Supabase service-role or secret key. Protected requests use `Authorization: Bearer <access-token>`; see the [authentication architecture](./docs/architecture/authentication.md).
 
+Set `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_SUPABASE_URL`, and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in `apps/mobile/.env`. Configure `thriftage://auth/callback` and `thriftage://auth/reset-password` as allowed redirects in Supabase before testing confirmation or recovery links. See [mobile email authentication](./docs/architecture/mobile-authentication.md).
+
 ## Quality gates
 
 Run the same checks enforced by CI:
@@ -104,4 +106,4 @@ For a disposable named `prisma dev` instance, set `ALLOW_PRISMA_DEV_TEST_DATABAS
 
 ## Scope boundary
 
-Authentication UI, profile APIs, listings, search, messaging, payments, orders, moderation, reviews, personalization, and AI are not implemented. See [AGENTS.md](./AGENTS.md) for approved phases, safety constraints, and completion rules.
+Phone authentication, profile APIs/onboarding, listings, search, messaging, payments, orders, moderation, reviews, personalization, and AI are not implemented. See [AGENTS.md](./AGENTS.md) for approved phases, safety constraints, and completion rules.
