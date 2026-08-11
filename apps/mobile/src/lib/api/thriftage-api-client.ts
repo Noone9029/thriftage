@@ -1,15 +1,33 @@
 import {
+  categoryTreeNodeSchema,
+  listingDetailSchema,
+  listingPageSchema,
+  moderationReportSchema,
   phoneVerificationChallengeSchema,
   privateUserAccountSchema,
   privateUserProfileSchema,
   publicUserProfileSchema,
+  sellerProfileWithListingsSchema,
+  socialActionResultSchema,
   usernameAvailabilitySchema,
+  type CategoryTreeNode,
+  type FeedMode,
+  type ListingDetail,
+  type ListingDraftInput,
+  type ListingPage,
+  type ListingReportInput,
+  type ListingSearchQuery,
+  type ListingUpdateInput,
+  type ModerationReport,
   type PhoneVerificationChallenge,
   type PrivateUserAccount,
   type PrivateUserProfile,
   type ProfileCreateInput,
   type ProfileUpdateInput,
   type PublicUserProfile,
+  type SellerProfileWithListings,
+  type SocialActionResult,
+  type UserReportInput,
   type UsernameAvailability,
 } from '@thriftage/shared';
 
@@ -24,10 +42,19 @@ export interface ApiSessionProvider {
 interface RequestOptions {
   readonly authenticated?: boolean;
   readonly body?: unknown;
-  readonly method?: 'DELETE' | 'GET' | 'PATCH' | 'POST';
+  readonly method?: 'DELETE' | 'GET' | 'PATCH' | 'POST' | 'PUT';
 }
 
 const refreshableCodes = new Set(['AUTH_EXPIRED_TOKEN', 'AUTH_INVALID_TOKEN']);
+
+function queryString(values: Readonly<Record<string, string | number | undefined>>): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(values)) {
+    if (value !== undefined && value !== '') params.set(key, String(value));
+  }
+  const result = params.toString();
+  return result === '' ? '' : `?${result}`;
+}
 
 export class ThriftageApiClient {
   public constructor(
@@ -119,6 +146,145 @@ export class ThriftageApiClient {
   public async removeProfileImage(): Promise<PrivateUserProfile> {
     return privateUserProfileSchema.parse(
       await this.request('/profiles/me/image', { method: 'DELETE' }),
+    );
+  }
+
+  public async getCategories(): Promise<readonly CategoryTreeNode[]> {
+    return categoryTreeNodeSchema
+      .array()
+      .parse(await this.request('/categories', { authenticated: false }));
+  }
+
+  public async getFeed(mode: FeedMode, cursor?: string, limit = 20): Promise<ListingPage> {
+    return listingPageSchema.parse(
+      await this.request(`/feed${queryString({ cursor, limit, mode })}`),
+    );
+  }
+
+  public async searchListings(query: Partial<ListingSearchQuery>): Promise<ListingPage> {
+    return listingPageSchema.parse(
+      await this.request(
+        `/listings${queryString({
+          categoryId: query.categoryId,
+          condition: query.condition,
+          currency: query.currency,
+          cursor: query.cursor,
+          limit: query.limit,
+          maxPriceMinor: query.maxPriceMinor,
+          minPriceMinor: query.minPriceMinor,
+          q: query.q,
+          size: query.size,
+          sort: query.sort,
+        })}`,
+      ),
+    );
+  }
+
+  public async getListing(listingId: string): Promise<ListingDetail> {
+    return listingDetailSchema.parse(await this.request(`/listings/${listingId}`));
+  }
+
+  public async getMyListings(cursor?: string, status?: string): Promise<ListingPage> {
+    return listingPageSchema.parse(
+      await this.request(`/seller/listings${queryString({ cursor, status })}`),
+    );
+  }
+
+  public async getMyListing(listingId: string): Promise<ListingDetail> {
+    return listingDetailSchema.parse(await this.request(`/seller/listings/${listingId}`));
+  }
+
+  public async createListing(input: ListingDraftInput): Promise<ListingDetail> {
+    return listingDetailSchema.parse(
+      await this.request('/seller/listings', { body: input, method: 'POST' }),
+    );
+  }
+
+  public async updateListing(listingId: string, input: ListingUpdateInput): Promise<ListingDetail> {
+    return listingDetailSchema.parse(
+      await this.request(`/seller/listings/${listingId}`, { body: input, method: 'PATCH' }),
+    );
+  }
+
+  public async deleteDraft(listingId: string): Promise<void> {
+    await this.request(`/seller/listings/${listingId}`, { method: 'DELETE' });
+  }
+
+  public async submitListing(listingId: string): Promise<ListingDetail> {
+    return listingDetailSchema.parse(
+      await this.request(`/seller/listings/${listingId}/submit`, { method: 'POST' }),
+    );
+  }
+
+  public async archiveListing(listingId: string): Promise<ListingDetail> {
+    return listingDetailSchema.parse(
+      await this.request(`/seller/listings/${listingId}/archive`, { method: 'POST' }),
+    );
+  }
+
+  public async uploadListingImage(listingId: string, form: FormData): Promise<ListingDetail> {
+    return listingDetailSchema.parse(
+      await this.request(`/seller/listings/${listingId}/images`, { body: form, method: 'POST' }),
+    );
+  }
+
+  public async removeListingImage(listingId: string, imageId: string): Promise<ListingDetail> {
+    return listingDetailSchema.parse(
+      await this.request(`/seller/listings/${listingId}/images/${imageId}`, { method: 'DELETE' }),
+    );
+  }
+
+  public async reorderListingImages(
+    listingId: string,
+    imageIds: readonly string[],
+  ): Promise<ListingDetail> {
+    return listingDetailSchema.parse(
+      await this.request(`/seller/listings/${listingId}/images`, {
+        body: { imageIds },
+        method: 'PATCH',
+      }),
+    );
+  }
+
+  public async setLike(listingId: string, active: boolean): Promise<SocialActionResult> {
+    return socialActionResultSchema.parse(
+      await this.request(`/listings/${listingId}/like`, { method: active ? 'PUT' : 'DELETE' }),
+    );
+  }
+
+  public async setSaved(listingId: string, active: boolean): Promise<SocialActionResult> {
+    return socialActionResultSchema.parse(
+      await this.request(`/listings/${listingId}/save`, { method: active ? 'PUT' : 'DELETE' }),
+    );
+  }
+
+  public async getSavedListings(cursor?: string): Promise<ListingPage> {
+    return listingPageSchema.parse(
+      await this.request(`/me/saved-listings${queryString({ cursor })}`),
+    );
+  }
+
+  public async setFollow(userId: string, active: boolean): Promise<SocialActionResult> {
+    return socialActionResultSchema.parse(
+      await this.request(`/sellers/${userId}/follow`, { method: active ? 'PUT' : 'DELETE' }),
+    );
+  }
+
+  public async getSeller(username: string, cursor?: string): Promise<SellerProfileWithListings> {
+    return sellerProfileWithListingsSchema.parse(
+      await this.request(`/sellers/${encodeURIComponent(username)}${queryString({ cursor })}`),
+    );
+  }
+
+  public async reportListing(input: ListingReportInput): Promise<ModerationReport> {
+    return moderationReportSchema.parse(
+      await this.request('/reports/listings', { body: input, method: 'POST' }),
+    );
+  }
+
+  public async reportUser(input: UserReportInput): Promise<ModerationReport> {
+    return moderationReportSchema.parse(
+      await this.request('/reports/users', { body: input, method: 'POST' }),
     );
   }
 

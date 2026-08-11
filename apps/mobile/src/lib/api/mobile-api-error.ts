@@ -1,18 +1,25 @@
 import {
   apiErrorCodeSchema,
+  marketplaceErrorCodeSchema,
   phoneVerificationErrorCodeSchema,
   profileErrorCodeSchema,
   type AuthErrorCode,
+  type MarketplaceErrorCode,
   type PhoneVerificationErrorCode,
   type ProfileErrorCode,
 } from '@thriftage/shared';
 import { z } from 'zod';
 
 export type MobileApiErrorCode =
-  AuthErrorCode | PhoneVerificationErrorCode | ProfileErrorCode | 'VALIDATION_FAILED' | 'API_ERROR';
+  | AuthErrorCode
+  | MarketplaceErrorCode
+  | PhoneVerificationErrorCode
+  | ProfileErrorCode
+  | 'API_ERROR';
 
 const mobileApiErrorCodeSchema = z.union([
   apiErrorCodeSchema,
+  marketplaceErrorCodeSchema,
   phoneVerificationErrorCodeSchema,
   profileErrorCodeSchema,
 ]);
@@ -36,6 +43,14 @@ export async function decodeApiError(response: Response): Promise<MobileApiError
     body = null;
   }
   if (typeof body === 'object' && body !== null && 'code' in body) {
+    const marketplaceCode = marketplaceErrorCodeSchema.safeParse(body.code);
+    if (marketplaceCode.success) {
+      return new MobileApiError(
+        marketplaceCode.data,
+        userMessages[marketplaceCode.data] ?? 'Marketplace request failed.',
+        response.status,
+      );
+    }
     const parsedCode = mobileApiErrorCodeSchema.safeParse(body.code);
     if (parsedCode.success) {
       return new MobileApiError(parsedCode.data, 'Authentication request failed.', response.status);
@@ -44,11 +59,31 @@ export async function decodeApiError(response: Response): Promise<MobileApiError
   return new MobileApiError('API_ERROR', 'The Thriftage service is unavailable.', response.status);
 }
 
-const userMessages: Record<MobileApiErrorCode, string> = {
+const userMessages: Partial<Record<MobileApiErrorCode, string>> = {
   ACCOUNT_DEACTIVATED: 'This Thriftage account is deactivated. You can still sign out.',
   ACCOUNT_SUSPENDED: 'This Thriftage account is suspended. You can still sign out.',
   ADMIN_PERMISSION_DENIED: 'This action requires an administrator account.',
   API_ERROR: 'Something went wrong. Check your connection and try again.',
+  CATEGORY_IN_USE: 'This category still contains active marketplace inventory.',
+  CATEGORY_NOT_FOUND: 'That category is no longer available.',
+  CATEGORY_SLUG_UNAVAILABLE: 'That category name is already in use.',
+  CATEGORY_UNAVAILABLE: 'Choose an active marketplace category.',
+  DUPLICATE_REPORT: 'You already have an open report for this item or user.',
+  IMAGE_INVALID: 'Choose a valid JPEG, PNG, or WebP photo.',
+  IMAGE_LIMIT_REACHED: 'A listing may contain at most 10 photos.',
+  IMAGE_NOT_FOUND: 'That listing photo is no longer available.',
+  IMAGE_TOO_LARGE: 'Each listing photo must be no larger than 5 MB.',
+  LISTING_FORBIDDEN: 'You do not have permission to change this listing.',
+  LISTING_NOT_EDITABLE: 'Only draft or rejected listings can be edited.',
+  LISTING_NOT_FOUND: 'That listing could not be found.',
+  LISTING_NOT_PUBLIC: 'That listing is no longer publicly available.',
+  LISTING_REQUIRES_IMAGES: 'Add at least 3 photos before submitting your listing.',
+  LISTING_TRANSITION_INVALID: 'That listing status change is not available.',
+  MARKETPLACE_SERVICE_ERROR: 'The marketplace is temporarily unavailable.',
+  MEDIA_STORAGE_ERROR: 'Listing photo storage is temporarily unavailable.',
+  REPORT_NOT_FOUND: 'That report could not be found.',
+  SELLER_NOT_FOUND: 'That seller could not be found.',
+  SELF_INTERACTION_FORBIDDEN: 'You cannot perform that action on your own content.',
   AUTH_EXPIRED_TOKEN: 'Your session expired. Please sign in again.',
   AUTH_EMAIL_UNVERIFIED: 'Confirm your email before completing your Thriftage account.',
   AUTH_IDENTITY_CONFLICT: 'This email or phone is already linked to another Thriftage account.',
@@ -76,7 +111,7 @@ const userMessages: Record<MobileApiErrorCode, string> = {
 
 export function getMobileApiErrorMessage(error: unknown): string {
   if (error instanceof MobileApiError) {
-    return userMessages[error.code];
+    return userMessages[error.code] ?? 'Something went wrong. Please try again.';
   }
   return 'Something went wrong. Please try again.';
 }

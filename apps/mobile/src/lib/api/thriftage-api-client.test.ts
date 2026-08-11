@@ -83,6 +83,25 @@ describe('ThriftageApiClient', () => {
     expect(new Headers(request.headers).has('Authorization')).toBe(false);
   });
 
+  it('uses idempotent authenticated marketplace action endpoints', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ active: true, count: 1 }));
+    const client = new ThriftageApiClient(
+      'https://api.example.com/api/v1',
+      new TestSessionProvider(),
+      fetchMock as unknown as typeof fetch,
+    );
+    const listingId = '0feeea8c-0345-4672-b044-76c44cb3dbb5';
+
+    await expect(client.setSaved(listingId, true)).resolves.toEqual({ active: true, count: 1 });
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      `https://api.example.com/api/v1/listings/${listingId}/save`,
+    );
+    expect((fetchMock.mock.calls[0]?.[1] as RequestInit).method).toBe('PUT');
+    expect(
+      new Headers((fetchMock.mock.calls[0]?.[1] as RequestInit).headers).get('Authorization'),
+    ).toBe('Bearer access-token');
+  });
+
   it('decodes stable backend errors and preserves machine codes', async () => {
     const fetchMock = vi
       .fn()
