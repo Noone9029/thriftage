@@ -11,10 +11,12 @@ export interface MobileAuthGateway {
   refreshSession(): Promise<Session | null>;
   requestPasswordReset(email: string, redirectTo: string): Promise<void>;
   signInWithPassword(email: string, password: string): Promise<Session>;
+  startPhoneSignIn(phone: string): Promise<void>;
   signOut(): Promise<void>;
   signUpWithPassword(email: string, password: string, redirectTo: string): Promise<Session | null>;
   startAutoRefresh(): void;
   stopAutoRefresh(): void;
   subscribe(listener: (event: AuthChangeEvent, session: Session | null) => void): () => void;
   updatePassword(password: string): Promise<void>;
+  verifyPhoneSignIn(phone: string, code: string): Promise<Session>;
 }

@@ -159,4 +159,14 @@ describe.sequential('ProvisionUserService database invariants', () => {
     ).rejects.toMatchObject({ code: 'AUTH_INVALID_TOKEN' });
     await expect(prisma.user.count()).resolves.toBe(0);
   });
+
+  it('refuses to provision before the authoritative email is confirmed', async () => {
+    const subject = randomUUID();
+    provider.user = authoritativeUser(subject, { emailVerified: false });
+
+    await expect(
+      service.provision(identityContext(subject), { fullName: 'Unverified User' }),
+    ).rejects.toMatchObject({ code: 'AUTH_EMAIL_UNVERIFIED' });
+    await expect(prisma.user.count()).resolves.toBe(0);
+  });
 });

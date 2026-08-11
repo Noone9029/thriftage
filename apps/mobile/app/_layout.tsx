@@ -20,7 +20,10 @@ function RootNavigator() {
   const authAllowed = [
     'SIGNED_OUT',
     'EMAIL_VERIFICATION_PENDING',
+    'PHONE_LOGIN_PENDING',
     'AUTHENTICATED_UNPROVISIONED',
+    'PHONE_VERIFICATION_REQUIRED',
+    'PROFILE_ONBOARDING_REQUIRED',
     'PASSWORD_RECOVERY',
   ].includes(state.status);
   const blocked = ['ACCOUNT_SUSPENDED', 'ACCOUNT_DEACTIVATED'].includes(state.status);

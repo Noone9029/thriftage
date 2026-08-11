@@ -34,7 +34,10 @@ describe('ProvisioningCoordinator', () => {
     pending = {
       clear: vi.fn().mockResolvedValue(undefined),
       getFullName: vi.fn().mockResolvedValue(null),
+      getPhone: vi.fn().mockResolvedValue(null),
       setFullName: vi.fn().mockResolvedValue(undefined),
+      setPhone: vi.fn().mockResolvedValue(undefined),
+      setRegistration: vi.fn().mockResolvedValue(undefined),
     };
   });
 
@@ -45,7 +48,7 @@ describe('ProvisioningCoordinator', () => {
     });
   });
 
-  it('provisions an unlinked identity when pending fullName is available and clears it', async () => {
+  it('provisions an unlinked identity while retaining phone continuity data', async () => {
     vi.mocked(accounts.get).mockRejectedValue(
       new MobileApiError('AUTH_USER_NOT_PROVISIONED', 'not provisioned', 403),
     );
@@ -58,7 +61,7 @@ describe('ProvisioningCoordinator', () => {
     });
     expect(api.provisionUser).toHaveBeenCalledWith('Ayesha Khan');
     expect(accounts.refresh).toHaveBeenCalledOnce();
-    expect(pending.clear).toHaveBeenCalledOnce();
+    expect(pending.clear).not.toHaveBeenCalled();
   });
 
   it('requires complete-account when cross-device login has no pending name', async () => {

@@ -84,6 +84,7 @@ model Profile {
   userId              String   @unique(map: "profiles_user_id_key") @map("user_id") @db.Uuid
   username            String   @unique(map: "profiles_username_key") @db.VarChar(30)
   profileImageUrl     String?  @map("profile_image_url") @db.VarChar(2048)
+  profileImageKey     String?  @map("profile_image_key") @db.VarChar(255)
   bio                 String?  @db.VarChar(500)
   university          String?  @db.VarChar(160)
   completedSalesCount Int      @default(0) @map("completed_sales_count")

@@ -5,6 +5,7 @@ packages:
 allowBuilds:
   '@prisma/engines': true
   prisma: true
+  sharp: true
 
 catalog:
   typescript: ^6.0.3
@@ -25,3 +26,4 @@ minimumReleaseAgeExclude:
   - '@expo/metro-runtime@57.0.9'
   - '@expo/ui@57.0.10'
   - expo-router@57.0.12
+  - expo-image-picker@57.0.9

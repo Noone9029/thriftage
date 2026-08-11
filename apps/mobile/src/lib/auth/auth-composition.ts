@@ -49,6 +49,7 @@ export const mobileAuthController = new MobileAuthController(
   provisioningCoordinator,
   currentAccountRepository,
   pendingRegistrationStore,
+  thriftageApiClient,
   {
     emailConfirmation: EMAIL_CONFIRMATION_REDIRECT_URL,
     passwordRecovery: PASSWORD_RECOVERY_REDIRECT_URL,

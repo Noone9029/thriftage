@@ -26,6 +26,7 @@ describe('loadApiConfig', () => {
       phoneVerificationResendCooldownSeconds: 60,
       phoneVerificationStartWindowSeconds: 3600,
       port: 4000,
+      profileImageBucket: 'profile-images',
       supabasePublishableKey: 'sb_publishable_test-placeholder',
       supabaseSecretKey: 'sb_secret_test-placeholder',
       supabaseUrl: 'https://project-ref.supabase.co',

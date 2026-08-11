@@ -1,6 +1,6 @@
 # Secure Phone Verification and Linking
 
-Phase 1C2A verifies ownership of the first phone attached to an existing Thriftage account. It does not add phone login, phone-only signup, mobile OTP screens, change-phone behavior, account merging, or profile onboarding.
+This subsystem verifies ownership of the first phone attached to an existing Thriftage account. It deliberately does not implement phone-only signup, change-phone behavior, or account merging. Mobile OTP entry and interruption recovery consume the privacy-safe endpoints below.
 
 ## Security decision and provider boundaries
 

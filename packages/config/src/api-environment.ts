@@ -18,6 +18,11 @@ const apiEnvironmentSchema = z.object({
     .min(60)
     .max(86_400)
     .default(3_600),
+  PROFILE_IMAGE_BUCKET: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9][a-z0-9-]{1,62}$/)
+    .default('profile-images'),
   SUPABASE_PUBLISHABLE_KEY: z
     .string()
     .trim()
@@ -54,6 +59,7 @@ export interface ApiConfig {
   readonly phoneVerificationResendCooldownSeconds: number;
   readonly phoneVerificationStartWindowSeconds: number;
   readonly port: number;
+  readonly profileImageBucket: string;
   readonly supabasePublishableKey: string;
   readonly supabaseSecretKey: string;
   readonly supabaseUrl: string;
@@ -78,6 +84,7 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
     phoneVerificationResendCooldownSeconds: parsed.PHONE_VERIFICATION_RESEND_COOLDOWN_SECONDS,
     phoneVerificationStartWindowSeconds: parsed.PHONE_VERIFICATION_START_WINDOW_SECONDS,
     port: parsed.API_PORT,
+    profileImageBucket: parsed.PROFILE_IMAGE_BUCKET,
     supabasePublishableKey: parsed.SUPABASE_PUBLISHABLE_KEY,
     supabaseSecretKey: parsed.SUPABASE_SECRET_KEY,
     supabaseUrl: parsed.SUPABASE_URL.replace(/\/$/, ''),

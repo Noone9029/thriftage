@@ -59,7 +59,6 @@ export class ProvisioningCoordinator implements ProvisioningCoordinatorContract 
 
     await this.apiClient.provisionUser(fullName);
     const account = await this.accounts.refresh();
-    await this.pendingRegistration.clear();
     return resolutionForAccount(account);
   }
 

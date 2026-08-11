@@ -24,7 +24,9 @@ Mobile -> Supabase Auth -> access token -> Thriftage API
 
 Database unique constraints provide the final concurrency boundary. A duplicate request returns the existing record without changing name, role, status, or marketplace state. Email or phone ownership conflicts with another provider subject return `AUTH_IDENTITY_CONFLICT`; accounts are never silently merged or reassigned.
 
-`GET /api/v1/auth/me` requires both guards and returns the privacy-safe private account contract. It excludes the external auth subject, deletion metadata, and secrets. Profile onboarding and editing remain out of scope.
+Provisioning additionally requires a non-null, authoritatively confirmed email. A provider-issued session cannot bypass email confirmation; it receives `AUTH_EMAIL_UNVERIFIED` until confirmation completes.
+
+`GET /api/v1/auth/me` requires both guards and returns the privacy-safe private account contract. It excludes the external auth subject, deletion metadata, and secrets. Profile and mobile flows are documented in [Identity and Onboarding](./identity-onboarding.md).
 
 ## Configuration and lifecycle
 

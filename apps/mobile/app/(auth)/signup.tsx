@@ -16,6 +16,7 @@ export default function SignupScreen() {
   const { signUp } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -27,7 +28,9 @@ export default function SignupScreen() {
       setSubmitting(true);
       setError(null);
       try {
-        await signUp(mobileSignupInputSchema.parse({ confirmPassword, email, fullName, password }));
+        await signUp(
+          mobileSignupInputSchema.parse({ confirmPassword, email, fullName, password, phone }),
+        );
       } catch (caught: unknown) {
         setError(getMobileAuthErrorMessage(caught));
       } finally {
@@ -38,7 +41,7 @@ export default function SignupScreen() {
 
   return (
     <AuthScreenContainer
-      description="Create your account with email. Phone identity will be added in a later phase."
+      description="Create one secure account. After email confirmation, we’ll verify your phone before profile setup."
       footer={
         <Text style={styles.footerText}>
           Already registered?{' '}
@@ -66,6 +69,16 @@ export default function SignupScreen() {
         label="Email"
         onChangeText={setEmail}
         value={email}
+      />
+      <FormField
+        autoCapitalize="none"
+        autoComplete="tel"
+        editable={!submitting}
+        keyboardType="phone-pad"
+        label="Phone number"
+        onChangeText={setPhone}
+        placeholder="0300 1234567 or +44 7700 900123"
+        value={phone}
       />
       <PasswordField
         editable={!submitting}

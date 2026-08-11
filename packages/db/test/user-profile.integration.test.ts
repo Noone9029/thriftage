@@ -104,6 +104,26 @@ describe.sequential('User and Profile database invariants', () => {
     ).rejects.toMatchObject({ code: 'P2002' });
   });
 
+  it('enforces normalized username format in PostgreSQL', async () => {
+    const user = await prisma.user.create({ data: createUserData() });
+    await expect(
+      prisma.profile.create({ data: { userId: user.id, username: 'Uppercase_Name' } }),
+    ).rejects.toThrow();
+  });
+
+  it('requires managed profile image URL and object key metadata together', async () => {
+    const user = await prisma.user.create({ data: createUserData() });
+    await expect(
+      prisma.profile.create({
+        data: {
+          profileImageUrl: 'https://example.com/avatar.webp',
+          userId: user.id,
+          username: 'paired_image',
+        },
+      }),
+    ).rejects.toThrow();
+  });
+
   it('prevents one user from owning multiple profiles', async () => {
     const user = await prisma.user.create({ data: createUserData() });
     await prisma.profile.create({

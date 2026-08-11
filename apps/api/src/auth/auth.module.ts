@@ -6,11 +6,18 @@ import { AUTHORITATIVE_AUTH_USER_PROVIDER, AUTH_TOKEN_VERIFIER } from './auth-pr
 import { AuthenticationGuard } from './authentication.guard';
 import { LinkedUserGuard } from './linked-user.guard';
 import { ProvisionUserService } from './provision-user.service';
+import { RoleGuard } from './role.guard';
 import { SupabaseAuthAdapter } from './supabase-auth.adapter';
 
 @Module({
   controllers: [AuthController],
-  exports: [ApplicationUserResolver, AuthenticationGuard, AUTH_TOKEN_VERIFIER, LinkedUserGuard],
+  exports: [
+    ApplicationUserResolver,
+    AuthenticationGuard,
+    AUTH_TOKEN_VERIFIER,
+    LinkedUserGuard,
+    RoleGuard,
+  ],
   providers: [
     {
       provide: SupabaseAuthAdapter,
@@ -21,6 +28,7 @@ import { SupabaseAuthAdapter } from './supabase-auth.adapter';
     ApplicationUserResolver,
     AuthenticationGuard,
     LinkedUserGuard,
+    RoleGuard,
     ProvisionUserService,
   ],
 })

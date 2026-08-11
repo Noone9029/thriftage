@@ -19,6 +19,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "libphonenumber-js": "1.13.10",
     "zod": "catalog:"
   },
   "devDependencies": {

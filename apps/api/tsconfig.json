@@ -6,7 +6,7 @@
     "module": "Node16",
     "moduleResolution": "Node16",
     "noEmit": true,
-    "types": ["node"],
+    "types": ["node", "multer"],
     "verbatimModuleSyntax": false
   },
   "include": ["src/**/*.ts"]

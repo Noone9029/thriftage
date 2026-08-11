@@ -61,6 +61,9 @@ export class ProvisionUserService {
 
     const email = parseOptionalProviderValue(authoritativeUser.email, emailAddressSchema);
     const phone = parseOptionalProviderValue(authoritativeUser.phone, phoneNumberSchema);
+    if (email === null || !authoritativeUser.emailVerified) {
+      throw new AuthApiException('AUTH_EMAIL_UNVERIFIED');
+    }
     const prisma = getPrismaClient();
 
     try {

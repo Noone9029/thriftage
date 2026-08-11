@@ -1,8 +1,14 @@
 import type {
   MobileForgotPasswordInput,
   MobileLoginInput,
+  MobilePhoneLoginStartInput,
+  MobilePhoneLoginVerifyInput,
   MobileResetPasswordInput,
   MobileSignupInput,
+  ProfileCreateInput,
+  ProfileUpdateInput,
+  PublicUserProfile,
+  UsernameAvailability,
 } from '@thriftage/shared';
 import * as Linking from 'expo-linking';
 import {
@@ -16,7 +22,7 @@ import {
 } from 'react';
 import { AppState, Platform } from 'react-native';
 
-import { mobileAuthController } from '../lib/auth/auth-composition';
+import { mobileAuthController, thriftageApiClient } from '../lib/auth/auth-composition';
 import { getMobileAuthErrorMessage } from '../lib/auth/auth-error-message';
 import { registerAuthStateListener } from '../lib/auth/auth-state-listener';
 import { parseAuthCallbackUrl } from '../lib/auth/deep-link';
@@ -28,14 +34,28 @@ interface AuthContextValue {
   readonly abandonSignup: () => Promise<void>;
   readonly clearDeepLinkError: () => void;
   readonly completeAccount: (fullName: string) => Promise<void>;
+  readonly completeProfile: (input: ProfileCreateInput, image: FormData | null) => Promise<void>;
   readonly deepLinkError: string | null;
   readonly finishPasswordRecovery: () => Promise<void>;
+  readonly getPublicProfile: (username: string) => Promise<PublicUserProfile>;
+  readonly getUsernameAvailability: (username: string) => Promise<UsernameAvailability>;
   readonly requestPasswordReset: (input: MobileForgotPasswordInput) => Promise<void>;
+  readonly resendPhoneLogin: () => Promise<void>;
+  readonly resendRequiredPhone: () => Promise<void>;
+  readonly startPhoneLogin: (input: MobilePhoneLoginStartInput) => Promise<void>;
+  readonly startPhoneVerification: (phone: string) => Promise<void>;
   readonly signIn: (input: MobileLoginInput) => Promise<void>;
   readonly signOut: () => Promise<void>;
   readonly signUp: (input: MobileSignupInput) => Promise<void>;
   readonly state: MobileAuthState;
   readonly updatePassword: (input: MobileResetPasswordInput) => Promise<void>;
+  readonly updateProfile: (input: ProfileUpdateInput) => Promise<void>;
+  readonly uploadProfileImage: (image: FormData) => Promise<void>;
+  readonly removeProfileImage: () => Promise<void>;
+  readonly verifyPhoneLogin: (input: MobilePhoneLoginVerifyInput) => Promise<void>;
+  readonly verifyRequiredPhone: (code: string) => Promise<void>;
+  readonly abandonPhoneLogin: () => void;
+  readonly cancelRequiredPhone: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -113,16 +133,30 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const value = useMemo<AuthContextValue>(
     () => ({
       abandonSignup: () => mobileAuthController.abandonSignup(),
+      abandonPhoneLogin: () => mobileAuthController.abandonPhoneLogin(),
+      cancelRequiredPhone: () => mobileAuthController.cancelRequiredPhone(),
       clearDeepLinkError: () => setDeepLinkError(null),
       completeAccount: (fullName) => mobileAuthController.completeAccount(fullName),
+      completeProfile: (input, image) => mobileAuthController.completeProfile(input, image),
       deepLinkError,
       finishPasswordRecovery: () => mobileAuthController.finishPasswordRecovery(),
+      getPublicProfile: (username) => thriftageApiClient.getPublicProfile(username),
+      getUsernameAvailability: (username) => thriftageApiClient.getUsernameAvailability(username),
       requestPasswordReset: (input) => mobileAuthController.requestPasswordReset(input),
+      removeProfileImage: () => mobileAuthController.removeProfileImage(),
+      resendPhoneLogin: () => mobileAuthController.resendPhoneLogin(),
+      resendRequiredPhone: () => mobileAuthController.resendRequiredPhone(),
       signIn: (input) => mobileAuthController.signIn(input),
       signOut: () => mobileAuthController.signOut(),
       signUp: (input) => mobileAuthController.signUp(input),
+      startPhoneLogin: (input) => mobileAuthController.startPhoneLogin(input),
+      startPhoneVerification: (phone) => mobileAuthController.startPhoneVerification(phone),
       state,
       updatePassword: (input) => mobileAuthController.updatePassword(input),
+      updateProfile: (input) => mobileAuthController.updateProfile(input),
+      uploadProfileImage: (image) => mobileAuthController.uploadProfileImage(image),
+      verifyPhoneLogin: (input) => mobileAuthController.verifyPhoneLogin(input),
+      verifyRequiredPhone: (code) => mobileAuthController.verifyRequiredPhone(code),
     }),
     [deepLinkError, state],
   );

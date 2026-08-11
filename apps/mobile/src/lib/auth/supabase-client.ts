@@ -6,6 +6,7 @@ import { mobileConfig } from '../../config/mobile-config';
 import type { AuthCallbackInstruction, AuthCallbackKind } from './deep-link';
 import type { MobileAuthGateway } from './mobile-auth.gateway';
 import { authStorage } from './storage/auth-storage';
+import { createPhoneSignInRequest } from './supabase-phone-sign-in';
 
 export const EMAIL_CONFIRMATION_REDIRECT_URL = 'thriftage://auth/callback';
 export const PASSWORD_RECOVERY_REDIRECT_URL = 'thriftage://auth/reset-password';
@@ -57,6 +58,21 @@ class SupabaseMobileAuthGateway implements MobileAuthGateway {
     if (error !== null) {
       throw error;
     }
+    return requireSession(data.session);
+  }
+
+  public async startPhoneSignIn(phone: string): Promise<void> {
+    const { error } = await supabaseClient.auth.signInWithOtp(createPhoneSignInRequest(phone));
+    if (error !== null) throw error;
+  }
+
+  public async verifyPhoneSignIn(phone: string, code: string): Promise<Session> {
+    const { data, error } = await supabaseClient.auth.verifyOtp({
+      phone,
+      token: code,
+      type: 'sms',
+    });
+    if (error !== null) throw error;
     return requireSession(data.session);
   }
 

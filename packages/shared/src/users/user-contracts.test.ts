@@ -3,11 +3,13 @@ import { describe, expect, it } from 'vitest';
 import {
   accountStatusSchema,
   privateUserAccountSchema,
+  privateUserProfileSchema,
   profileCreateInputSchema,
   profileUpdateInputSchema,
   serializePrivateUserAccount,
   serializePublicUserProfile,
   userRoleSchema,
+  usernameAvailabilityQuerySchema,
 } from './user-contracts';
 
 const privateSource = {
@@ -71,6 +73,37 @@ describe('user contracts', () => {
       university: 'Example University',
       username: 'style_user',
     });
+  });
+
+  it('rejects caller-controlled profile image URLs', () => {
+    expect(
+      profileCreateInputSchema.safeParse({
+        profileImageUrl: 'https://attacker.example/avatar.png',
+        username: 'safe_name',
+      }).success,
+    ).toBe(false);
+  });
+
+  it('normalizes username availability queries', () => {
+    expect(usernameAvailabilityQuerySchema.parse({ username: ' Ayesha_1 ' })).toEqual({
+      username: 'ayesha_1',
+    });
+  });
+
+  it('keeps private profile output free of private account identity', () => {
+    const result = privateUserProfileSchema.parse({
+      bio: null,
+      completedSalesCount: 0,
+      id: privateSource.id,
+      memberSince: '2026-08-10T00:00:00.000Z',
+      profileImageUrl: null,
+      university: null,
+      updatedAt: '2026-08-10T00:00:00.000Z',
+      username: 'safe_name',
+    });
+    expect(result).not.toHaveProperty('email');
+    expect(result).not.toHaveProperty('phone');
+    expect(result).not.toHaveProperty('authProviderUserId');
   });
 
   it.each(['completedSalesCount', 'role', 'accountStatus'])(

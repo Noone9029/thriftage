@@ -1,6 +1,6 @@
 # Thriftage
 
-Thriftage is a mobile-first peer-to-peer fashion marketplace. The repository contains the engineering foundation, User/Profile data foundation, API authentication boundary, Phase 1C1 mobile email authentication, and the Phase 1C2A secure backend phone-linking lifecycle. Mobile phone verification/login, profile onboarding, and marketplace features remain deferred.
+Thriftage is a mobile-first peer-to-peer fashion marketplace. The repository currently contains the production-oriented engineering foundation and complete identity/onboarding subsystem: email/password authentication, secure phone linking and phone OTP login, account-state enforcement, profile onboarding/editing, controlled profile images, public profiles, and PostgreSQL-backed ADMIN authorization. Marketplace features remain deferred.
 
 ## Repository layout
 
@@ -65,9 +65,9 @@ npm.cmd install --global pnpm@11.16.0
 
 The API health check is available at `http://localhost:4000/api/v1/health`; the admin app uses port 3000, and Expo selects its available development port.
 
-Set the backend Supabase and Twilio Verify variables from `apps/api/.env.example`. Routine token verification uses the publishable key; secure phone linking uses a modern backend-only Supabase secret key and restricted Twilio API-key credentials. Protected requests use `Authorization: Bearer <access-token>`; see the [authentication architecture](./docs/architecture/authentication.md) and [phone verification architecture](./docs/architecture/phone-verification.md).
+Set the backend Supabase, Twilio Verify, and `PROFILE_IMAGE_BUCKET` variables from `apps/api/.env.example`. Routine token verification uses the publishable key; secure phone linking and controlled storage use a modern backend-only Supabase secret key. Twilio uses restricted API-key credentials. Protected requests use `Authorization: Bearer <access-token>`; see the [identity and onboarding architecture](./docs/architecture/identity-onboarding.md).
 
-Set `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_SUPABASE_URL`, and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in `apps/mobile/.env`. Configure `thriftage://auth/callback` and `thriftage://auth/reset-password` as allowed redirects in Supabase before testing confirmation or recovery links. See [mobile email authentication](./docs/architecture/mobile-authentication.md).
+Set `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_SUPABASE_URL`, and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in `apps/mobile/.env`. Configure `thriftage://auth/callback` and `thriftage://auth/reset-password` as allowed redirects in Supabase before testing confirmation or recovery links. The Supabase project must require email confirmation, enable phone sign-in with an approved SMS provider, and contain the public `profile-images` bucket described in the architecture document. No server secret belongs in an `EXPO_PUBLIC_*` variable.
 
 ## Quality gates
 
@@ -89,7 +89,7 @@ pnpm.cmd build
 
 Supabase Auth is the initial identity provider, but it does not own application data. Supabase verifies credentials and manages sessions; PostgreSQL owns the application `User`, one-to-one `Profile`, roles, and account state. Passwords and password hashes are never stored by Prisma. See [ADR 0001](./docs/architecture/adr/0001-authentication-provider.md).
 
-Phase 1B exposes `POST /api/v1/auth/provision` for idempotent application-user linking and `GET /api/v1/auth/me` for the active linked user's privacy-safe account contract. Provisioning accepts only `fullName`; provider identity, contact verification, role, and status remain server-authoritative.
+`POST /api/v1/auth/provision` performs idempotent application-user linking only after the authoritative provider reports a confirmed email. `GET /api/v1/auth/me` returns the active linked user's privacy-safe account contract. Provisioning accepts only `fullName`; provider identity, contact verification, role, and status remain server-authoritative.
 
 Every schema change must use reviewed Prisma migrations owned by `packages/db`; never edit a shared production schema manually or commit generated credentials.
 
@@ -106,4 +106,4 @@ For a disposable named `prisma dev` instance, set `ALLOW_PRISMA_DEV_TEST_DATABAS
 
 ## Scope boundary
 
-Mobile phone verification/login, change-phone, identity merging, profile APIs/onboarding, listings, search, messaging, payments, orders, moderation, reviews, personalization, and AI are not implemented. See [AGENTS.md](./AGENTS.md) for approved phases, safety constraints, and completion rules.
+Change-phone, identity merging, listings, listing media, search, feed, social graph, messaging, orders, payments, shipping, moderation, reviews, seller verification, personalization, and AI are not implemented. See [AGENTS.md](./AGENTS.md) for approved phases, safety constraints, and completion rules.

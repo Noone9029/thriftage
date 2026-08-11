@@ -13,8 +13,8 @@ export default function VerifyEmailScreen() {
       title="Check your email"
     >
       <Text style={styles.note}>
-        You can safely close the app. Your password is never stored; only your pending full name is
-        retained for account creation.
+        You can safely close the app. Your password is never stored; only the pending full name and
+        canonical phone number are retained for onboarding continuity.
       </Text>
       <PrimaryButton onPress={() => void abandonSignup()} title="Use a different account" />
     </AuthScreenContainer>

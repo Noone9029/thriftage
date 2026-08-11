@@ -15,9 +15,17 @@ const errorDefinitions: Record<
     message: 'This account is suspended.',
     status: HttpStatus.FORBIDDEN,
   },
+  ADMIN_PERMISSION_DENIED: {
+    message: 'Administrator permission is required.',
+    status: HttpStatus.FORBIDDEN,
+  },
   AUTH_EXPIRED_TOKEN: {
     message: 'The access token has expired.',
     status: HttpStatus.UNAUTHORIZED,
+  },
+  AUTH_EMAIL_UNVERIFIED: {
+    message: 'Email confirmation is required before account provisioning.',
+    status: HttpStatus.FORBIDDEN,
   },
   AUTH_IDENTITY_CONFLICT: {
     message: 'This identity cannot be linked automatically.',

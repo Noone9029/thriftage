@@ -15,6 +15,26 @@ const account = {
   updatedAt: '2026-08-10T00:00:00.000Z',
 };
 
+const profile = {
+  bio: null,
+  completedSalesCount: 0,
+  id: account.id,
+  memberSince: account.createdAt,
+  profileImageUrl: null,
+  university: null,
+  updatedAt: account.updatedAt,
+  username: 'ayesha_khan',
+};
+const publicProfile = {
+  bio: profile.bio,
+  completedSalesCount: profile.completedSalesCount,
+  id: profile.id,
+  memberSince: profile.memberSince,
+  profileImageUrl: profile.profileImageUrl,
+  university: profile.university,
+  username: profile.username,
+};
+
 class TestSessionProvider implements ApiSessionProvider {
   public accessToken: string | null = 'access-token';
   public refreshedToken: string | null = 'refreshed-token';
@@ -161,5 +181,45 @@ describe('ThriftageApiClient', () => {
     const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
     expect(JSON.parse(String(request.body))).toEqual({ fullName: 'Ayesha Khan' });
     expect(new Headers(request.headers).has('X-User-Id')).toBe(false);
+  });
+
+  it('uses server-owned profile routes and leaves public lookup unauthenticated', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(profile))
+      .mockResolvedValueOnce(jsonResponse(publicProfile));
+    const client = new ThriftageApiClient(
+      'https://api.example.com/api/v1',
+      new TestSessionProvider(),
+      fetchMock as unknown as typeof fetch,
+    );
+
+    await client.updateProfile({ bio: 'Vintage finds' });
+    await client.getPublicProfile('ayesha_khan');
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('https://api.example.com/api/v1/profiles/me');
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      body: JSON.stringify({ bio: 'Vintage finds' }),
+      method: 'PATCH',
+    });
+    expect(
+      new Headers((fetchMock.mock.calls[1]?.[1] as RequestInit).headers).has('Authorization'),
+    ).toBe(false);
+  });
+
+  it('does not set a JSON content type for controlled profile image multipart upload', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(profile));
+    const client = new ThriftageApiClient(
+      'https://api.example.com/api/v1',
+      new TestSessionProvider(),
+      fetchMock as unknown as typeof fetch,
+    );
+    const form = new FormData();
+
+    await client.uploadProfileImage(form);
+
+    const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(request.body).toBe(form);
+    expect(new Headers(request.headers).has('Content-Type')).toBe(false);
   });
 });

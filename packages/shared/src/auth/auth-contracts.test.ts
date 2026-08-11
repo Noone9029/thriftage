@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   mobileForgotPasswordInputSchema,
+  mobilePhoneLoginVerifyInputSchema,
   mobileResetPasswordInputSchema,
   mobileSignupInputSchema,
 } from './auth-contracts';
@@ -14,8 +15,13 @@ describe('mobile authentication contracts', () => {
         email: ' USER@Example.com ',
         fullName: '  Ayesha Khan  ',
         password: 'Secure123',
+        phone: '0300 1234567',
       }),
-    ).toMatchObject({ email: 'user@example.com', fullName: 'Ayesha Khan' });
+    ).toMatchObject({
+      email: 'user@example.com',
+      fullName: 'Ayesha Khan',
+      phone: '+923001234567',
+    });
   });
 
   it('rejects invalid email, weak passwords, and mismatched confirmation', () => {
@@ -25,6 +31,7 @@ describe('mobile authentication contracts', () => {
         email: 'invalid',
         fullName: 'User',
         password: 'weak',
+        phone: 'invalid',
       }),
     ).toThrow();
   });
@@ -39,5 +46,11 @@ describe('mobile authentication contracts', () => {
         password: 'Secure123',
       }),
     ).toThrow();
+  });
+
+  it('normalizes global phone input and preserves OTP leading zeroes', () => {
+    expect(
+      mobilePhoneLoginVerifyInputSchema.parse({ code: '012345', phone: '+1 415 555 2671' }),
+    ).toEqual({ code: '012345', phone: '+14155552671' });
   });
 });
