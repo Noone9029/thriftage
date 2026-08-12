@@ -103,6 +103,19 @@ export default function OrderDetailScreen() {
             <Text style={styles.secondaryText}>Open conversation</Text>
           </Pressable>
         ) : null}
+        {order.status === 'COMPLETED' ? (
+          <Pressable style={styles.secondary} onPress={() => router.push(`/reviews/${order.id}`)}>
+            <Text style={styles.secondaryText}>Review transaction</Text>
+          </Pressable>
+        ) : null}
+        {['SHIPPED', 'DELIVERED', 'COMPLETED'].includes(order.status) ? (
+          <Pressable
+            style={styles.secondary}
+            onPress={() => router.push(`/disputes/new/${order.id}`)}
+          >
+            <Text style={styles.secondaryText}>Report an order problem</Text>
+          </Pressable>
+        ) : null}
         {seller && order.status === 'PENDING' ? (
           <Pressable style={styles.primary} onPress={() => action.mutate('confirm')}>
             <Text style={styles.primaryText}>Confirm order</Text>

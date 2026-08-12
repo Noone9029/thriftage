@@ -52,6 +52,34 @@ import {
   type PushDevice,
   type PushDeviceInput,
   type ShipmentInput,
+  blockPageSchema,
+  currentPolicyPageSchema,
+  disputeDetailSchema,
+  disputeEvidenceSchema,
+  disputePageSchema,
+  reviewEligibilitySchema,
+  reviewPageSchema,
+  reviewReportSchema,
+  reviewSchema,
+  safetyStatusSchema,
+  sellerVerificationEligibilitySchema,
+  sellerVerificationSchema,
+  type CurrentPolicyPage,
+  type DisputeCreateInput,
+  type DisputeDetail,
+  type DisputePage,
+  type DisputeEvidence,
+  type Review,
+  type ReviewCreateInput,
+  type ReviewEligibility,
+  type ReviewPage,
+  type ReviewReport,
+  type ReviewReportInput,
+  type SafetyStatus,
+  type SellerVerification,
+  type SellerVerificationEligibility,
+  type UserBlock,
+  userBlockSchema,
 } from '@thriftage/shared';
 
 import { decodeApiError, MobileApiError } from './mobile-api-error';
@@ -393,6 +421,86 @@ export class ThriftageApiClient {
 
   public async deactivatePushDevice(deviceId: string): Promise<void> {
     await this.request(`/push-devices/${deviceId}`, { method: 'DELETE' });
+  }
+
+  public async getReviewEligibility(orderId: string): Promise<ReviewEligibility> {
+    return reviewEligibilitySchema.parse(
+      await this.request(`/reviews/orders/${orderId}/eligibility`),
+    );
+  }
+  public async createReview(input: ReviewCreateInput): Promise<Review> {
+    return reviewSchema.parse(await this.request('/reviews', { body: input, method: 'POST' }));
+  }
+  public async getUserReviews(
+    username: string,
+    direction: 'BUYER_TO_SELLER' | 'SELLER_TO_BUYER' = 'BUYER_TO_SELLER',
+  ): Promise<ReviewPage> {
+    return reviewPageSchema.parse(
+      await this.request(
+        `/users/${encodeURIComponent(username)}/reviews${queryString({ direction })}`,
+      ),
+    );
+  }
+  public async reportReview(id: string, input: ReviewReportInput): Promise<ReviewReport> {
+    return reviewReportSchema.parse(
+      await this.request(`/reviews/${id}/reports`, { body: input, method: 'POST' }),
+    );
+  }
+  public async getCurrentPolicies(): Promise<CurrentPolicyPage> {
+    return currentPolicyPageSchema.parse(await this.request('/policies/current'));
+  }
+  public async acceptPolicies(policyVersionIds: readonly string[]): Promise<CurrentPolicyPage> {
+    return currentPolicyPageSchema.parse(
+      await this.request('/policies/accept', {
+        body: { policyVersionIds },
+        method: 'POST',
+      }),
+    );
+  }
+  public async blockUser(userId: string): Promise<UserBlock> {
+    return userBlockSchema.parse(await this.request(`/blocks/${userId}`, { method: 'POST' }));
+  }
+  public async unblockUser(userId: string): Promise<void> {
+    await this.request(`/blocks/${userId}`, { method: 'DELETE' });
+  }
+  public async getBlockedUsers(): Promise<readonly UserBlock[]> {
+    return blockPageSchema.parse(await this.request('/blocks')).items;
+  }
+  public async getSafetyStatus(): Promise<SafetyStatus> {
+    return safetyStatusSchema.parse(await this.request('/safety/me'));
+  }
+  public async getDisputes(): Promise<DisputePage> {
+    return disputePageSchema.parse(await this.request('/disputes'));
+  }
+  public async getDispute(id: string): Promise<DisputeDetail> {
+    return disputeDetailSchema.parse(await this.request(`/disputes/${id}`));
+  }
+  public async createDispute(input: DisputeCreateInput): Promise<DisputeDetail> {
+    return disputeDetailSchema.parse(
+      await this.request('/disputes', { body: input, method: 'POST' }),
+    );
+  }
+  public async uploadDisputeEvidence(id: string, form: FormData): Promise<DisputeEvidence> {
+    return disputeEvidenceSchema.parse(
+      await this.request(`/disputes/${id}/evidence`, { body: form, method: 'POST' }),
+    );
+  }
+  public async getSellerVerificationEligibility(): Promise<SellerVerificationEligibility> {
+    return sellerVerificationEligibilitySchema.parse(
+      await this.request('/seller-verification/eligibility'),
+    );
+  }
+  public async getCurrentSellerVerification(): Promise<SellerVerification | null> {
+    const result = await this.request('/seller-verification/current');
+    return result === null ? null : sellerVerificationSchema.parse(result);
+  }
+  public async applyForSellerVerification(statement: string): Promise<SellerVerification> {
+    return sellerVerificationSchema.parse(
+      await this.request('/seller-verification/apply', {
+        body: { statement },
+        method: 'POST',
+      }),
+    );
   }
 
   private async request(

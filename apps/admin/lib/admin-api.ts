@@ -22,6 +22,33 @@ import {
   type MessageFlag,
   type OrderDetail,
   type OrderSummary,
+  adminReviewReportPageSchema,
+  adminUserDetailSchema,
+  adminUserPageSchema,
+  disputeDetailSchema,
+  disputePageSchema,
+  policyVersionSchema,
+  restrictionSchema,
+  reviewSchema,
+  sellerVerificationPageSchema,
+  sellerVerificationSchema,
+  trustMetricsSchema,
+  type AdminReviewReportItem,
+  type AdminUserDetail,
+  type AdminUserSummary,
+  type DisputeAdminAction,
+  type DisputeDetail,
+  type DisputePage,
+  type PolicyPublishInput,
+  type PolicyVersion,
+  type Restriction,
+  type RestrictionInput,
+  type Review,
+  type ReviewAdminAction,
+  type SafetyActionInput,
+  type SellerVerification,
+  type SellerVerificationDecision,
+  type TrustMetrics,
 } from '@thriftage/shared';
 
 export class AdminApiError extends Error {
@@ -130,6 +157,86 @@ export class AdminApi {
   }
   public async getOrder(id: string): Promise<OrderDetail> {
     return orderDetailSchema.parse(await this.request(`/admin/orders/${id}`));
+  }
+  public async getTrustMetrics(): Promise<TrustMetrics> {
+    return trustMetricsSchema.parse(await this.request('/admin/trust/metrics'));
+  }
+  public async listTrustUsers(query?: string): Promise<readonly AdminUserSummary[]> {
+    const suffix = query ? `?query=${encodeURIComponent(query)}` : '';
+    return adminUserPageSchema.parse(await this.request(`/admin/trust/users${suffix}`)).items;
+  }
+  public async getTrustUser(id: string): Promise<AdminUserDetail> {
+    return adminUserDetailSchema.parse(await this.request(`/admin/trust/users/${id}`));
+  }
+  public async restrictUser(id: string, input: RestrictionInput): Promise<Restriction> {
+    return restrictionSchema.parse(
+      await this.request(`/admin/trust/users/${id}/restrictions`, { body: input, method: 'POST' }),
+    );
+  }
+  public async revokeRestriction(id: string, reason: string): Promise<Restriction> {
+    return restrictionSchema.parse(
+      await this.request(`/admin/trust/restrictions/${id}/revoke`, {
+        body: { reason },
+        method: 'POST',
+      }),
+    );
+  }
+  public async takeSafetyAction(id: string, input: SafetyActionInput): Promise<void> {
+    await this.request(`/admin/trust/users/${id}/actions`, { body: input, method: 'POST' });
+  }
+  public async publishPolicy(input: PolicyPublishInput): Promise<PolicyVersion> {
+    return policyVersionSchema.parse(
+      await this.request('/admin/trust/policies', { body: input, method: 'POST' }),
+    );
+  }
+  public async listReviewReports(status?: string): Promise<readonly AdminReviewReportItem[]> {
+    const suffix = status ? `?status=${encodeURIComponent(status)}` : '';
+    return adminReviewReportPageSchema.parse(await this.request(`/admin/reviews/reports${suffix}`))
+      .items;
+  }
+  public async moderateReview(id: string, input: ReviewAdminAction): Promise<Review> {
+    return reviewSchema.parse(
+      await this.request(`/admin/reviews/${id}/moderate`, { body: input, method: 'POST' }),
+    );
+  }
+  public async listDisputes(status?: string, query?: string): Promise<DisputePage> {
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    if (query) params.set('query', query);
+    const suffix = params.size ? `?${params.toString()}` : '';
+    return disputePageSchema.parse(await this.request(`/admin/disputes${suffix}`));
+  }
+  public async getDispute(id: string): Promise<DisputeDetail> {
+    const payload = (await this.request(`/admin/disputes/${id}`)) as Record<string, unknown>;
+    return disputeDetailSchema.strip().parse(payload);
+  }
+  public async actOnDispute(id: string, input: DisputeAdminAction): Promise<DisputeDetail> {
+    return disputeDetailSchema.parse(
+      await this.request(`/admin/disputes/${id}/actions`, { body: input, method: 'POST' }),
+    );
+  }
+  public async listSellerVerifications(
+    status?: string,
+    query?: string,
+  ): Promise<readonly SellerVerification[]> {
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    if (query) params.set('query', query);
+    const suffix = params.size ? `?${params.toString()}` : '';
+    return sellerVerificationPageSchema.parse(
+      await this.request(`/admin/seller-verification${suffix}`),
+    ).items;
+  }
+  public async decideSellerVerification(
+    id: string,
+    input: SellerVerificationDecision,
+  ): Promise<SellerVerification> {
+    return sellerVerificationSchema.parse(
+      await this.request(`/admin/seller-verification/${id}/decision`, {
+        body: input,
+        method: 'POST',
+      }),
+    );
   }
 
   private async request(path: string, options: RequestOptions = {}): Promise<unknown> {

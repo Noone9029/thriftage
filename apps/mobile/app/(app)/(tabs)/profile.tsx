@@ -89,6 +89,11 @@ export default function OwnProfileScreen() {
                 label="Notifications"
                 onPress={() => router.push('/notifications')}
               />
+              <HubAction
+                icon="health-and-safety"
+                label="Safety Center"
+                onPress={() => router.push('/safety')}
+              />
             </View>
             <Text style={styles.section}>Active wardrobe</Text>
           </View>

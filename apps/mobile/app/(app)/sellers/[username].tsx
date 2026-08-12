@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ListingCard } from '../../../src/components/marketplace/listing-card';
@@ -33,6 +33,10 @@ export default function SellerProfileScreen() {
     },
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ['marketplace', 'seller', username] }),
+  });
+  const block = useMutation({
+    mutationFn: () => thriftageApiClient.blockUser(seller.data!.profile.id),
+    onSuccess: () => router.back(),
   });
   if (seller.isLoading) {
     return (
@@ -71,9 +75,25 @@ export default function SellerProfileScreen() {
                 <MaterialIcons color={marketplaceColors.text} name="arrow-back" size={23} />
               </Pressable>
               {!ownProfile ? (
-                <Pressable onPress={() => setReporting((value) => !value)}>
-                  <MaterialIcons color={marketplaceColors.muted} name="flag" size={21} />
-                </Pressable>
+                <View style={styles.safetyActions}>
+                  <Pressable onPress={() => setReporting((value) => !value)}>
+                    <MaterialIcons color={marketplaceColors.muted} name="flag" size={21} />
+                  </Pressable>
+                  <Pressable
+                    onPress={() =>
+                      Alert.alert(
+                        `Block @${profile.username}?`,
+                        'You will no longer see each other in discovery or be able to start new social interactions. Existing transaction records remain available.',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: 'Block', style: 'destructive', onPress: () => block.mutate() },
+                        ],
+                      )
+                    }
+                  >
+                    <MaterialIcons color={marketplaceColors.danger} name="block" size={21} />
+                  </Pressable>
+                </View>
               ) : null}
             </View>
             <View style={styles.identity}>
@@ -85,6 +105,9 @@ export default function SellerProfileScreen() {
                 <Image source={profile.profileImageUrl} style={styles.avatar} />
               )}
               <Text style={styles.username}>@{profile.username}</Text>
+              {profile.sellerVerified ? (
+                <Text style={styles.verified}>✓ Verified seller</Text>
+              ) : null}
               {profile.university !== null ? (
                 <Text style={styles.university}>{profile.university}</Text>
               ) : null}
@@ -108,6 +131,20 @@ export default function SellerProfileScreen() {
               <Stat label="Following" value={profile.followingCount} />
               <Stat label="Sales" value={profile.completedSalesCount} />
             </View>
+            <Pressable
+              onPress={() => router.push(`/reviews/users/${profile.username}`)}
+              style={styles.reputation}
+            >
+              <Text style={styles.reputationText}>
+                Seller {profile.sellerRating.average?.toFixed(1) ?? '—'} ★ ·{' '}
+                {profile.sellerRating.count} reviews
+              </Text>
+              <Text style={styles.reputationText}>
+                Buyer {profile.buyerRating.average?.toFixed(1) ?? '—'} ★ ·{' '}
+                {profile.buyerRating.count} reviews
+              </Text>
+              <Text style={styles.reviewLink}>View seller reviews</Text>
+            </Pressable>
             {reporting ? (
               <ReportPanel onClose={() => setReporting(false)} userId={profile.id} />
             ) : null}
@@ -170,6 +207,22 @@ const styles = StyleSheet.create({
   header: { paddingBottom: 12, paddingHorizontal: 10 },
   identity: { alignItems: 'center', marginTop: 6 },
   safeArea: { backgroundColor: marketplaceColors.background, flex: 1 },
+  safetyActions: { flexDirection: 'row', gap: 18 },
+  verified: { color: marketplaceColors.accent, fontSize: 12, fontWeight: '900', marginTop: 7 },
+  reputation: { gap: 5, marginTop: 13, paddingHorizontal: 6 },
+  reputationText: {
+    color: marketplaceColors.text,
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  reviewLink: {
+    color: marketplaceColors.accent,
+    fontSize: 12,
+    fontWeight: '900',
+    marginTop: 4,
+    textAlign: 'center',
+  },
   section: { color: marketplaceColors.text, fontSize: 19, fontWeight: '900', marginTop: 25 },
   stat: { alignItems: 'center', flex: 1 },
   statLabel: { color: marketplaceColors.muted, fontSize: 10, marginTop: 3 },

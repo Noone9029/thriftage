@@ -16,8 +16,9 @@ import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react
 
 import { createAdminApi } from '../lib/admin-api';
 import { getSupabaseBrowserClient } from '../lib/supabase';
+import { TrustOperationsWorkspace } from '../components/trust-operations-workspace';
 
-type Workspace = 'CATEGORIES' | 'LISTINGS' | 'REPORTS' | 'MESSAGES' | 'ORDERS';
+type Workspace = 'CATEGORIES' | 'LISTINGS' | 'REPORTS' | 'MESSAGES' | 'ORDERS' | 'TRUST';
 type AccessState = 'CHECKING' | 'DENIED' | 'SIGNED_OUT' | 'AUTHORIZED';
 
 export default function AdminHome() {
@@ -104,15 +105,17 @@ export default function AdminHome() {
       </header>
       <div className="mx-auto grid max-w-7xl gap-6 px-6 py-8 lg:grid-cols-[220px_1fr]">
         <nav className="space-y-2">
-          {(['LISTINGS', 'MESSAGES', 'ORDERS', 'REPORTS', 'CATEGORIES'] as const).map((item) => (
-            <button
-              className={`w-full rounded-xl px-4 py-3 text-left text-sm font-bold ${workspace === item ? 'bg-[#123f33] text-white' : 'bg-white text-black/65 hover:bg-white/70'}`}
-              key={item}
-              onClick={() => setWorkspace(item)}
-            >
-              {item.charAt(0) + item.slice(1).toLowerCase()}
-            </button>
-          ))}
+          {(['LISTINGS', 'MESSAGES', 'ORDERS', 'REPORTS', 'TRUST', 'CATEGORIES'] as const).map(
+            (item) => (
+              <button
+                className={`w-full rounded-xl px-4 py-3 text-left text-sm font-bold ${workspace === item ? 'bg-[#123f33] text-white' : 'bg-white text-black/65 hover:bg-white/70'}`}
+                key={item}
+                onClick={() => setWorkspace(item)}
+              >
+                {item.charAt(0) + item.slice(1).toLowerCase()}
+              </button>
+            ),
+          )}
         </nav>
         <section>
           {workspace === 'LISTINGS' ? <ListingWorkspace api={api} /> : null}
@@ -120,6 +123,7 @@ export default function AdminHome() {
           {workspace === 'CATEGORIES' ? <CategoryWorkspace api={api} /> : null}
           {workspace === 'MESSAGES' ? <MessageModerationWorkspace api={api} /> : null}
           {workspace === 'ORDERS' ? <OrderWorkspace api={api} /> : null}
+          {workspace === 'TRUST' ? <TrustOperationsWorkspace api={api} /> : null}
         </section>
       </div>
     </main>
