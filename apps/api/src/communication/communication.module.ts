@@ -9,11 +9,12 @@ import { CommunicationService } from './communication.service';
 import { ContactInformationDetector } from './contact-information-detector';
 import { REALTIME_PUBLISHER } from './realtime-publisher.interface';
 import { SupabaseRealtimePublisherAdapter } from './supabase-realtime-publisher.adapter';
+import { TrustModule } from '../trust/trust.module';
 
 @Module({
   controllers: [CommunicationController, AdminCommunicationController],
   exports: [CommunicationService],
-  imports: [AuthModule, ListingsModule],
+  imports: [AuthModule, ListingsModule, TrustModule],
   providers: [
     { provide: CommunicationRepository, useFactory: () => new CommunicationRepository() },
     CommunicationPresenter,

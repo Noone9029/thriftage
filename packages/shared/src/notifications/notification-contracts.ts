@@ -15,6 +15,14 @@ export const notificationTypeValues = [
   'LISTING_APPROVED',
   'LISTING_REJECTED',
   'LISTING_REMOVED',
+  'REVIEW_RECEIVED',
+  'DISPUTE_OPENED',
+  'DISPUTE_UPDATED',
+  'DISPUTE_RESOLVED',
+  'SELLER_VERIFICATION_SUBMITTED',
+  'SELLER_VERIFICATION_APPROVED',
+  'SELLER_VERIFICATION_REJECTED',
+  'ACCOUNT_RESTRICTED',
 ] as const;
 export const notificationTypeSchema = z.enum(notificationTypeValues);
 
@@ -24,8 +32,11 @@ export const notificationSchema = z.strictObject({
   conversationId: z.string().uuid().nullable(),
   createdAt: z.string().datetime({ offset: true }),
   id: z.string().uuid(),
+  disputeId: z.string().uuid().nullable(),
   listingId: z.string().uuid().nullable(),
   orderId: z.string().uuid().nullable(),
+  reviewId: z.string().uuid().nullable(),
+  sellerVerificationId: z.string().uuid().nullable(),
   readAt: z.string().datetime({ offset: true }).nullable(),
   title: z.string().max(120),
   type: notificationTypeSchema,

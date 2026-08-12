@@ -24,6 +24,8 @@ import {
   type ListingImageStorage,
 } from '../listing-media/listing-image-storage.interface';
 import { ListingPresenter } from './listing.presenter';
+import { PolicyService } from '../trust/policy.service';
+import { SafetyService } from '../trust/safety.service';
 import {
   ListingRepository,
   type ChronologicalCursor,
@@ -54,6 +56,8 @@ export class ListingService {
     @Inject(ListingPresenter) private readonly presenter: ListingPresenter,
     @Inject(LISTING_IMAGE_STORAGE) private readonly storage: ListingImageStorage,
     @Inject(MARKETPLACE_EVENT_PUBLISHER) private readonly events: MarketplaceEventPublisher,
+    @Inject(PolicyService) private readonly policies: PolicyService,
+    @Inject(SafetyService) private readonly safety: SafetyService,
   ) {}
 
   public async create(userId: string, input: ListingDraftInput): Promise<ListingDetail> {
@@ -106,6 +110,8 @@ export class ListingService {
 
   public async submit(userId: string, listingId: string): Promise<ListingDetail> {
     try {
+      await this.policies.assertUgcAccepted(userId);
+      await this.safety.assertScopeAllowed(userId, 'SELLING');
       const record = await this.repository.submit(userId, listingId);
       this.events.publish({
         actorId: userId,
@@ -143,6 +149,7 @@ export class ListingService {
     try {
       const record = await this.repository.findPublic(listingId);
       if (record === null) throw new MarketplaceDomainError('LISTING_NOT_PUBLIC');
+      if (viewerId !== undefined) await this.safety.assertPairAllowed(viewerId, record.sellerId);
       this.events.publish({
         ...(viewerId === undefined ? {} : { actorId: viewerId }),
         listingId,
@@ -158,7 +165,9 @@ export class ListingService {
     try {
       const query = listingSearchQuerySchema.parse(queryInput);
       const cursor = this.parseSearchCursor(query, query.cursor);
-      const result = await this.repository.search(query, cursor);
+      const excludedSellerIds =
+        viewerId === undefined ? [] : await this.safety.blockedCounterpartIds(viewerId);
+      const result = await this.repository.search(query, cursor, excludedSellerIds);
       return this.presentPage(result.records, result.hasMore, viewerId, (last) =>
         encodeCursor({
           createdAt: last.createdAt.toISOString(),

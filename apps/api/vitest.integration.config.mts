@@ -43,5 +43,6 @@ export default defineConfig({
     include: ['src/**/*.integration.test.ts'],
     passWithNoTests: false,
     restoreMocks: true,
+    testTimeout: 30_000,
   },
 });

@@ -185,6 +185,7 @@ export class SocialRepository {
     userId: string,
     limit: number,
     cursor: SavedCursor | null,
+    excludedSellerIds: readonly string[] = [],
   ): Promise<{
     readonly hasMore: boolean;
     readonly records: readonly ListingRecord[];
@@ -196,7 +197,12 @@ export class SocialRepository {
       take: limit + 1,
       where: {
         userId,
-        listing: { status: 'ACTIVE' },
+        listing: {
+          status: 'ACTIVE',
+          ...(excludedSellerIds.length === 0
+            ? {}
+            : { sellerId: { notIn: [...excludedSellerIds] } }),
+        },
         ...(cursor === null
           ? {}
           : {

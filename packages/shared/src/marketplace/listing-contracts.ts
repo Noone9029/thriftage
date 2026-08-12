@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { categorySchema } from './category-contracts';
+import { ratingSummarySchema } from '../trust/review-contracts';
 
 export const listingStatusValues = [
   'DRAFT',
@@ -60,6 +61,8 @@ export const listingSellerSchema = z.strictObject({
   id: z.string().uuid(),
   profileImageUrl: z.string().url().nullable(),
   username: z.string().min(3).max(30),
+  sellerRating: ratingSummarySchema,
+  sellerVerified: z.boolean(),
 });
 
 const listingBaseShape = {
@@ -148,6 +151,9 @@ export const sellerProfileSchema = z.strictObject({
   profileImageUrl: z.string().url().nullable(),
   university: z.string().nullable(),
   username: z.string().min(3).max(30),
+  sellerRating: ratingSummarySchema,
+  buyerRating: ratingSummarySchema,
+  sellerVerified: z.boolean(),
 });
 
 export const sellerProfileWithListingsSchema = z.strictObject({

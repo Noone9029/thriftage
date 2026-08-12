@@ -23,6 +23,7 @@ import {
 } from '../common/marketplace-event-publisher';
 import { OrderPresenter } from './order.presenter';
 import { OrderRepository } from './order.repository';
+import { SafetyService } from '../trust/safety.service';
 
 const orderCursorSchema = z.strictObject({
   createdAt: z.string().datetime({ offset: true }),
@@ -44,6 +45,7 @@ export class OrderService {
     @Inject(OrderRepository) private readonly repository: OrderRepository,
     @Inject(OrderPresenter) private readonly presenter: OrderPresenter,
     @Inject(MARKETPLACE_EVENT_PUBLISHER) private readonly events: MarketplaceEventPublisher,
+    @Inject(SafetyService) private readonly safety: SafetyService,
   ) {}
 
   private async requireParticipant(userId: string, orderId: string): Promise<OrderDetail> {
@@ -55,6 +57,8 @@ export class OrderService {
   public async place(userId: string, input: CheckoutInput): Promise<OrderDetail> {
     try {
       const parsed = checkoutInputSchema.parse(input);
+      await this.safety.assertScopeAllowed(userId, 'BUYING');
+      await this.safety.assertListingPairAllowed(userId, parsed.listingId);
       this.events.publish({
         actorId: userId,
         listingId: parsed.listingId,

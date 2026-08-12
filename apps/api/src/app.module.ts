@@ -13,6 +13,11 @@ import { DiscoveryModule } from './discovery/discovery.module';
 import { SocialModule } from './social/social.module';
 import { ModerationModule } from './moderation/moderation.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { MarketplaceEventsModule } from './common/marketplace-events.module';
+import { TrustModule } from './trust/trust.module';
+import { ReviewsModule } from './reviews/reviews.module';
+import { SellerVerificationModule } from './seller-verification/seller-verification.module';
+import { DisputesModule } from './disputes/disputes.module';
 
 @Module({
   imports: [
@@ -24,11 +29,16 @@ import { NotificationsModule } from './notifications/notifications.module';
     DiscoveryModule,
     HealthModule,
     ListingsModule,
+    MarketplaceEventsModule,
     ModerationModule,
     NotificationsModule,
     PhoneVerificationModule,
     ProfilesModule,
     SocialModule,
+    ReviewsModule,
+    SellerVerificationModule,
+    DisputesModule,
+    TrustModule,
   ],
 })
 export class AppModule {}

@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { Injectable } from '@nestjs/common';
 import { getPrismaClient, Prisma, type PrismaClient } from '@thriftage/db';
 import type {
@@ -42,6 +44,27 @@ export interface ViewerListingState {
 }
 
 const editableStatuses: readonly ListingStatus[] = ['DRAFT', 'REJECTED'];
+const mediaMutationTails = new Map<string, Promise<void>>();
+
+async function serializeMediaMutation<T>(
+  listingId: string,
+  operation: () => Promise<T>,
+): Promise<T> {
+  const previous = mediaMutationTails.get(listingId) ?? Promise.resolve();
+  let release = (): void => undefined;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const tail = previous.then(() => gate);
+  mediaMutationTails.set(listingId, tail);
+  await previous;
+  try {
+    return await operation();
+  } finally {
+    release();
+    if (mediaMutationTails.get(listingId) === tail) mediaMutationTails.delete(listingId);
+  }
+}
 
 @Injectable()
 export class ListingRepository {
@@ -176,6 +199,7 @@ export class ListingRepository {
   public async search(
     query: ListingSearchQuery,
     cursor: SearchCursor | null,
+    excludedSellerIds: readonly string[] = [],
   ): Promise<{ readonly hasMore: boolean; readonly records: readonly ListingRecord[] }> {
     const categoryIds =
       query.categoryId === undefined ? undefined : await this.findDescendantIds(query.categoryId);
@@ -207,6 +231,7 @@ export class ListingRepository {
         ? {}
         : { size: { equals: query.size, mode: 'insensitive' as const } }),
       status: 'ACTIVE',
+      ...(excludedSellerIds.length === 0 ? {} : { sellerId: { notIn: [...excludedSellerIds] } }),
       seller: { accountStatus: 'ACTIVE', deletedAt: null },
       AND: [textFilter, cursorFilter],
     };
@@ -276,16 +301,49 @@ export class ListingRepository {
     listingId: string,
     image: { readonly height: number; readonly storageKey: string; readonly width: number },
   ): Promise<ListingRecord> {
-    return this.client.$transaction(async (transaction) => {
-      const listing = await this.lockOwned(transaction, userId, listingId);
-      if (!editableStatuses.includes(listing.status)) {
+    return serializeMediaMutation(listingId, () =>
+      this.addImageSerialized(userId, listingId, image),
+    );
+  }
+
+  private async addImageSerialized(
+    userId: string,
+    listingId: string,
+    image: { readonly height: number; readonly storageKey: string; readonly width: number },
+  ): Promise<ListingRecord> {
+    const inserted = await this.client.$queryRaw<readonly { id: string }[]>(Prisma.sql`
+      WITH target AS MATERIALIZED (
+        SELECT l."id"
+        FROM "listings" l
+        WHERE l."id" = ${listingId}::uuid
+          AND l."seller_id" = ${userId}::uuid
+          AND l."status" IN ('DRAFT'::"ListingStatus", 'REJECTED'::"ListingStatus")
+        FOR UPDATE
+      ), next_position AS (
+        SELECT target."id", COUNT(images."id")::int AS "position"
+        FROM target
+        LEFT JOIN "listing_images" images ON images."listing_id" = target."id"
+        GROUP BY target."id"
+      )
+      INSERT INTO "listing_images" ("id", "listing_id", "storage_key", "width", "height", "position")
+      SELECT ${randomUUID()}::uuid, next_position."id", ${image.storageKey}, ${image.width}, ${image.height}, next_position."position"
+      FROM next_position
+      WHERE next_position."position" < 10
+      RETURNING "id"
+    `);
+    if (inserted.length === 0) {
+      const listing = await this.client.listing.findUnique({
+        where: { id: listingId },
+        select: { sellerId: true, status: true, _count: { select: { images: true } } },
+      });
+      if (!listing) throw new MarketplaceDomainError('LISTING_NOT_FOUND');
+      if (listing.sellerId !== userId) throw new MarketplaceDomainError('LISTING_FORBIDDEN');
+      if (!editableStatuses.includes(listing.status))
         throw new MarketplaceDomainError('LISTING_NOT_EDITABLE');
-      }
-      const position = await transaction.listingImage.count({ where: { listingId } });
-      if (position >= 10) throw new MarketplaceDomainError('IMAGE_LIMIT_REACHED');
-      await transaction.listingImage.create({ data: { ...image, listingId, position } });
-      return transaction.listing.findUniqueOrThrow({ ...listingArgs, where: { id: listingId } });
-    });
+      if (listing._count.images >= 10) throw new MarketplaceDomainError('IMAGE_LIMIT_REACHED');
+      throw new MarketplaceDomainError('MARKETPLACE_SERVICE_ERROR');
+    }
+    return this.client.listing.findUniqueOrThrow({ ...listingArgs, where: { id: listingId } });
   }
 
   public async removeImage(

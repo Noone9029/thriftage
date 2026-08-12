@@ -33,6 +33,25 @@ function parseOptionalProviderValue(
   return parsed.data;
 }
 
+const provisioningTails = new Map<string, Promise<void>>();
+
+async function serializeProvisioning<T>(subject: string, operation: () => Promise<T>): Promise<T> {
+  const previous = provisioningTails.get(subject) ?? Promise.resolve();
+  let release = (): void => undefined;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const tail = previous.then(() => gate);
+  provisioningTails.set(subject, tail);
+  await previous;
+  try {
+    return await operation();
+  } finally {
+    release();
+    if (provisioningTails.get(subject) === tail) provisioningTails.delete(subject);
+  }
+}
+
 @Injectable()
 export class ProvisionUserService {
   private readonly logger = new Logger(ProvisionUserService.name);
@@ -66,33 +85,33 @@ export class ProvisionUserService {
     }
     const prisma = getPrismaClient();
 
-    try {
-      return await prisma.user.upsert({
-        create: {
-          authProviderUserId: parsedSubject.data,
-          email,
-          emailVerified: authoritativeUser.emailVerified,
-          fullName: validatedInput.fullName,
-          phone,
-          phoneVerified: authoritativeUser.phoneVerified,
-        },
-        update: {},
-        where: { authProviderUserId: parsedSubject.data },
-      });
-    } catch (error: unknown) {
-      if (!isUniqueConstraintError(error)) {
-        throw error;
-      }
+    return serializeProvisioning(parsedSubject.data, async () => {
+      try {
+        return await prisma.user.upsert({
+          create: {
+            authProviderUserId: parsedSubject.data,
+            email,
+            emailVerified: authoritativeUser.emailVerified,
+            fullName: validatedInput.fullName,
+            phone,
+            phoneVerified: authoritativeUser.phoneVerified,
+          },
+          update: {},
+          where: { authProviderUserId: parsedSubject.data },
+        });
+      } catch (error: unknown) {
+        if (!isUniqueConstraintError(error)) throw error;
 
-      const sameIdentity = await prisma.user.findUnique({
-        where: { authProviderUserId: parsedSubject.data },
-      });
-      if (sameIdentity !== null) {
-        return sameIdentity;
-      }
+        const sameIdentity = await prisma.user.findUnique({
+          where: { authProviderUserId: parsedSubject.data },
+        });
+        if (sameIdentity !== null) return sameIdentity;
 
-      this.logger.warn(`Provisioning identity collision: authProviderUserId=${parsedSubject.data}`);
-      throw new AuthApiException('AUTH_IDENTITY_CONFLICT');
-    }
+        this.logger.warn(
+          `Provisioning identity collision: authProviderUserId=${parsedSubject.data}`,
+        );
+        throw new AuthApiException('AUTH_IDENTITY_CONFLICT');
+      }
+    });
   }
 }

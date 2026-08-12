@@ -1,10 +1,6 @@
 import { Module } from '@nestjs/common';
 
 import { AuthModule } from '../auth/auth.module';
-import {
-  MARKETPLACE_EVENT_PUBLISHER,
-  StructuredLogMarketplaceEventPublisher,
-} from '../common/marketplace-event-publisher';
 import { ListingImageController } from '../listing-media/listing-image.controller';
 import { ListingImageProcessor } from '../listing-media/listing-image-processor';
 import { ListingImageService } from '../listing-media/listing-image.service';
@@ -14,17 +10,18 @@ import { PublicListingController, SellerListingController } from './listing.cont
 import { ListingPresenter } from './listing.presenter';
 import { ListingRepository } from './listing.repository';
 import { ListingService } from './listing.service';
+import { TrustModule } from '../trust/trust.module';
 
 @Module({
   controllers: [ListingImageController, PublicListingController, SellerListingController],
   exports: [
     LISTING_IMAGE_STORAGE,
-    MARKETPLACE_EVENT_PUBLISHER,
     ListingPresenter,
     ListingRepository,
     ListingService,
+    ListingImageProcessor,
   ],
-  imports: [AuthModule],
+  imports: [AuthModule, TrustModule],
   providers: [
     ListingImageProcessor,
     ListingImageService,
@@ -34,10 +31,6 @@ import { ListingService } from './listing.service';
     {
       provide: LISTING_IMAGE_STORAGE,
       useFactory: () => new SupabaseListingImageStorageAdapter(),
-    },
-    {
-      provide: MARKETPLACE_EVENT_PUBLISHER,
-      useFactory: () => new StructuredLogMarketplaceEventPublisher(),
     },
   ],
 })

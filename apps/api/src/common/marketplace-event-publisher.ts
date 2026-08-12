@@ -6,6 +6,9 @@ export interface MarketplaceEvent {
   readonly listingId?: string;
   readonly conversationId?: string;
   readonly orderId?: string;
+  readonly reviewId?: string;
+  readonly disputeId?: string;
+  readonly sellerVerificationId?: string;
   readonly name:
     | 'item_liked'
     | 'item_saved'
@@ -31,7 +34,19 @@ export interface MarketplaceEvent {
     | 'payment_started'
     | 'payment_succeeded'
     | 'payment_failed'
-    | 'notification_opened';
+    | 'notification_opened'
+    | 'review_submitted'
+    | 'review_reported'
+    | 'user_blocked'
+    | 'user_unblocked'
+    | 'dispute_opened'
+    | 'dispute_evidence_added'
+    | 'dispute_resolved'
+    | 'seller_verification_submitted'
+    | 'seller_verification_approved'
+    | 'seller_verification_rejected'
+    | 'restriction_applied'
+    | 'policy_accepted';
   readonly targetUserId?: string;
 }
 

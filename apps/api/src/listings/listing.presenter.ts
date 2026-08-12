@@ -6,11 +6,13 @@ import {
   type ListingImageStorage,
 } from '../listing-media/listing-image-storage.interface';
 import type { ListingRecord, ViewerListingState } from './listing.repository';
+import { ReputationReader } from '../trust/reputation.reader';
 
 @Injectable()
 export class ListingPresenter {
   public constructor(
     @Inject(LISTING_IMAGE_STORAGE) private readonly storage: ListingImageStorage,
+    @Inject(ReputationReader) private readonly reputation: ReputationReader,
   ) {}
 
   public async presentMany(
@@ -19,6 +21,11 @@ export class ListingPresenter {
   ): Promise<ListingDetail[]> {
     const keys = records.flatMap(({ images }) => images.map(({ storageKey }) => storageKey));
     const urls = await this.storage.createSignedUrls(keys);
+    const sellerIds = records.map((record) => record.sellerId);
+    const [ratings, verified] = await Promise.all([
+      this.reputation.summaries(sellerIds, 'BUYER_TO_SELLER'),
+      this.reputation.verified(sellerIds),
+    ]);
     return records.map((record) =>
       listingDetailSchema.parse({
         activatedAt: record.activatedAt?.toISOString() ?? null,
@@ -57,6 +64,8 @@ export class ListingPresenter {
           id: record.seller.id,
           profileImageUrl: record.seller.profile?.profileImageUrl ?? null,
           username: record.seller.profile?.username ?? 'unavailable',
+          sellerRating: ratings.get(record.sellerId),
+          sellerVerified: verified.has(record.sellerId),
         },
         size: record.size,
         status: record.status,

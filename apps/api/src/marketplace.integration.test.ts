@@ -44,8 +44,33 @@ class CapturingEvents implements MarketplaceEventPublisher {
 const storage = new FakeStorage();
 const events = new CapturingEvents();
 const listings = new ListingRepository(prisma);
-const presenter = new ListingPresenter(storage);
-const listingService = new ListingService(listings, presenter, storage, events);
+const reputation = {
+  summaries: (userIds: readonly string[]) =>
+    Promise.resolve(
+      new Map(
+        userIds.map((id) => [
+          id,
+          {
+            average: null,
+            count: 0,
+            distribution: { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 },
+          },
+        ]),
+      ),
+    ),
+  verified: () => Promise.resolve(new Set()),
+};
+const presenter = new ListingPresenter(storage, reputation as never);
+const policy = { assertUgcAccepted: () => Promise.resolve() };
+const safety = { assertScopeAllowed: () => Promise.resolve() };
+const listingService = new ListingService(
+  listings,
+  presenter,
+  storage,
+  events,
+  policy as never,
+  safety as never,
+);
 const moderation = new ModerationRepository(prisma);
 const social = new SocialRepository(prisma);
 const discovery = new DiscoveryRepository(prisma);

@@ -38,6 +38,14 @@ export class DiscoveryRepository {
             WHERE f."follower_id" = ${viewerId}::uuid AND f."followed_id" = e."seller_id"
           ) THEN 1000 ELSE 0 END`
         : Prisma.sql`0`;
+    const blockFilter =
+      viewerId === undefined
+        ? Prisma.empty
+        : Prisma.sql`AND NOT EXISTS (
+            SELECT 1 FROM "user_blocks" ub
+            WHERE (ub."blocker_id" = ${viewerId}::uuid AND ub."blocked_user_id" = l."seller_id")
+               OR (ub."blocked_user_id" = ${viewerId}::uuid AND ub."blocker_id" = l."seller_id")
+          )`;
     const cursorFilter =
       cursor === null
         ? Prisma.empty
@@ -71,6 +79,7 @@ export class DiscoveryRepository {
           AND l."created_at" <= ${asOf}
           AND u."account_status" = 'ACTIVE'
           AND u."deleted_at" IS NULL
+          ${blockFilter}
       ),
       scored AS (
         SELECT

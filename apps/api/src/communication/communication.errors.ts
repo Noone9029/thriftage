@@ -44,7 +44,8 @@ export class CommunicationApiException extends HttpException {
   }
 }
 
-export function mapCommunicationError(error: unknown): CommunicationApiException {
+export function mapCommunicationError(error: unknown): HttpException {
+  if (error instanceof HttpException) return error;
   if (error instanceof CommunicationApiException) return error;
   if (error instanceof CommunicationDomainError) return new CommunicationApiException(error.code);
   if (error instanceof ZodError) return new CommunicationApiException('MESSAGE_INVALID');

@@ -6,6 +6,15 @@ const apiEnvironmentSchema = z.object({
   API_PORT: z.coerce.number().int().min(1).max(65_535).default(4000),
   CONVERSATION_MAX_STARTS_PER_DAY: z.coerce.number().int().min(1).max(100).default(25),
   CORS_ORIGINS: z.string().optional(),
+  DISPUTE_EVIDENCE_BUCKET: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9][a-z0-9-]{1,62}$/)
+    .default('dispute-evidence'),
+  DISPUTE_EVIDENCE_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).optional(),
+  DISPUTE_EVIDENCE_SIGNED_URL_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(600),
+  DISPUTE_SHIPPED_MIN_AGE_HOURS: z.coerce.number().int().min(0).max(720).default(72),
+  DISPUTE_WINDOW_HOURS: z.coerce.number().int().min(1).max(8760).default(336),
   EXPO_PUSH_ACCESS_TOKEN: z.string().trim().min(16).optional(),
   EXPO_PUSH_ENABLED: z.enum(['true', 'false']).default('false'),
   LOG_FORMAT: z.enum(['json', 'pretty']).default('pretty'),
@@ -39,6 +48,9 @@ const apiEnvironmentSchema = z.object({
     .default('profile-images'),
   PUSH_RECEIPT_DELAY_SECONDS: z.coerce.number().int().min(60).max(3600).default(900),
   REALTIME_BROADCAST_ENABLED: z.enum(['true', 'false']).default('false'),
+  SELLER_VERIFICATION_MIN_COMPLETED_SALES: z.coerce.number().int().min(0).max(1000).default(0),
+  SELLER_VERIFICATION_REAPPLY_DAYS: z.coerce.number().int().min(1).max(365).default(30),
+  SUPPORT_URL: z.string().trim().url().optional(),
   SUPABASE_PUBLISHABLE_KEY: z
     .string()
     .trim()
@@ -66,6 +78,11 @@ const apiEnvironmentSchema = z.object({
 export interface ApiConfig {
   readonly conversationMaxStartsPerDay: number;
   readonly corsOrigins: readonly string[];
+  readonly disputeEvidenceBucket: string;
+  readonly disputeEvidenceRetentionDays?: number;
+  readonly disputeEvidenceSignedUrlTtlSeconds: number;
+  readonly disputeShippedMinAgeHours: number;
+  readonly disputeWindowHours: number;
   readonly expoPushAccessToken?: string;
   readonly expoPushEnabled: boolean;
   readonly host: string;
@@ -88,6 +105,9 @@ export interface ApiConfig {
   readonly profileImageBucket: string;
   readonly pushReceiptDelaySeconds: number;
   readonly realtimeBroadcastEnabled: boolean;
+  readonly sellerVerificationMinCompletedSales: number;
+  readonly sellerVerificationReapplyDays: number;
+  readonly supportUrl?: string;
   readonly supabasePublishableKey: string;
   readonly supabaseSecretKey: string;
   readonly supabaseUrl: string;
@@ -103,6 +123,13 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
   return Object.freeze({
     conversationMaxStartsPerDay: parsed.CONVERSATION_MAX_STARTS_PER_DAY,
     corsOrigins: parseCommaSeparatedList(parsed.CORS_ORIGINS),
+    disputeEvidenceBucket: parsed.DISPUTE_EVIDENCE_BUCKET,
+    ...(parsed.DISPUTE_EVIDENCE_RETENTION_DAYS === undefined
+      ? {}
+      : { disputeEvidenceRetentionDays: parsed.DISPUTE_EVIDENCE_RETENTION_DAYS }),
+    disputeEvidenceSignedUrlTtlSeconds: parsed.DISPUTE_EVIDENCE_SIGNED_URL_TTL_SECONDS,
+    disputeShippedMinAgeHours: parsed.DISPUTE_SHIPPED_MIN_AGE_HOURS,
+    disputeWindowHours: parsed.DISPUTE_WINDOW_HOURS,
     ...(parsed.EXPO_PUSH_ACCESS_TOKEN === undefined
       ? {}
       : { expoPushAccessToken: parsed.EXPO_PUSH_ACCESS_TOKEN }),
@@ -127,6 +154,9 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
     profileImageBucket: parsed.PROFILE_IMAGE_BUCKET,
     pushReceiptDelaySeconds: parsed.PUSH_RECEIPT_DELAY_SECONDS,
     realtimeBroadcastEnabled: parsed.REALTIME_BROADCAST_ENABLED === 'true',
+    sellerVerificationMinCompletedSales: parsed.SELLER_VERIFICATION_MIN_COMPLETED_SALES,
+    sellerVerificationReapplyDays: parsed.SELLER_VERIFICATION_REAPPLY_DAYS,
+    ...(parsed.SUPPORT_URL === undefined ? {} : { supportUrl: parsed.SUPPORT_URL }),
     supabasePublishableKey: parsed.SUPABASE_PUBLISHABLE_KEY,
     supabaseSecretKey: parsed.SUPABASE_SECRET_KEY,
     supabaseUrl: parsed.SUPABASE_URL.replace(/\/$/, ''),

@@ -60,7 +60,8 @@ export class CommerceApiException extends HttpException {
   }
 }
 
-export function mapCommerceError(error: unknown): CommerceApiException {
+export function mapCommerceError(error: unknown): HttpException {
+  if (error instanceof HttpException) return error;
   if (error instanceof CommerceApiException) return error;
   if (error instanceof CommerceDomainError) return new CommerceApiException(error.code);
   if (error instanceof ZodError) return new CommerceApiException('COMMERCE_VALIDATION_FAILED');

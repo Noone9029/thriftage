@@ -177,6 +177,126 @@ enum NotificationType {
   LISTING_APPROVED
   LISTING_REJECTED
   LISTING_REMOVED
+  REVIEW_RECEIVED
+  DISPUTE_OPENED
+  DISPUTE_UPDATED
+  DISPUTE_RESOLVED
+  SELLER_VERIFICATION_SUBMITTED
+  SELLER_VERIFICATION_APPROVED
+  SELLER_VERIFICATION_REJECTED
+  ACCOUNT_RESTRICTED
+}
+
+enum ReviewDirection {
+  BUYER_TO_SELLER
+  SELLER_TO_BUYER
+}
+
+enum ReviewModerationState {
+  VISIBLE
+  TEXT_HIDDEN
+  INVALIDATED
+}
+
+enum ReviewReportReason {
+  HARASSMENT
+  HATE_OR_ABUSE
+  PERSONAL_INFORMATION
+  SPAM
+  IRRELEVANT
+  FRAUDULENT
+  RETALIATION
+  OTHER
+}
+
+enum ReviewReportStatus {
+  OPEN
+  UNDER_REVIEW
+  ACTIONED
+  DISMISSED
+}
+
+enum PolicyType {
+  TERMS_OF_USE
+  PRIVACY_POLICY
+  COMMUNITY_GUIDELINES
+}
+
+enum DisputeReason {
+  ITEM_NOT_RECEIVED
+  ITEM_NOT_AS_DESCRIBED
+  DAMAGED_ITEM
+  COUNTERFEIT_SUSPECTED
+  DELIVERY_PROBLEM
+  PAYMENT_OR_COD_ISSUE
+  HARASSMENT_OR_SAFETY
+  OTHER
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  AWAITING_INFORMATION
+  RESOLVED
+  REJECTED
+  CLOSED
+}
+
+enum DisputeEventType {
+  OPENED
+  EVIDENCE_ADDED
+  STATUS_CHANGED
+  INFORMATION_REQUESTED
+  RESOLUTION_RECORDED
+  INTERNAL_NOTE
+}
+
+enum DisputeEventVisibility {
+  PARTICIPANTS
+  INTERNAL
+}
+
+enum SellerVerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  SUSPENDED
+}
+
+enum SellerVerificationMethod {
+  ACCOUNT_REVIEW
+}
+
+enum RestrictionScope {
+  MESSAGING
+  SELLING
+  BUYING
+  SOCIAL
+}
+
+enum SafetyActionType {
+  WARNING
+  TEMPORARY_RESTRICTION
+  PERMANENT_RESTRICTION
+  ACCOUNT_SUSPENSION
+  RESTRICTION_REVOKED
+}
+
+enum TrustAuditAction {
+  POLICY_PUBLISHED
+  REVIEW_HIDDEN
+  REVIEW_RESTORED
+  REVIEW_INVALIDATED
+  REVIEW_REPORT_DISMISSED
+  DISPUTE_STATUS_CHANGED
+  DISPUTE_RESOLVED
+  SELLER_VERIFICATION_APPROVED
+  SELLER_VERIFICATION_REJECTED
+  SELLER_VERIFICATION_SUSPENDED
+  RESTRICTION_CREATED
+  RESTRICTION_REVOKED
+  WARNING_ISSUED
+  ACCOUNT_SUSPENDED
 }
 
 enum NotificationOutboxStatus {
@@ -201,44 +321,66 @@ enum PushDeliveryStatus {
 }
 
 model User {
-  id                        String                     @id @default(uuid()) @db.Uuid
-  authProviderUserId        String                     @unique(map: "users_auth_provider_user_id_key") @map("auth_provider_user_id") @db.VarChar(255)
-  email                     String?                    @unique(map: "users_email_key") @db.VarChar(320)
-  phone                     String?                    @unique(map: "users_phone_key") @db.VarChar(32)
-  fullName                  String                     @map("full_name") @db.VarChar(120)
-  role                      UserRole                   @default(USER)
-  accountStatus             AccountStatus              @default(ACTIVE) @map("account_status")
-  emailVerified             Boolean                    @default(false) @map("email_verified")
-  phoneVerified             Boolean                    @default(false) @map("phone_verified")
-  createdAt                 DateTime                   @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt                 DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(3)
-  deletedAt                 DateTime?                  @map("deleted_at") @db.Timestamptz(3)
-  profile                   Profile?
-  phoneVerificationAttempts PhoneVerificationAttempt[]
-  listings                  Listing[]                  @relation("ListingSeller")
-  listingLikes              ListingLike[]
-  savedListings             SavedListing[]
-  following                 Follow[]                   @relation("Follower")
-  followers                 Follow[]                   @relation("Followed")
-  reportsCreated            ModerationReport[]         @relation("ReportReporter")
-  reportsTargetingUser      ModerationReport[]         @relation("ReportTargetUser")
-  reportsAssigned           ModerationReport[]         @relation("ReportAssignedAdmin")
-  moderationAudits          ModerationAudit[]          @relation("ModerationActor")
-  conversationsAsSeller     Conversation[]             @relation("ConversationSeller")
-  conversationsAsBuyer      Conversation[]             @relation("ConversationBuyer")
-  messagesSent              Message[]                  @relation("MessageSender")
-  messageFlagsReviewed      MessageModerationFlag[]    @relation("MessageFlagReviewer")
-  messageModerationAudits   MessageModerationAudit[]   @relation("MessageModerationActor")
-  addresses                 Address[]
-  ordersAsBuyer             Order[]                    @relation("OrderBuyer")
-  ordersAsSeller            Order[]                    @relation("OrderSeller")
-  orderCancellations        Order[]                    @relation("OrderCancelledBy")
-  orderEvents               OrderEvent[]               @relation("OrderEventActor")
-  notifications             Notification[]             @relation("NotificationRecipient")
-  notificationActors        Notification[]             @relation("NotificationActor")
-  pushDevices               PushDevice[]
-  notificationOutbox        NotificationOutbox[]       @relation("OutboxRecipient")
-  notificationOutboxActions NotificationOutbox[]       @relation("OutboxActor")
+  id                          String                     @id @default(uuid()) @db.Uuid
+  authProviderUserId          String                     @unique(map: "users_auth_provider_user_id_key") @map("auth_provider_user_id") @db.VarChar(255)
+  email                       String?                    @unique(map: "users_email_key") @db.VarChar(320)
+  phone                       String?                    @unique(map: "users_phone_key") @db.VarChar(32)
+  fullName                    String                     @map("full_name") @db.VarChar(120)
+  role                        UserRole                   @default(USER)
+  accountStatus               AccountStatus              @default(ACTIVE) @map("account_status")
+  emailVerified               Boolean                    @default(false) @map("email_verified")
+  phoneVerified               Boolean                    @default(false) @map("phone_verified")
+  createdAt                   DateTime                   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                   DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt                   DateTime?                  @map("deleted_at") @db.Timestamptz(3)
+  profile                     Profile?
+  phoneVerificationAttempts   PhoneVerificationAttempt[]
+  listings                    Listing[]                  @relation("ListingSeller")
+  listingLikes                ListingLike[]
+  savedListings               SavedListing[]
+  following                   Follow[]                   @relation("Follower")
+  followers                   Follow[]                   @relation("Followed")
+  reportsCreated              ModerationReport[]         @relation("ReportReporter")
+  reportsTargetingUser        ModerationReport[]         @relation("ReportTargetUser")
+  reportsAssigned             ModerationReport[]         @relation("ReportAssignedAdmin")
+  moderationAudits            ModerationAudit[]          @relation("ModerationActor")
+  conversationsAsSeller       Conversation[]             @relation("ConversationSeller")
+  conversationsAsBuyer        Conversation[]             @relation("ConversationBuyer")
+  messagesSent                Message[]                  @relation("MessageSender")
+  messageFlagsReviewed        MessageModerationFlag[]    @relation("MessageFlagReviewer")
+  messageModerationAudits     MessageModerationAudit[]   @relation("MessageModerationActor")
+  addresses                   Address[]
+  ordersAsBuyer               Order[]                    @relation("OrderBuyer")
+  ordersAsSeller              Order[]                    @relation("OrderSeller")
+  orderCancellations          Order[]                    @relation("OrderCancelledBy")
+  orderEvents                 OrderEvent[]               @relation("OrderEventActor")
+  notifications               Notification[]             @relation("NotificationRecipient")
+  notificationActors          Notification[]             @relation("NotificationActor")
+  pushDevices                 PushDevice[]
+  notificationOutbox          NotificationOutbox[]       @relation("OutboxRecipient")
+  notificationOutboxActions   NotificationOutbox[]       @relation("OutboxActor")
+  reviewsGiven                Review[]                   @relation("ReviewReviewer")
+  reviewsReceived             Review[]                   @relation("ReviewReviewee")
+  reviewReports               ReviewReport[]             @relation("ReviewReportReporter")
+  reviewReportsAssigned       ReviewReport[]             @relation("ReviewReportAdmin")
+  reviewModerationAudits      ReviewModerationAudit[]    @relation("ReviewModerationActor")
+  blocksCreated               UserBlock[]                @relation("Blocker")
+  blocksReceived              UserBlock[]                @relation("BlockedUser")
+  policyAcceptances           PolicyAcceptance[]
+  policiesPublished           PolicyVersion[]            @relation("PolicyPublisher")
+  disputesOpened              Dispute[]                  @relation("DisputeOpener")
+  disputesAgainst             Dispute[]                  @relation("DisputeCounterparty")
+  disputesAssigned            Dispute[]                  @relation("DisputeAdmin")
+  disputeEvidenceUploaded     DisputeEvidence[]          @relation("DisputeEvidenceUploader")
+  disputeEvents               DisputeEvent[]             @relation("DisputeEventActor")
+  sellerVerifications         SellerVerification[]       @relation("SellerVerificationUser")
+  sellerVerificationsReviewed SellerVerification[]       @relation("SellerVerificationReviewer")
+  restrictions                UserRestriction[]          @relation("RestrictedUser")
+  restrictionsCreated         UserRestriction[]          @relation("RestrictionCreator")
+  safetyActionsTaken          SafetyAction[]             @relation("SafetyActionActor")
+  safetyActionsReceived       SafetyAction[]             @relation("SafetyActionTarget")
+  trustAuditsPerformed        TrustAudit[]               @relation("TrustAuditActor")
+  trustAuditsTargeting        TrustAudit[]               @relation("TrustAuditTarget")
 
   @@index([accountStatus], map: "users_account_status_idx")
   @@index([createdAt], map: "users_created_at_idx")
@@ -423,6 +565,7 @@ model ModerationReport {
   targetUser       User?                  @relation("ReportTargetUser", fields: [targetUserId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "moderation_reports_target_user_id_fkey")
   assignedAdmin    User?                  @relation("ReportAssignedAdmin", fields: [assignedAdminId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "moderation_reports_assigned_admin_id_fkey")
   moderationAudits ModerationAudit[]
+  safetyActions    SafetyAction[]
 
   @@index([status, createdAt, id], map: "moderation_reports_status_created_id_idx")
   @@index([reporterId, createdAt], map: "moderation_reports_reporter_created_idx")
@@ -609,6 +752,8 @@ model Order {
   events               OrderEvent[]
   notifications        Notification[]
   notificationOutbox   NotificationOutbox[]
+  reviews              Review[]
+  disputes             Dispute[]
 
   @@unique([buyerId, idempotencyKey], map: "orders_buyer_id_idempotency_key_key")
   @@index([buyerId, createdAt, id], map: "orders_buyer_created_id_idx")
@@ -687,24 +832,30 @@ model OrderEvent {
 }
 
 model Notification {
-  id             String           @id @default(uuid()) @db.Uuid
-  recipientId    String           @map("recipient_id") @db.Uuid
-  type           NotificationType
-  actorUserId    String?          @map("actor_user_id") @db.Uuid
-  listingId      String?          @map("listing_id") @db.Uuid
-  conversationId String?          @map("conversation_id") @db.Uuid
-  orderId        String?          @map("order_id") @db.Uuid
-  title          String           @db.VarChar(120)
-  body           String           @db.VarChar(240)
-  dedupeKey      String           @unique(map: "notifications_dedupe_key_key") @map("dedupe_key") @db.VarChar(255)
-  readAt         DateTime?        @map("read_at") @db.Timestamptz(3)
-  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
-  recipient      User             @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notifications_recipient_id_fkey")
-  actor          User?            @relation("NotificationActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notifications_actor_user_id_fkey")
-  listing        Listing?         @relation(fields: [listingId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notifications_listing_id_fkey")
-  conversation   Conversation?    @relation(fields: [conversationId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notifications_conversation_id_fkey")
-  order          Order?           @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notifications_order_id_fkey")
-  pushDeliveries PushDelivery[]
+  id                   String              @id @default(uuid()) @db.Uuid
+  recipientId          String              @map("recipient_id") @db.Uuid
+  type                 NotificationType
+  actorUserId          String?             @map("actor_user_id") @db.Uuid
+  listingId            String?             @map("listing_id") @db.Uuid
+  conversationId       String?             @map("conversation_id") @db.Uuid
+  orderId              String?             @map("order_id") @db.Uuid
+  reviewId             String?             @map("review_id") @db.Uuid
+  disputeId            String?             @map("dispute_id") @db.Uuid
+  sellerVerificationId String?             @map("seller_verification_id") @db.Uuid
+  title                String              @db.VarChar(120)
+  body                 String              @db.VarChar(240)
+  dedupeKey            String              @unique(map: "notifications_dedupe_key_key") @map("dedupe_key") @db.VarChar(255)
+  readAt               DateTime?           @map("read_at") @db.Timestamptz(3)
+  createdAt            DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  recipient            User                @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notifications_recipient_id_fkey")
+  actor                User?               @relation("NotificationActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notifications_actor_user_id_fkey")
+  listing              Listing?            @relation(fields: [listingId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notifications_listing_id_fkey")
+  conversation         Conversation?       @relation(fields: [conversationId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notifications_conversation_id_fkey")
+  order                Order?              @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notifications_order_id_fkey")
+  review               Review?             @relation(fields: [reviewId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notifications_review_id_fkey")
+  dispute              Dispute?            @relation(fields: [disputeId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notifications_dispute_id_fkey")
+  sellerVerification   SellerVerification? @relation(fields: [sellerVerificationId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notifications_seller_verification_id_fkey")
+  pushDeliveries       PushDelivery[]
 
   @@index([recipientId, createdAt, id], map: "notifications_recipient_created_id_idx")
   @@index([recipientId, readAt, createdAt], map: "notifications_recipient_read_created_idx")
@@ -728,29 +879,35 @@ model PushDevice {
 }
 
 model NotificationOutbox {
-  id             String                   @id @default(uuid()) @db.Uuid
-  recipientId    String                   @map("recipient_id") @db.Uuid
-  eventType      NotificationType         @map("event_type")
-  actorUserId    String?                  @map("actor_user_id") @db.Uuid
-  listingId      String?                  @map("listing_id") @db.Uuid
-  conversationId String?                  @map("conversation_id") @db.Uuid
-  orderId        String?                  @map("order_id") @db.Uuid
-  messageId      String?                  @map("message_id") @db.Uuid
-  dedupeKey      String                   @unique(map: "notification_outbox_dedupe_key_key") @map("dedupe_key") @db.VarChar(255)
-  status         NotificationOutboxStatus @default(PENDING)
-  attempts       Int                      @default(0)
-  availableAt    DateTime                 @default(now()) @map("available_at") @db.Timestamptz(3)
-  lockedAt       DateTime?                @map("locked_at") @db.Timestamptz(3)
-  lastErrorCode  String?                  @map("last_error_code") @db.VarChar(64)
-  processedAt    DateTime?                @map("processed_at") @db.Timestamptz(3)
-  createdAt      DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt      DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
-  recipient      User                     @relation("OutboxRecipient", fields: [recipientId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notification_outbox_recipient_id_fkey")
-  actor          User?                    @relation("OutboxActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notification_outbox_actor_user_id_fkey")
-  listing        Listing?                 @relation(fields: [listingId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notification_outbox_listing_id_fkey")
-  conversation   Conversation?            @relation(fields: [conversationId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notification_outbox_conversation_id_fkey")
-  order          Order?                   @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notification_outbox_order_id_fkey")
-  message        Message?                 @relation(fields: [messageId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notification_outbox_message_id_fkey")
+  id                   String                   @id @default(uuid()) @db.Uuid
+  recipientId          String                   @map("recipient_id") @db.Uuid
+  eventType            NotificationType         @map("event_type")
+  actorUserId          String?                  @map("actor_user_id") @db.Uuid
+  listingId            String?                  @map("listing_id") @db.Uuid
+  conversationId       String?                  @map("conversation_id") @db.Uuid
+  orderId              String?                  @map("order_id") @db.Uuid
+  messageId            String?                  @map("message_id") @db.Uuid
+  reviewId             String?                  @map("review_id") @db.Uuid
+  disputeId            String?                  @map("dispute_id") @db.Uuid
+  sellerVerificationId String?                  @map("seller_verification_id") @db.Uuid
+  dedupeKey            String                   @unique(map: "notification_outbox_dedupe_key_key") @map("dedupe_key") @db.VarChar(255)
+  status               NotificationOutboxStatus @default(PENDING)
+  attempts             Int                      @default(0)
+  availableAt          DateTime                 @default(now()) @map("available_at") @db.Timestamptz(3)
+  lockedAt             DateTime?                @map("locked_at") @db.Timestamptz(3)
+  lastErrorCode        String?                  @map("last_error_code") @db.VarChar(64)
+  processedAt          DateTime?                @map("processed_at") @db.Timestamptz(3)
+  createdAt            DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
+  recipient            User                     @relation("OutboxRecipient", fields: [recipientId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notification_outbox_recipient_id_fkey")
+  actor                User?                    @relation("OutboxActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notification_outbox_actor_user_id_fkey")
+  listing              Listing?                 @relation(fields: [listingId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notification_outbox_listing_id_fkey")
+  conversation         Conversation?            @relation(fields: [conversationId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notification_outbox_conversation_id_fkey")
+  order                Order?                   @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notification_outbox_order_id_fkey")
+  message              Message?                 @relation(fields: [messageId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notification_outbox_message_id_fkey")
+  review               Review?                  @relation(fields: [reviewId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notification_outbox_review_id_fkey")
+  dispute              Dispute?                 @relation(fields: [disputeId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notification_outbox_dispute_id_fkey")
+  sellerVerification   SellerVerification?      @relation(fields: [sellerVerificationId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notification_outbox_seller_verification_id_fkey")
 
   @@index([status, availableAt, createdAt], map: "notification_outbox_status_available_idx")
   @@index([lockedAt], map: "notification_outbox_locked_idx")
@@ -774,4 +931,265 @@ model PushDelivery {
   @@unique([notificationId, pushDeviceId], map: "push_deliveries_notification_device_key")
   @@index([status, nextReceiptAt], map: "push_deliveries_status_receipt_idx")
   @@map("push_deliveries")
+}
+
+model Review {
+  id                 String                  @id @default(uuid()) @db.Uuid
+  orderId            String                  @map("order_id") @db.Uuid
+  reviewerId         String                  @map("reviewer_id") @db.Uuid
+  revieweeId         String                  @map("reviewee_id") @db.Uuid
+  direction          ReviewDirection
+  rating             Int
+  text               String?                 @db.VarChar(1000)
+  moderationState    ReviewModerationState   @default(VISIBLE) @map("moderation_state")
+  createdAt          DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
+  order              Order                   @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "reviews_order_id_fkey")
+  reviewer           User                    @relation("ReviewReviewer", fields: [reviewerId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "reviews_reviewer_id_fkey")
+  reviewee           User                    @relation("ReviewReviewee", fields: [revieweeId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "reviews_reviewee_id_fkey")
+  reports            ReviewReport[]
+  moderationAudits   ReviewModerationAudit[]
+  notifications      Notification[]
+  notificationOutbox NotificationOutbox[]
+  trustAudits        TrustAudit[]
+
+  @@unique([orderId, reviewerId, direction], map: "reviews_order_reviewer_direction_key")
+  @@index([revieweeId, direction, moderationState, createdAt], map: "reviews_reviewee_direction_state_created_idx")
+  @@index([orderId, createdAt], map: "reviews_order_created_idx")
+  @@map("reviews")
+}
+
+model ReviewReport {
+  id              String                  @id @default(uuid()) @db.Uuid
+  reviewId        String                  @map("review_id") @db.Uuid
+  reporterId      String                  @map("reporter_id") @db.Uuid
+  reason          ReviewReportReason
+  detail          String?                 @db.VarChar(1000)
+  status          ReviewReportStatus      @default(OPEN)
+  assignedAdminId String?                 @map("assigned_admin_id") @db.Uuid
+  resolution      String?                 @db.VarChar(1000)
+  resolvedAt      DateTime?               @map("resolved_at") @db.Timestamptz(3)
+  createdAt       DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime                @updatedAt @map("updated_at") @db.Timestamptz(3)
+  review          Review                  @relation(fields: [reviewId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "review_reports_review_id_fkey")
+  reporter        User                    @relation("ReviewReportReporter", fields: [reporterId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "review_reports_reporter_id_fkey")
+  assignedAdmin   User?                   @relation("ReviewReportAdmin", fields: [assignedAdminId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "review_reports_assigned_admin_id_fkey")
+  audits          ReviewModerationAudit[]
+  trustAudits     TrustAudit[]
+
+  @@unique([reviewId, reporterId], map: "review_reports_review_reporter_key")
+  @@index([status, createdAt], map: "review_reports_status_created_idx")
+  @@map("review_reports")
+}
+
+model ReviewModerationAudit {
+  id            String                 @id @default(uuid()) @db.Uuid
+  reviewId      String                 @map("review_id") @db.Uuid
+  reportId      String?                @map("report_id") @db.Uuid
+  actorId       String                 @map("actor_id") @db.Uuid
+  previousState ReviewModerationState? @map("previous_state")
+  nextState     ReviewModerationState? @map("next_state")
+  reason        String                 @db.VarChar(1000)
+  createdAt     DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  review        Review                 @relation(fields: [reviewId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "review_moderation_audits_review_id_fkey")
+  report        ReviewReport?          @relation(fields: [reportId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "review_moderation_audits_report_id_fkey")
+  actor         User                   @relation("ReviewModerationActor", fields: [actorId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "review_moderation_audits_actor_id_fkey")
+
+  @@index([reviewId, createdAt], map: "review_moderation_audits_review_created_idx")
+  @@map("review_moderation_audits")
+}
+
+model UserBlock {
+  blockerId     String   @map("blocker_id") @db.Uuid
+  blockedUserId String   @map("blocked_user_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  blocker       User     @relation("Blocker", fields: [blockerId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "user_blocks_blocker_id_fkey")
+  blockedUser   User     @relation("BlockedUser", fields: [blockedUserId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "user_blocks_blocked_user_id_fkey")
+
+  @@id([blockerId, blockedUserId], map: "user_blocks_pkey")
+  @@index([blockedUserId, blockerId], map: "user_blocks_blocked_blocker_idx")
+  @@map("user_blocks")
+}
+
+model PolicyVersion {
+  id             String             @id @default(uuid()) @db.Uuid
+  policyType     PolicyType         @map("policy_type")
+  version        String             @db.VarChar(40)
+  title          String             @db.VarChar(120)
+  url            String             @db.VarChar(2048)
+  requiredForUgc Boolean            @default(true) @map("required_for_ugc")
+  effectiveAt    DateTime           @map("effective_at") @db.Timestamptz(3)
+  isCurrent      Boolean            @default(false) @map("is_current")
+  publishedById  String             @map("published_by_id") @db.Uuid
+  publishedAt    DateTime           @default(now()) @map("published_at") @db.Timestamptz(3)
+  publishedBy    User               @relation("PolicyPublisher", fields: [publishedById], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "policy_versions_published_by_id_fkey")
+  acceptances    PolicyAcceptance[]
+  trustAudits    TrustAudit[]
+
+  @@unique([policyType, version], map: "policy_versions_type_version_key")
+  @@index([isCurrent, effectiveAt], map: "policy_versions_current_effective_idx")
+  @@map("policy_versions")
+}
+
+model PolicyAcceptance {
+  policyVersionId String        @map("policy_version_id") @db.Uuid
+  userId          String        @map("user_id") @db.Uuid
+  acceptedAt      DateTime      @default(now()) @map("accepted_at") @db.Timestamptz(3)
+  policyVersion   PolicyVersion @relation(fields: [policyVersionId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "policy_acceptances_policy_version_id_fkey")
+  user            User          @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "policy_acceptances_user_id_fkey")
+
+  @@id([policyVersionId, userId], map: "policy_acceptances_pkey")
+  @@index([userId, acceptedAt], map: "policy_acceptances_user_accepted_idx")
+  @@map("policy_acceptances")
+}
+
+model Dispute {
+  id                 String               @id @default(uuid()) @db.Uuid
+  orderId            String               @map("order_id") @db.Uuid
+  openerId           String               @map("opener_id") @db.Uuid
+  counterpartyId     String               @map("counterparty_id") @db.Uuid
+  reason             DisputeReason
+  description        String               @db.VarChar(3000)
+  status             DisputeStatus        @default(OPEN)
+  assignedAdminId    String?              @map("assigned_admin_id") @db.Uuid
+  resolution         String?              @db.VarChar(2000)
+  resolvedAt         DateTime?            @map("resolved_at") @db.Timestamptz(3)
+  createdAt          DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+  order              Order                @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "disputes_order_id_fkey")
+  opener             User                 @relation("DisputeOpener", fields: [openerId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "disputes_opener_id_fkey")
+  counterparty       User                 @relation("DisputeCounterparty", fields: [counterpartyId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "disputes_counterparty_id_fkey")
+  assignedAdmin      User?                @relation("DisputeAdmin", fields: [assignedAdminId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "disputes_assigned_admin_id_fkey")
+  evidence           DisputeEvidence[]
+  events             DisputeEvent[]
+  safetyActions      SafetyAction[]
+  trustAudits        TrustAudit[]
+  notifications      Notification[]
+  notificationOutbox NotificationOutbox[]
+
+  @@unique([orderId], map: "disputes_order_id_key")
+  @@index([status, createdAt], map: "disputes_status_created_idx")
+  @@index([openerId, createdAt], map: "disputes_opener_created_idx")
+  @@index([counterpartyId, createdAt], map: "disputes_counterparty_created_idx")
+  @@map("disputes")
+}
+
+model DisputeEvidence {
+  id            String    @id @default(uuid()) @db.Uuid
+  disputeId     String    @map("dispute_id") @db.Uuid
+  uploadedById  String    @map("uploaded_by_id") @db.Uuid
+  storageKey    String    @unique(map: "dispute_evidence_storage_key_key") @map("storage_key") @db.VarChar(255)
+  width         Int
+  height        Int
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  retainedUntil DateTime? @map("retained_until") @db.Timestamptz(3)
+  dispute       Dispute   @relation(fields: [disputeId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "dispute_evidence_dispute_id_fkey")
+  uploadedBy    User      @relation("DisputeEvidenceUploader", fields: [uploadedById], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "dispute_evidence_uploaded_by_id_fkey")
+
+  @@index([disputeId, createdAt], map: "dispute_evidence_dispute_created_idx")
+  @@map("dispute_evidence")
+}
+
+model DisputeEvent {
+  id         String                 @id @default(uuid()) @db.Uuid
+  disputeId  String                 @map("dispute_id") @db.Uuid
+  actorId    String?                @map("actor_id") @db.Uuid
+  type       DisputeEventType
+  visibility DisputeEventVisibility
+  message    String?                @db.VarChar(2000)
+  createdAt  DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  dispute    Dispute                @relation(fields: [disputeId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "dispute_events_dispute_id_fkey")
+  actor      User?                  @relation("DisputeEventActor", fields: [actorId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "dispute_events_actor_id_fkey")
+
+  @@index([disputeId, visibility, createdAt], map: "dispute_events_dispute_visibility_created_idx")
+  @@map("dispute_events")
+}
+
+model SellerVerification {
+  id                 String                   @id @default(uuid()) @db.Uuid
+  userId             String                   @map("user_id") @db.Uuid
+  reviewerId         String?                  @map("reviewer_id") @db.Uuid
+  status             SellerVerificationStatus @default(PENDING)
+  method             SellerVerificationMethod @default(ACCOUNT_REVIEW)
+  statement          String                   @db.VarChar(1500)
+  decisionReason     String?                  @map("decision_reason") @db.VarChar(1000)
+  submittedAt        DateTime                 @default(now()) @map("submitted_at") @db.Timestamptz(3)
+  reviewedAt         DateTime?                @map("reviewed_at") @db.Timestamptz(3)
+  canReapplyAt       DateTime?                @map("can_reapply_at") @db.Timestamptz(3)
+  user               User                     @relation("SellerVerificationUser", fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "seller_verifications_user_id_fkey")
+  reviewer           User?                    @relation("SellerVerificationReviewer", fields: [reviewerId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "seller_verifications_reviewer_id_fkey")
+  trustAudits        TrustAudit[]
+  notifications      Notification[]
+  notificationOutbox NotificationOutbox[]
+
+  @@index([status, submittedAt], map: "seller_verifications_status_submitted_idx")
+  @@index([userId, submittedAt], map: "seller_verifications_user_submitted_idx")
+  @@map("seller_verifications")
+}
+
+model UserRestriction {
+  id            String           @id @default(uuid()) @db.Uuid
+  userId        String           @map("user_id") @db.Uuid
+  scope         RestrictionScope
+  reason        String           @db.VarChar(1000)
+  createdById   String           @map("created_by_id") @db.Uuid
+  startsAt      DateTime         @default(now()) @map("starts_at") @db.Timestamptz(3)
+  expiresAt     DateTime?        @map("expires_at") @db.Timestamptz(3)
+  revokedAt     DateTime?        @map("revoked_at") @db.Timestamptz(3)
+  revokedReason String?          @map("revoked_reason") @db.VarChar(1000)
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  user          User             @relation("RestrictedUser", fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "user_restrictions_user_id_fkey")
+  createdBy     User             @relation("RestrictionCreator", fields: [createdById], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "user_restrictions_created_by_id_fkey")
+  safetyActions SafetyAction[]
+  trustAudits   TrustAudit[]
+
+  @@index([userId, scope, revokedAt, expiresAt], map: "user_restrictions_user_scope_active_idx")
+  @@index([createdAt], map: "user_restrictions_created_idx")
+  @@map("user_restrictions")
+}
+
+model SafetyAction {
+  id            String            @id @default(uuid()) @db.Uuid
+  actorId       String            @map("actor_id") @db.Uuid
+  targetUserId  String            @map("target_user_id") @db.Uuid
+  type          SafetyActionType
+  reason        String            @db.VarChar(1000)
+  restrictionId String?           @map("restriction_id") @db.Uuid
+  reportId      String?           @map("report_id") @db.Uuid
+  disputeId     String?           @map("dispute_id") @db.Uuid
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  actor         User              @relation("SafetyActionActor", fields: [actorId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "safety_actions_actor_id_fkey")
+  targetUser    User              @relation("SafetyActionTarget", fields: [targetUserId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "safety_actions_target_user_id_fkey")
+  restriction   UserRestriction?  @relation(fields: [restrictionId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "safety_actions_restriction_id_fkey")
+  report        ModerationReport? @relation(fields: [reportId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "safety_actions_report_id_fkey")
+  dispute       Dispute?          @relation(fields: [disputeId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "safety_actions_dispute_id_fkey")
+
+  @@index([targetUserId, createdAt], map: "safety_actions_target_created_idx")
+  @@map("safety_actions")
+}
+
+model TrustAudit {
+  id                   String              @id @default(uuid()) @db.Uuid
+  actorId              String              @map("actor_id") @db.Uuid
+  targetUserId         String?             @map("target_user_id") @db.Uuid
+  action               TrustAuditAction
+  reason               String              @db.VarChar(1000)
+  reviewId             String?             @map("review_id") @db.Uuid
+  reviewReportId       String?             @map("review_report_id") @db.Uuid
+  disputeId            String?             @map("dispute_id") @db.Uuid
+  sellerVerificationId String?             @map("seller_verification_id") @db.Uuid
+  restrictionId        String?             @map("restriction_id") @db.Uuid
+  policyVersionId      String?             @map("policy_version_id") @db.Uuid
+  createdAt            DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  actor                User                @relation("TrustAuditActor", fields: [actorId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "trust_audits_actor_id_fkey")
+  targetUser           User?               @relation("TrustAuditTarget", fields: [targetUserId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "trust_audits_target_user_id_fkey")
+  review               Review?             @relation(fields: [reviewId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "trust_audits_review_id_fkey")
+  reviewReport         ReviewReport?       @relation(fields: [reviewReportId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "trust_audits_review_report_id_fkey")
+  dispute              Dispute?            @relation(fields: [disputeId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "trust_audits_dispute_id_fkey")
+  sellerVerification   SellerVerification? @relation(fields: [sellerVerificationId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "trust_audits_seller_verification_id_fkey")
+  restriction          UserRestriction?    @relation(fields: [restrictionId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "trust_audits_restriction_id_fkey")
+  policyVersion        PolicyVersion?      @relation(fields: [policyVersionId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "trust_audits_policy_version_id_fkey")
+
+  @@index([actorId, createdAt], map: "trust_audits_actor_created_idx")
+  @@index([targetUserId, createdAt], map: "trust_audits_target_created_idx")
+  @@map("trust_audits")
 }

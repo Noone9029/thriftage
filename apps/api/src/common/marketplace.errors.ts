@@ -88,7 +88,8 @@ export class MarketplaceApiException extends HttpException {
   }
 }
 
-export function mapMarketplaceError(error: unknown): MarketplaceApiException {
+export function mapMarketplaceError(error: unknown): HttpException {
+  if (error instanceof HttpException) return error;
   if (error instanceof MarketplaceApiException) return error;
   if (error instanceof MarketplaceDomainError) return new MarketplaceApiException(error.code);
   if (error instanceof ZodError) return new MarketplaceApiException('VALIDATION_FAILED');

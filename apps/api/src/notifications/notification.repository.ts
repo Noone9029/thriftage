@@ -84,6 +84,9 @@ export class NotificationRepository {
     readonly eventType: NotificationType;
     readonly listingId: string | null;
     readonly orderId: string | null;
+    readonly reviewId: string | null;
+    readonly disputeId: string | null;
+    readonly sellerVerificationId: string | null;
     readonly recipientId: string;
   }) {
     const copy: Record<NotificationType, { title: string; body: string }> = {
@@ -99,6 +102,26 @@ export class NotificationRepository {
       ORDER_CONFIRMED: { title: 'Order confirmed', body: 'The seller confirmed your order.' },
       ORDER_DELIVERED: { title: 'Delivery confirmed', body: 'The buyer confirmed delivery.' },
       ORDER_SHIPPED: { title: 'Order shipped', body: 'Your order is on the way.' },
+      REVIEW_RECEIVED: { title: 'New review', body: 'You received a new review.' },
+      DISPUTE_OPENED: { title: 'Dispute opened', body: 'A transaction dispute was opened.' },
+      DISPUTE_UPDATED: { title: 'Dispute updated', body: 'Your dispute has been updated.' },
+      DISPUTE_RESOLVED: { title: 'Dispute resolved', body: 'Your dispute has been resolved.' },
+      SELLER_VERIFICATION_SUBMITTED: {
+        title: 'Verification submitted',
+        body: 'Your seller verification is under review.',
+      },
+      SELLER_VERIFICATION_APPROVED: {
+        title: 'Verification approved',
+        body: 'Your seller verification was approved.',
+      },
+      SELLER_VERIFICATION_REJECTED: {
+        title: 'Verification reviewed',
+        body: 'Review your seller verification result.',
+      },
+      ACCOUNT_RESTRICTED: {
+        title: 'Account restriction',
+        body: 'A marketplace restriction was applied to your account.',
+      },
     };
     const content = copy[outbox.eventType];
     return this.client.notification.upsert({
@@ -109,6 +132,9 @@ export class NotificationRepository {
         dedupeKey: outbox.dedupeKey,
         listingId: outbox.listingId,
         orderId: outbox.orderId,
+        reviewId: outbox.reviewId,
+        disputeId: outbox.disputeId,
+        sellerVerificationId: outbox.sellerVerificationId,
         recipientId: outbox.recipientId,
         title: content.title,
         type: outbox.eventType,

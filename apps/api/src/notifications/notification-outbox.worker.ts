@@ -74,6 +74,11 @@ export class NotificationOutboxWorker implements OnModuleInit, OnModuleDestroy {
                 ? {}
                 : { conversationId: notification.conversationId }),
               ...(notification.orderId === null ? {} : { orderId: notification.orderId }),
+              ...(notification.reviewId === null ? {} : { reviewId: notification.reviewId }),
+              ...(notification.disputeId === null ? {} : { disputeId: notification.disputeId }),
+              ...(notification.sellerVerificationId === null
+                ? {}
+                : { sellerVerificationId: notification.sellerVerificationId }),
               type: notification.type,
             },
             title: notification.title,

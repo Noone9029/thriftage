@@ -21,6 +21,9 @@ import { ListingPresenter } from '../listings/listing.presenter';
 import { ListingRepository } from '../listings/listing.repository';
 import { ListingService } from '../listings/listing.service';
 import { SocialRepository, type SavedCursor } from './social.repository';
+import { PolicyService } from '../trust/policy.service';
+import { SafetyService } from '../trust/safety.service';
+import { ReputationReader } from '../trust/reputation.reader';
 
 const savedCursorSchema = z.strictObject({
   kind: z.literal('SAVED'),
@@ -36,6 +39,9 @@ export class SocialService {
     @Inject(ListingService) private readonly listingService: ListingService,
     @Inject(ListingPresenter) private readonly presenter: ListingPresenter,
     @Inject(MARKETPLACE_EVENT_PUBLISHER) private readonly events: MarketplaceEventPublisher,
+    @Inject(PolicyService) private readonly policies: PolicyService,
+    @Inject(SafetyService) private readonly safety: SafetyService,
+    @Inject(ReputationReader) private readonly reputation: ReputationReader,
   ) {}
 
   public setLike(userId: string, listingId: string, active: boolean): Promise<SocialActionResult> {
@@ -52,6 +58,9 @@ export class SocialService {
     active: boolean,
   ): Promise<SocialActionResult> {
     try {
+      await this.policies.assertUgcAccepted(userId);
+      await this.safety.assertScopeAllowed(userId, 'SOCIAL');
+      await this.safety.assertPairAllowed(userId, targetUserId);
       const result = await this.social.setFollow(userId, targetUserId, active);
       if (result.changed && active) {
         this.events.publish({ actorId: userId, name: 'seller_followed', targetUserId });
@@ -71,9 +80,18 @@ export class SocialService {
       const username = usernameSchema.parse(usernameInput);
       const profileRecord = await this.social.findSellerProfile(username, viewerId);
       if (profileRecord === null) throw new MarketplaceDomainError('SELLER_NOT_FOUND');
+      if (viewerId !== undefined) await this.safety.assertPairAllowed(viewerId, profileRecord.id);
+      const [sellerRatings, buyerRatings, verified] = await Promise.all([
+        this.reputation.summaries([profileRecord.id], 'BUYER_TO_SELLER'),
+        this.reputation.summaries([profileRecord.id], 'SELLER_TO_BUYER'),
+        this.reputation.verified([profileRecord.id]),
+      ]);
       const profile = sellerProfileSchema.parse({
         ...profileRecord,
         memberSince: profileRecord.memberSince.toISOString(),
+        sellerRating: sellerRatings.get(profileRecord.id),
+        buyerRating: buyerRatings.get(profileRecord.id),
+        sellerVerified: verified.has(profileRecord.id),
       });
       const listings = await this.listingService.listPublicBySeller(
         profileRecord.id,
@@ -92,7 +110,8 @@ export class SocialService {
       const parsed = decodeCursor(query.cursor, savedCursorSchema);
       const cursor: SavedCursor | null =
         parsed === null ? null : { listingId: parsed.listingId, savedAt: new Date(parsed.savedAt) };
-      const result = await this.social.listSaved(userId, query.limit, cursor);
+      const excludedSellerIds = await this.safety.blockedCounterpartIds(userId);
+      const result = await this.social.listSaved(userId, query.limit, cursor, excludedSellerIds);
       const state = await this.listings.getViewerState(
         userId,
         result.records.map(({ id }) => id),
@@ -122,6 +141,9 @@ export class SocialService {
     type: 'LIKE' | 'SAVE',
   ): Promise<SocialActionResult> {
     try {
+      await this.policies.assertUgcAccepted(userId);
+      await this.safety.assertScopeAllowed(userId, 'SOCIAL');
+      await this.safety.assertListingPairAllowed(userId, listingId);
       const result =
         type === 'LIKE'
           ? await this.social.setLike(userId, listingId, active)

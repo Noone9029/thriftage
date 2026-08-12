@@ -31,6 +31,8 @@ import { CommunicationPresenter } from './communication.presenter';
 import { CommunicationRepository } from './communication.repository';
 import { ContactInformationDetector } from './contact-information-detector';
 import { REALTIME_PUBLISHER, type RealtimePublisher } from './realtime-publisher.interface';
+import { PolicyService } from '../trust/policy.service';
+import { SafetyService } from '../trust/safety.service';
 
 const pageCursorSchema = z.strictObject({
   createdAt: z.string().datetime({ offset: true }),
@@ -46,11 +48,16 @@ export class CommunicationService {
     @Inject(ContactInformationDetector) private readonly detector: ContactInformationDetector,
     @Inject(REALTIME_PUBLISHER) private readonly realtime: RealtimePublisher,
     @Inject(MARKETPLACE_EVENT_PUBLISHER) private readonly events: MarketplaceEventPublisher,
+    @Inject(PolicyService) private readonly policies: PolicyService,
+    @Inject(SafetyService) private readonly safety: SafetyService,
   ) {}
 
   public async start(userId: string, input: ConversationStartInput): Promise<ConversationDetail> {
     try {
       const parsed = conversationStartInputSchema.parse(input);
+      await this.policies.assertUgcAccepted(userId);
+      await this.safety.assertScopeAllowed(userId, 'MESSAGING');
+      await this.safety.assertListingPairAllowed(userId, parsed.listingId);
       const record = await this.repository.startConversation(userId, parsed.listingId);
       this.events.publish({
         actorId: userId,
@@ -138,6 +145,15 @@ export class CommunicationService {
   ): Promise<Message> {
     try {
       const parsed = messageSendInputSchema.parse(input);
+      await this.policies.assertUgcAccepted(userId);
+      await this.safety.assertScopeAllowed(userId, 'MESSAGING');
+      const conversation = await this.repository.findParticipantConversation(
+        userId,
+        conversationId,
+      );
+      const counterpartId =
+        conversation.buyerId === userId ? conversation.sellerId : conversation.buyerId;
+      await this.safety.assertPairAllowed(userId, counterpartId);
       const detections = this.detector.inspect(parsed.body);
       const result = await this.repository.sendMessage(
         userId,
