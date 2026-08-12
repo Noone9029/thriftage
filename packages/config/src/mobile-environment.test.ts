@@ -4,6 +4,7 @@ import { loadMobileConfig } from './mobile-environment';
 
 const validEnvironment = {
   apiUrl: 'https://api.example.com/api/v1/',
+  supportUrl: 'https://support.example.com/',
   supabasePublishableKey: 'sb_publishable_mobile-placeholder',
   supabaseUrl: 'https://project-ref.supabase.co/',
 };
@@ -12,6 +13,7 @@ describe('loadMobileConfig', () => {
   it('normalizes public mobile URLs', () => {
     expect(loadMobileConfig(validEnvironment)).toEqual({
       apiUrl: 'https://api.example.com/api/v1',
+      supportUrl: 'https://support.example.com',
       supabasePublishableKey: 'sb_publishable_mobile-placeholder',
       supabaseUrl: 'https://project-ref.supabase.co',
     });
@@ -21,6 +23,7 @@ describe('loadMobileConfig', () => {
     expect(() =>
       loadMobileConfig({
         apiUrl: undefined,
+        supportUrl: undefined,
         supabasePublishableKey: undefined,
         supabaseUrl: undefined,
       }),
