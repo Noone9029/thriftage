@@ -4,6 +4,8 @@ export interface MarketplaceEvent {
   readonly actorId?: string;
   readonly categoryId?: string;
   readonly listingId?: string;
+  readonly conversationId?: string;
+  readonly orderId?: string;
   readonly name:
     | 'item_liked'
     | 'item_saved'
@@ -14,7 +16,22 @@ export interface MarketplaceEvent {
     | 'listing_submitted'
     | 'listing_viewed'
     | 'report_submitted'
-    | 'seller_followed';
+    | 'seller_followed'
+    | 'conversation_started'
+    | 'message_contact_blocked'
+    | 'message_flagged'
+    | 'message_sent'
+    | 'checkout_started'
+    | 'order_created'
+    | 'order_confirmed'
+    | 'order_cancelled'
+    | 'order_shipped'
+    | 'order_delivered'
+    | 'order_completed'
+    | 'payment_started'
+    | 'payment_succeeded'
+    | 'payment_failed'
+    | 'notification_opened';
   readonly targetUserId?: string;
 }
 

@@ -135,8 +135,9 @@ describe.sequential('marketplace integration', () => {
     const seller = await user('media_seller');
     const selectedCategory = await category();
     const draft = await listings.createDraft(seller.id, draftInput(selectedCategory.id));
+    await addImages(seller.id, draft.id, 5);
     const attempts = await Promise.allSettled(
-      Array.from({ length: 11 }, () =>
+      Array.from({ length: 6 }, () =>
         listings.addImage(seller.id, draft.id, {
           height: 1000,
           storageKey: `listings/${seller.id}/${draft.id}/${randomUUID()}.webp`,
@@ -144,7 +145,7 @@ describe.sequential('marketplace integration', () => {
         }),
       ),
     );
-    expect(attempts.filter(({ status }) => status === 'fulfilled')).toHaveLength(10);
+    expect(attempts.filter(({ status }) => status === 'fulfilled')).toHaveLength(5);
     await expect(prisma.listingImage.count({ where: { listingId: draft.id } })).resolves.toBe(10);
   });
 

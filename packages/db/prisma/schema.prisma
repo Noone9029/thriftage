@@ -95,6 +95,111 @@ enum ModerationAuditAction {
   REPORT_DISMISSED
 }
 
+enum MessageModerationState {
+  CLEAR
+  FLAGGED
+  BLOCKED
+}
+
+enum MessageFlagCategory {
+  PHONE_NUMBER
+  EMAIL_ADDRESS
+  WHATSAPP
+  SOCIAL_HANDLE
+  OBFUSCATED_CONTACT
+}
+
+enum MessageFlagStatus {
+  OPEN
+  UNDER_REVIEW
+  ACTIONED
+  DISMISSED
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  SHIPPED
+  DELIVERED
+  COMPLETED
+  CANCELLED
+}
+
+enum OrderEventType {
+  ORDER_CREATED
+  SELLER_CONFIRMED
+  SELLER_CANCELLED
+  BUYER_CANCELLED
+  MARKED_SHIPPED
+  MARKED_DELIVERED
+  COMPLETED
+  PAYMENT_STATUS_CHANGED
+}
+
+enum OrderActorType {
+  USER
+  ADMIN
+  SYSTEM
+}
+
+enum PaymentMethod {
+  CASH_ON_DELIVERY
+}
+
+enum PaymentProviderCode {
+  CASH_ON_DELIVERY
+}
+
+enum PaymentStatus {
+  PENDING_COLLECTION
+  COLLECTED
+  FAILED
+  CANCELLED
+}
+
+enum ShipmentStatus {
+  PENDING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum NotificationType {
+  NEW_FOLLOWER
+  NEW_MESSAGE
+  ITEM_PURCHASED
+  ITEM_SOLD
+  ORDER_CONFIRMED
+  ORDER_SHIPPED
+  ORDER_DELIVERED
+  ORDER_COMPLETED
+  ORDER_CANCELLED
+  LISTING_APPROVED
+  LISTING_REJECTED
+  LISTING_REMOVED
+}
+
+enum NotificationOutboxStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+}
+
+enum PushPlatform {
+  IOS
+  ANDROID
+}
+
+enum PushDeliveryStatus {
+  PENDING
+  TICKET_ACCEPTED
+  DELIVERED
+  RETRY
+  FAILED
+  DEVICE_UNREGISTERED
+}
+
 model User {
   id                        String                     @id @default(uuid()) @db.Uuid
   authProviderUserId        String                     @unique(map: "users_auth_provider_user_id_key") @map("auth_provider_user_id") @db.VarChar(255)
@@ -119,6 +224,21 @@ model User {
   reportsTargetingUser      ModerationReport[]         @relation("ReportTargetUser")
   reportsAssigned           ModerationReport[]         @relation("ReportAssignedAdmin")
   moderationAudits          ModerationAudit[]          @relation("ModerationActor")
+  conversationsAsSeller     Conversation[]             @relation("ConversationSeller")
+  conversationsAsBuyer      Conversation[]             @relation("ConversationBuyer")
+  messagesSent              Message[]                  @relation("MessageSender")
+  messageFlagsReviewed      MessageModerationFlag[]    @relation("MessageFlagReviewer")
+  messageModerationAudits   MessageModerationAudit[]   @relation("MessageModerationActor")
+  addresses                 Address[]
+  ordersAsBuyer             Order[]                    @relation("OrderBuyer")
+  ordersAsSeller            Order[]                    @relation("OrderSeller")
+  orderCancellations        Order[]                    @relation("OrderCancelledBy")
+  orderEvents               OrderEvent[]               @relation("OrderEventActor")
+  notifications             Notification[]             @relation("NotificationRecipient")
+  notificationActors        Notification[]             @relation("NotificationActor")
+  pushDevices               PushDevice[]
+  notificationOutbox        NotificationOutbox[]       @relation("OutboxRecipient")
+  notificationOutboxActions NotificationOutbox[]       @relation("OutboxActor")
 
   @@index([accountStatus], map: "users_account_status_idx")
   @@index([createdAt], map: "users_created_at_idx")
@@ -189,32 +309,38 @@ model Category {
 }
 
 model Listing {
-  id               String             @id @default(uuid()) @db.Uuid
-  sellerId         String             @map("seller_id") @db.Uuid
-  categoryId       String             @map("category_id") @db.Uuid
-  title            String             @db.VarChar(120)
-  description      String             @db.VarChar(2000)
-  priceMinor       Int                @map("price_minor")
-  currency         CurrencyCode       @default(PKR)
-  condition        ListingCondition
-  size             String             @db.VarChar(50)
-  brand            String?            @db.VarChar(80)
-  color            String?            @db.VarChar(50)
-  status           ListingStatus      @default(DRAFT)
-  rejectionReason  String?            @map("rejection_reason") @db.VarChar(500)
-  submittedAt      DateTime?          @map("submitted_at") @db.Timestamptz(3)
-  moderatedAt      DateTime?          @map("moderated_at") @db.Timestamptz(3)
-  activatedAt      DateTime?          @map("activated_at") @db.Timestamptz(3)
-  archivedAt       DateTime?          @map("archived_at") @db.Timestamptz(3)
-  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt        DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
-  seller           User               @relation("ListingSeller", fields: [sellerId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "listings_seller_id_fkey")
-  category         Category           @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "listings_category_id_fkey")
-  images           ListingImage[]
-  likes            ListingLike[]
-  saves            SavedListing[]
-  reports          ModerationReport[]
-  moderationAudits ModerationAudit[]
+  id                 String               @id @default(uuid()) @db.Uuid
+  sellerId           String               @map("seller_id") @db.Uuid
+  categoryId         String               @map("category_id") @db.Uuid
+  title              String               @db.VarChar(120)
+  description        String               @db.VarChar(2000)
+  priceMinor         Int                  @map("price_minor")
+  currency           CurrencyCode         @default(PKR)
+  condition          ListingCondition
+  size               String               @db.VarChar(50)
+  brand              String?              @db.VarChar(80)
+  color              String?              @db.VarChar(50)
+  status             ListingStatus        @default(DRAFT)
+  rejectionReason    String?              @map("rejection_reason") @db.VarChar(500)
+  submittedAt        DateTime?            @map("submitted_at") @db.Timestamptz(3)
+  moderatedAt        DateTime?            @map("moderated_at") @db.Timestamptz(3)
+  activatedAt        DateTime?            @map("activated_at") @db.Timestamptz(3)
+  archivedAt         DateTime?            @map("archived_at") @db.Timestamptz(3)
+  createdAt          DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+  seller             User                 @relation("ListingSeller", fields: [sellerId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "listings_seller_id_fkey")
+  category           Category             @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "listings_category_id_fkey")
+  images             ListingImage[]
+  likes              ListingLike[]
+  saves              SavedListing[]
+  reports            ModerationReport[]
+  moderationAudits   ModerationAudit[]
+  conversations      Conversation[]
+  orders             Order[]              @relation("OrderListing")
+  reservedOrderId    String?              @unique(map: "listings_reserved_order_id_key") @map("reserved_order_id") @db.Uuid
+  reservedByOrder    Order?               @relation("CurrentListingReservation", fields: [reservedOrderId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "listings_reserved_order_id_fkey")
+  notifications      Notification[]
+  notificationOutbox NotificationOutbox[]
 
   @@index([status, createdAt, id], map: "listings_status_created_id_idx")
   @@index([sellerId, status, updatedAt], map: "listings_seller_status_updated_idx")
@@ -326,4 +452,326 @@ model ModerationAudit {
   @@index([categoryId, createdAt], map: "moderation_audits_category_created_idx")
   @@index([reportId, createdAt], map: "moderation_audits_report_created_idx")
   @@map("moderation_audits")
+}
+
+model Conversation {
+  id                 String                   @id @default(uuid()) @db.Uuid
+  listingId          String                   @map("listing_id") @db.Uuid
+  sellerId           String                   @map("seller_id") @db.Uuid
+  buyerId            String                   @map("buyer_id") @db.Uuid
+  lastMessageAt      DateTime?                @map("last_message_at") @db.Timestamptz(3)
+  createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
+  listing            Listing                  @relation(fields: [listingId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "conversations_listing_id_fkey")
+  seller             User                     @relation("ConversationSeller", fields: [sellerId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "conversations_seller_id_fkey")
+  buyer              User                     @relation("ConversationBuyer", fields: [buyerId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "conversations_buyer_id_fkey")
+  messages           Message[]
+  flags              MessageModerationFlag[]
+  moderationAudits   MessageModerationAudit[]
+  orders             Order[]
+  notifications      Notification[]
+  notificationOutbox NotificationOutbox[]
+
+  @@unique([listingId, buyerId], map: "conversations_listing_id_buyer_id_key")
+  @@index([sellerId, lastMessageAt, id], map: "conversations_seller_last_message_idx")
+  @@index([buyerId, lastMessageAt, id], map: "conversations_buyer_last_message_idx")
+  @@map("conversations")
+}
+
+model Message {
+  id                 String                  @id @default(uuid()) @db.Uuid
+  conversationId     String                  @map("conversation_id") @db.Uuid
+  senderId           String                  @map("sender_id") @db.Uuid
+  body               String                  @db.VarChar(2000)
+  moderationState    MessageModerationState  @default(CLEAR) @map("moderation_state")
+  readAt             DateTime?               @map("read_at") @db.Timestamptz(3)
+  createdAt          DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
+  conversation       Conversation            @relation(fields: [conversationId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "messages_conversation_id_fkey")
+  sender             User                    @relation("MessageSender", fields: [senderId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "messages_sender_id_fkey")
+  flags              MessageModerationFlag[]
+  notificationOutbox NotificationOutbox[]
+
+  @@index([conversationId, createdAt, id], map: "messages_conversation_created_id_idx")
+  @@index([conversationId, readAt, createdAt], map: "messages_conversation_read_created_idx")
+  @@index([senderId, createdAt], map: "messages_sender_created_idx")
+  @@map("messages")
+}
+
+model MessageModerationFlag {
+  id             String                   @id @default(uuid()) @db.Uuid
+  messageId      String                   @map("message_id") @db.Uuid
+  conversationId String                   @map("conversation_id") @db.Uuid
+  category       MessageFlagCategory
+  detector       String                   @db.VarChar(64)
+  confidence     Int
+  blocked        Boolean
+  requiresReview Boolean                  @default(true) @map("requires_review")
+  status         MessageFlagStatus        @default(OPEN)
+  reviewerId     String?                  @map("reviewer_id") @db.Uuid
+  resolution     String?                  @db.VarChar(1000)
+  reviewedAt     DateTime?                @map("reviewed_at") @db.Timestamptz(3)
+  createdAt      DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
+  message        Message                  @relation(fields: [messageId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "message_moderation_flags_message_id_fkey")
+  conversation   Conversation             @relation(fields: [conversationId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "message_moderation_flags_conversation_id_fkey")
+  reviewer       User?                    @relation("MessageFlagReviewer", fields: [reviewerId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "message_moderation_flags_reviewer_id_fkey")
+  audits         MessageModerationAudit[]
+
+  @@index([status, createdAt, id], map: "message_moderation_flags_status_created_idx")
+  @@index([conversationId, createdAt], map: "message_moderation_flags_conversation_created_idx")
+  @@index([messageId], map: "message_moderation_flags_message_idx")
+  @@map("message_moderation_flags")
+}
+
+model MessageModerationAudit {
+  id             String                 @id @default(uuid()) @db.Uuid
+  actorId        String                 @map("actor_id") @db.Uuid
+  conversationId String                 @map("conversation_id") @db.Uuid
+  flagId         String?                @map("flag_id") @db.Uuid
+  action         String                 @db.VarChar(64)
+  reason         String?                @db.VarChar(1000)
+  createdAt      DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  actor          User                   @relation("MessageModerationActor", fields: [actorId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "message_moderation_audits_actor_id_fkey")
+  conversation   Conversation           @relation(fields: [conversationId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "message_moderation_audits_conversation_id_fkey")
+  flag           MessageModerationFlag? @relation(fields: [flagId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "message_moderation_audits_flag_id_fkey")
+
+  @@index([conversationId, createdAt], map: "message_moderation_audits_conversation_created_idx")
+  @@index([actorId, createdAt], map: "message_moderation_audits_actor_created_idx")
+  @@map("message_moderation_audits")
+}
+
+model Address {
+  id                   String   @id @default(uuid()) @db.Uuid
+  userId               String   @map("user_id") @db.Uuid
+  label                String   @db.VarChar(50)
+  recipientName        String   @map("recipient_name") @db.VarChar(120)
+  phone                String   @db.VarChar(32)
+  addressLine1         String   @map("address_line_1") @db.VarChar(180)
+  addressLine2         String?  @map("address_line_2") @db.VarChar(180)
+  city                 String   @db.VarChar(100)
+  region               String   @db.VarChar(100)
+  postalCode           String?  @map("postal_code") @db.VarChar(32)
+  countryCode          String   @map("country_code") @db.Char(2)
+  deliveryInstructions String?  @map("delivery_instructions") @db.VarChar(500)
+  isDefault            Boolean  @default(false) @map("is_default")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "addresses_user_id_fkey")
+
+  @@index([userId, createdAt], map: "addresses_user_created_idx")
+  @@map("addresses")
+}
+
+model Order {
+  id                   String               @id @default(uuid()) @db.Uuid
+  orderNumber          String               @unique(map: "orders_order_number_key") @map("order_number") @db.VarChar(32)
+  idempotencyKey       String               @map("idempotency_key") @db.Uuid
+  listingId            String               @map("listing_id") @db.Uuid
+  conversationId       String?              @map("conversation_id") @db.Uuid
+  buyerId              String               @map("buyer_id") @db.Uuid
+  sellerId             String               @map("seller_id") @db.Uuid
+  listingTitle         String               @map("listing_title") @db.VarChar(120)
+  listingImageKey      String?              @map("listing_image_key") @db.VarChar(255)
+  buyerUsername        String               @map("buyer_username") @db.VarChar(30)
+  sellerUsername       String               @map("seller_username") @db.VarChar(30)
+  priceMinor           Int                  @map("price_minor")
+  shippingMinor        Int                  @default(0) @map("shipping_minor")
+  totalMinor           Int                  @map("total_minor")
+  currency             CurrencyCode
+  paymentMethod        PaymentMethod        @map("payment_method")
+  status               OrderStatus          @default(PENDING)
+  recipientName        String               @map("recipient_name") @db.VarChar(120)
+  deliveryPhone        String               @map("delivery_phone") @db.VarChar(32)
+  addressLine1         String               @map("address_line_1") @db.VarChar(180)
+  addressLine2         String?              @map("address_line_2") @db.VarChar(180)
+  city                 String               @db.VarChar(100)
+  region               String               @db.VarChar(100)
+  postalCode           String?              @map("postal_code") @db.VarChar(32)
+  countryCode          String               @map("country_code") @db.Char(2)
+  deliveryInstructions String?              @map("delivery_instructions") @db.VarChar(500)
+  cancellationReason   String?              @map("cancellation_reason") @db.VarChar(500)
+  cancelledById        String?              @map("cancelled_by_id") @db.Uuid
+  confirmedAt          DateTime?            @map("confirmed_at") @db.Timestamptz(3)
+  shippedAt            DateTime?            @map("shipped_at") @db.Timestamptz(3)
+  deliveredAt          DateTime?            @map("delivered_at") @db.Timestamptz(3)
+  completedAt          DateTime?            @map("completed_at") @db.Timestamptz(3)
+  cancelledAt          DateTime?            @map("cancelled_at") @db.Timestamptz(3)
+  createdAt            DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+  listing              Listing              @relation("OrderListing", fields: [listingId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "orders_listing_id_fkey")
+  conversation         Conversation?        @relation(fields: [conversationId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "orders_conversation_id_fkey")
+  buyer                User                 @relation("OrderBuyer", fields: [buyerId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "orders_buyer_id_fkey")
+  seller               User                 @relation("OrderSeller", fields: [sellerId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "orders_seller_id_fkey")
+  cancelledBy          User?                @relation("OrderCancelledBy", fields: [cancelledById], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "orders_cancelled_by_id_fkey")
+  reservationFor       Listing?             @relation("CurrentListingReservation")
+  payment              Payment?
+  shipment             Shipment?
+  events               OrderEvent[]
+  notifications        Notification[]
+  notificationOutbox   NotificationOutbox[]
+
+  @@unique([buyerId, idempotencyKey], map: "orders_buyer_id_idempotency_key_key")
+  @@index([buyerId, createdAt, id], map: "orders_buyer_created_id_idx")
+  @@index([sellerId, createdAt, id], map: "orders_seller_created_id_idx")
+  @@index([listingId, status], map: "orders_listing_status_idx")
+  @@index([status, updatedAt], map: "orders_status_updated_idx")
+  @@map("orders")
+}
+
+model Payment {
+  id                String                 @id @default(uuid()) @db.Uuid
+  orderId           String                 @unique(map: "payments_order_id_key") @map("order_id") @db.Uuid
+  method            PaymentMethod
+  provider          PaymentProviderCode
+  providerReference String?                @map("provider_reference") @db.VarChar(255)
+  amountMinor       Int                    @map("amount_minor")
+  currency          CurrencyCode
+  status            PaymentStatus          @default(PENDING_COLLECTION)
+  failureCode       String?                @map("failure_code") @db.VarChar(64)
+  collectedAt       DateTime?              @map("collected_at") @db.Timestamptz(3)
+  createdAt         DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime               @updatedAt @map("updated_at") @db.Timestamptz(3)
+  order             Order                  @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "payments_order_id_fkey")
+  providerEvents    PaymentProviderEvent[]
+
+  @@index([status, updatedAt], map: "payments_status_updated_idx")
+  @@map("payments")
+}
+
+model PaymentProviderEvent {
+  id              String   @id @default(uuid()) @db.Uuid
+  paymentId       String   @map("payment_id") @db.Uuid
+  providerEventId String   @unique(map: "payment_provider_events_provider_event_id_key") @map("provider_event_id") @db.VarChar(255)
+  eventType       String   @map("event_type") @db.VarChar(80)
+  payloadHash     String   @map("payload_hash") @db.VarChar(64)
+  processedAt     DateTime @default(now()) @map("processed_at") @db.Timestamptz(3)
+  payment         Payment  @relation(fields: [paymentId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "payment_provider_events_payment_id_fkey")
+
+  @@index([paymentId, processedAt], map: "payment_provider_events_payment_processed_idx")
+  @@map("payment_provider_events")
+}
+
+model Shipment {
+  id                  String         @id @default(uuid()) @db.Uuid
+  orderId             String         @unique(map: "shipments_order_id_key") @map("order_id") @db.Uuid
+  providerDisplayName String         @map("provider_display_name") @db.VarChar(100)
+  trackingNumber      String?        @map("tracking_number") @db.VarChar(120)
+  trackingUrl         String?        @map("tracking_url") @db.VarChar(2048)
+  status              ShipmentStatus @default(PENDING)
+  shippedAt           DateTime?      @map("shipped_at") @db.Timestamptz(3)
+  deliveredAt         DateTime?      @map("delivered_at") @db.Timestamptz(3)
+  createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+  order               Order          @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "shipments_order_id_fkey")
+
+  @@index([status, updatedAt], map: "shipments_status_updated_idx")
+  @@map("shipments")
+}
+
+model OrderEvent {
+  id            String         @id @default(uuid()) @db.Uuid
+  orderId       String         @map("order_id") @db.Uuid
+  actorId       String?        @map("actor_id") @db.Uuid
+  actorType     OrderActorType @map("actor_type")
+  type          OrderEventType
+  previousState String?        @map("previous_state") @db.VarChar(32)
+  nextState     String?        @map("next_state") @db.VarChar(32)
+  reason        String?        @db.VarChar(500)
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  order         Order          @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "order_events_order_id_fkey")
+  actor         User?          @relation("OrderEventActor", fields: [actorId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "order_events_actor_id_fkey")
+
+  @@index([orderId, createdAt], map: "order_events_order_created_idx")
+  @@index([actorId, createdAt], map: "order_events_actor_created_idx")
+  @@map("order_events")
+}
+
+model Notification {
+  id             String           @id @default(uuid()) @db.Uuid
+  recipientId    String           @map("recipient_id") @db.Uuid
+  type           NotificationType
+  actorUserId    String?          @map("actor_user_id") @db.Uuid
+  listingId      String?          @map("listing_id") @db.Uuid
+  conversationId String?          @map("conversation_id") @db.Uuid
+  orderId        String?          @map("order_id") @db.Uuid
+  title          String           @db.VarChar(120)
+  body           String           @db.VarChar(240)
+  dedupeKey      String           @unique(map: "notifications_dedupe_key_key") @map("dedupe_key") @db.VarChar(255)
+  readAt         DateTime?        @map("read_at") @db.Timestamptz(3)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  recipient      User             @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notifications_recipient_id_fkey")
+  actor          User?            @relation("NotificationActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notifications_actor_user_id_fkey")
+  listing        Listing?         @relation(fields: [listingId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notifications_listing_id_fkey")
+  conversation   Conversation?    @relation(fields: [conversationId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notifications_conversation_id_fkey")
+  order          Order?           @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notifications_order_id_fkey")
+  pushDeliveries PushDelivery[]
+
+  @@index([recipientId, createdAt, id], map: "notifications_recipient_created_id_idx")
+  @@index([recipientId, readAt, createdAt], map: "notifications_recipient_read_created_idx")
+  @@map("notifications")
+}
+
+model PushDevice {
+  id            String         @id @default(uuid()) @db.Uuid
+  userId        String         @map("user_id") @db.Uuid
+  expoPushToken String         @unique(map: "push_devices_expo_push_token_key") @map("expo_push_token") @db.VarChar(255)
+  platform      PushPlatform
+  active        Boolean        @default(true)
+  lastSeenAt    DateTime       @default(now()) @map("last_seen_at") @db.Timestamptz(3)
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "push_devices_user_id_fkey")
+  deliveries    PushDelivery[]
+
+  @@index([userId, active, lastSeenAt], map: "push_devices_user_active_seen_idx")
+  @@map("push_devices")
+}
+
+model NotificationOutbox {
+  id             String                   @id @default(uuid()) @db.Uuid
+  recipientId    String                   @map("recipient_id") @db.Uuid
+  eventType      NotificationType         @map("event_type")
+  actorUserId    String?                  @map("actor_user_id") @db.Uuid
+  listingId      String?                  @map("listing_id") @db.Uuid
+  conversationId String?                  @map("conversation_id") @db.Uuid
+  orderId        String?                  @map("order_id") @db.Uuid
+  messageId      String?                  @map("message_id") @db.Uuid
+  dedupeKey      String                   @unique(map: "notification_outbox_dedupe_key_key") @map("dedupe_key") @db.VarChar(255)
+  status         NotificationOutboxStatus @default(PENDING)
+  attempts       Int                      @default(0)
+  availableAt    DateTime                 @default(now()) @map("available_at") @db.Timestamptz(3)
+  lockedAt       DateTime?                @map("locked_at") @db.Timestamptz(3)
+  lastErrorCode  String?                  @map("last_error_code") @db.VarChar(64)
+  processedAt    DateTime?                @map("processed_at") @db.Timestamptz(3)
+  createdAt      DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
+  recipient      User                     @relation("OutboxRecipient", fields: [recipientId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notification_outbox_recipient_id_fkey")
+  actor          User?                    @relation("OutboxActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notification_outbox_actor_user_id_fkey")
+  listing        Listing?                 @relation(fields: [listingId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notification_outbox_listing_id_fkey")
+  conversation   Conversation?            @relation(fields: [conversationId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notification_outbox_conversation_id_fkey")
+  order          Order?                   @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notification_outbox_order_id_fkey")
+  message        Message?                 @relation(fields: [messageId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "notification_outbox_message_id_fkey")
+
+  @@index([status, availableAt, createdAt], map: "notification_outbox_status_available_idx")
+  @@index([lockedAt], map: "notification_outbox_locked_idx")
+  @@map("notification_outbox")
+}
+
+model PushDelivery {
+  id             String             @id @default(uuid()) @db.Uuid
+  notificationId String             @map("notification_id") @db.Uuid
+  pushDeviceId   String             @map("push_device_id") @db.Uuid
+  status         PushDeliveryStatus @default(PENDING)
+  ticketId       String?            @unique(map: "push_deliveries_ticket_id_key") @map("ticket_id") @db.VarChar(255)
+  attempts       Int                @default(0)
+  nextReceiptAt  DateTime?          @map("next_receipt_at") @db.Timestamptz(3)
+  lastErrorCode  String?            @map("last_error_code") @db.VarChar(64)
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+  notification   Notification       @relation(fields: [notificationId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "push_deliveries_notification_id_fkey")
+  pushDevice     PushDevice         @relation(fields: [pushDeviceId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "push_deliveries_push_device_id_fkey")
+
+  @@unique([notificationId, pushDeviceId], map: "push_deliveries_notification_device_key")
+  @@index([status, nextReceiptAt], map: "push_deliveries_status_receipt_idx")
+  @@map("push_deliveries")
 }

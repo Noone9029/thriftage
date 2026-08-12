@@ -15,12 +15,19 @@ describe('loadApiConfig', () => {
 
   it('returns safe local defaults', () => {
     expect(loadApiConfig(requiredAuthEnvironment)).toEqual({
+      conversationMaxStartsPerDay: 25,
       corsOrigins: [],
+      expoPushEnabled: false,
       host: '0.0.0.0',
       logFormat: 'pretty',
       listingImageBucket: 'listing-images',
       listingImageSignedUrlTtlSeconds: 900,
+      messageMaxBlockedPerHour: 10,
+      messageMaxSendsPerMinute: 20,
       nodeEnv: 'development',
+      outboxBatchSize: 25,
+      outboxMaxAttempts: 10,
+      outboxPollIntervalMs: 1000,
       phoneVerificationAttemptTtlSeconds: 600,
       phoneVerificationMaxChecks: 5,
       phoneVerificationMaxSends: 5,
@@ -29,6 +36,8 @@ describe('loadApiConfig', () => {
       phoneVerificationStartWindowSeconds: 3600,
       port: 4000,
       profileImageBucket: 'profile-images',
+      pushReceiptDelaySeconds: 900,
+      realtimeBroadcastEnabled: false,
       supabasePublishableKey: 'sb_publishable_test-placeholder',
       supabaseSecretKey: 'sb_secret_test-placeholder',
       supabaseUrl: 'https://project-ref.supabase.co',

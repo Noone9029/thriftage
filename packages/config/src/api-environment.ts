@@ -4,7 +4,10 @@ import { z } from 'zod';
 const apiEnvironmentSchema = z.object({
   API_HOST: z.string().min(1).default('0.0.0.0'),
   API_PORT: z.coerce.number().int().min(1).max(65_535).default(4000),
+  CONVERSATION_MAX_STARTS_PER_DAY: z.coerce.number().int().min(1).max(100).default(25),
   CORS_ORIGINS: z.string().optional(),
+  EXPO_PUSH_ACCESS_TOKEN: z.string().trim().min(16).optional(),
+  EXPO_PUSH_ENABLED: z.enum(['true', 'false']).default('false'),
   LOG_FORMAT: z.enum(['json', 'pretty']).default('pretty'),
   LISTING_IMAGE_BUCKET: z
     .string()
@@ -12,7 +15,12 @@ const apiEnvironmentSchema = z.object({
     .regex(/^[a-z0-9][a-z0-9-]{1,62}$/)
     .default('listing-images'),
   LISTING_IMAGE_SIGNED_URL_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(900),
+  MESSAGE_MAX_BLOCKED_PER_HOUR: z.coerce.number().int().min(1).max(100).default(10),
+  MESSAGE_MAX_SENDS_PER_MINUTE: z.coerce.number().int().min(1).max(120).default(20),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  OUTBOX_BATCH_SIZE: z.coerce.number().int().min(1).max(100).default(25),
+  OUTBOX_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(25).default(10),
+  OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(250).max(60_000).default(1000),
   PHONE_VERIFICATION_ATTEMPT_TTL_SECONDS: z.coerce.number().int().min(60).max(600).default(600),
   PHONE_VERIFICATION_MAX_CHECKS: z.coerce.number().int().min(1).max(10).default(5),
   PHONE_VERIFICATION_MAX_SENDS: z.coerce.number().int().min(1).max(10).default(5),
@@ -29,6 +37,8 @@ const apiEnvironmentSchema = z.object({
     .trim()
     .regex(/^[a-z0-9][a-z0-9-]{1,62}$/)
     .default('profile-images'),
+  PUSH_RECEIPT_DELAY_SECONDS: z.coerce.number().int().min(60).max(3600).default(900),
+  REALTIME_BROADCAST_ENABLED: z.enum(['true', 'false']).default('false'),
   SUPABASE_PUBLISHABLE_KEY: z
     .string()
     .trim()
@@ -54,12 +64,20 @@ const apiEnvironmentSchema = z.object({
 });
 
 export interface ApiConfig {
+  readonly conversationMaxStartsPerDay: number;
   readonly corsOrigins: readonly string[];
+  readonly expoPushAccessToken?: string;
+  readonly expoPushEnabled: boolean;
   readonly host: string;
   readonly logFormat: 'json' | 'pretty';
   readonly listingImageBucket: string;
   readonly listingImageSignedUrlTtlSeconds: number;
+  readonly messageMaxBlockedPerHour: number;
+  readonly messageMaxSendsPerMinute: number;
   readonly nodeEnv: 'development' | 'test' | 'production';
+  readonly outboxBatchSize: number;
+  readonly outboxMaxAttempts: number;
+  readonly outboxPollIntervalMs: number;
   readonly phoneVerificationAttemptTtlSeconds: number;
   readonly phoneVerificationMaxChecks: number;
   readonly phoneVerificationMaxSends: number;
@@ -68,6 +86,8 @@ export interface ApiConfig {
   readonly phoneVerificationStartWindowSeconds: number;
   readonly port: number;
   readonly profileImageBucket: string;
+  readonly pushReceiptDelaySeconds: number;
+  readonly realtimeBroadcastEnabled: boolean;
   readonly supabasePublishableKey: string;
   readonly supabaseSecretKey: string;
   readonly supabaseUrl: string;
@@ -81,12 +101,22 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
   const parsed = apiEnvironmentSchema.parse(environment);
 
   return Object.freeze({
+    conversationMaxStartsPerDay: parsed.CONVERSATION_MAX_STARTS_PER_DAY,
     corsOrigins: parseCommaSeparatedList(parsed.CORS_ORIGINS),
+    ...(parsed.EXPO_PUSH_ACCESS_TOKEN === undefined
+      ? {}
+      : { expoPushAccessToken: parsed.EXPO_PUSH_ACCESS_TOKEN }),
+    expoPushEnabled: parsed.EXPO_PUSH_ENABLED === 'true',
     host: parsed.API_HOST,
     logFormat: parsed.LOG_FORMAT,
     listingImageBucket: parsed.LISTING_IMAGE_BUCKET,
     listingImageSignedUrlTtlSeconds: parsed.LISTING_IMAGE_SIGNED_URL_TTL_SECONDS,
+    messageMaxBlockedPerHour: parsed.MESSAGE_MAX_BLOCKED_PER_HOUR,
+    messageMaxSendsPerMinute: parsed.MESSAGE_MAX_SENDS_PER_MINUTE,
     nodeEnv: parsed.NODE_ENV,
+    outboxBatchSize: parsed.OUTBOX_BATCH_SIZE,
+    outboxMaxAttempts: parsed.OUTBOX_MAX_ATTEMPTS,
+    outboxPollIntervalMs: parsed.OUTBOX_POLL_INTERVAL_MS,
     phoneVerificationAttemptTtlSeconds: parsed.PHONE_VERIFICATION_ATTEMPT_TTL_SECONDS,
     phoneVerificationMaxChecks: parsed.PHONE_VERIFICATION_MAX_CHECKS,
     phoneVerificationMaxSends: parsed.PHONE_VERIFICATION_MAX_SENDS,
@@ -95,6 +125,8 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
     phoneVerificationStartWindowSeconds: parsed.PHONE_VERIFICATION_START_WINDOW_SECONDS,
     port: parsed.API_PORT,
     profileImageBucket: parsed.PROFILE_IMAGE_BUCKET,
+    pushReceiptDelaySeconds: parsed.PUSH_RECEIPT_DELAY_SECONDS,
+    realtimeBroadcastEnabled: parsed.REALTIME_BROADCAST_ENABLED === 'true',
     supabasePublishableKey: parsed.SUPABASE_PUBLISHABLE_KEY,
     supabaseSecretKey: parsed.SUPABASE_SECRET_KEY,
     supabaseUrl: parsed.SUPABASE_URL.replace(/\/$/, ''),

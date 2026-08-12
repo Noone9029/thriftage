@@ -167,7 +167,7 @@ export class ListingRepository {
       ...listingArgs,
       where: {
         id: listingId,
-        status: 'ACTIVE',
+        status: { in: ['ACTIVE', 'RESERVED', 'SOLD'] },
         seller: { accountStatus: 'ACTIVE', deletedAt: null },
       },
     });
