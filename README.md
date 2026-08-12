@@ -66,7 +66,7 @@ npm.cmd install --global pnpm@11.16.0
 
 The API health check is available at `http://localhost:4000/api/v1/health`; the admin app uses port 3000, and Expo selects its available development port.
 
-Set the backend Supabase, Twilio Verify, `PROFILE_IMAGE_BUCKET`, and `LISTING_IMAGE_BUCKET` variables from `apps/api/.env.example`. Routine token verification uses the publishable key; secure phone linking and controlled storage use a modern backend-only Supabase secret key. Twilio uses restricted API-key credentials. Protected requests use `Authorization: Bearer <access-token>`; see the [identity and onboarding architecture](./docs/architecture/identity-onboarding.md) and [marketplace discovery architecture](./docs/architecture/marketplace-discovery.md).
+Set the backend Supabase, Twilio Verify, storage, realtime, outbox, and Expo push variables from `apps/api/.env.example`. Routine token verification uses the publishable key; secure phone linking, controlled storage, and API-originated realtime use a backend-only Supabase secret key. Push and realtime remain disabled by default. Protected requests use `Authorization: Bearer <access-token>`; see the [identity and onboarding architecture](./docs/architecture/identity-onboarding.md), [marketplace discovery architecture](./docs/architecture/marketplace-discovery.md), and [trusted communication and commerce architecture](./docs/architecture/trusted-communication-commerce.md).
 
 Set `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_SUPABASE_URL`, and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in `apps/mobile/.env`. Configure `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in `apps/admin/.env.local`. Configure `thriftage://auth/callback` and `thriftage://auth/reset-password` as allowed redirects before testing confirmation or recovery links. No server secret belongs in an `EXPO_PUBLIC_*` or `NEXT_PUBLIC_*` variable.
 
@@ -109,6 +109,12 @@ For a disposable named `prisma dev` instance, set `ALLOW_PRISMA_DEV_TEST_DATABAS
 
 Run `pnpm db:seed:categories` after migrations to upsert the approved Clothing, Shoes, and Accessories taxonomy. Sellers create private drafts, upload 3–10 validated photos, and submit for review. Only an API-authorized ADMIN may approve, reject, remove, manage taxonomy, or resolve reports. See the [marketplace discovery architecture](./docs/architecture/marketplace-discovery.md) for storage policy, state transitions, ranking, local test data, and admin bootstrapping.
 
+## Communication and commerce
+
+Users can start persisted listing conversations, receive private realtime delivery hints, and see unread state. Deterministic contact-sharing protection blocks high-confidence phone, email, and WhatsApp patterns and routes protected evidence to the audited admin moderation workspace.
+
+Buy Now supports one unique listing per COD order. PostgreSQL row locking atomically reserves inventory; sellers confirm and ship; buyers confirm receipt; the system completes the order, records COD collection, and marks the listing sold. In-app notifications are durable, while Expo push is delivered through a retryable outbox when configured. See the [architecture](./docs/architecture/trusted-communication-commerce.md) and [security audit](./docs/architecture/trusted-commerce-security-audit.md).
+
 ## Scope boundary
 
-Change-phone, identity merging, messaging, orders, purchase actions, payments, shipping, reviews, seller verification documents, notification delivery, personalization, recommendations described as AI, and AI features are not implemented. Discovery's `RECOMMENDED` mode is explicitly deterministic. See [AGENTS.md](./AGENTS.md) for safety constraints and later phases.
+Change-phone, identity merging, digital payments, courier integrations, ratings/reviews, disputes, refunds, seller verification documents, escrow, wallets/payouts, personalization, recommendations described as AI, and AI features are not implemented. Discovery's `RECOMMENDED` mode is explicitly deterministic. See [AGENTS.md](./AGENTS.md) for safety constraints and later phases.
