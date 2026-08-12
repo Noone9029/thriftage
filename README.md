@@ -1,6 +1,6 @@
 # Thriftage
 
-Thriftage is a mobile-first peer-to-peer fashion marketplace. The repository contains the engineering foundation, complete identity/onboarding, and the trusted marketplace discovery layer: category taxonomy, moderated listings with private media, search and deterministic feeds, likes, saves, follows, seller profiles, reporting, and PostgreSQL-authorized admin operations.
+Thriftage is a mobile-first peer-to-peer fashion marketplace. The repository contains identity and onboarding, moderated discovery, protected messaging and COD commerce, and a transaction-backed trust layer covering reviews, reputation, blocking, disputes, seller account review, policy acceptance, and auditable operations.
 
 ## Repository layout
 
@@ -66,7 +66,7 @@ npm.cmd install --global pnpm@11.16.0
 
 The API health check is available at `http://localhost:4000/api/v1/health`; the admin app uses port 3000, and Expo selects its available development port.
 
-Set the backend Supabase, Twilio Verify, storage, realtime, outbox, and Expo push variables from `apps/api/.env.example`. Routine token verification uses the publishable key; secure phone linking, controlled storage, and API-originated realtime use a backend-only Supabase secret key. Push and realtime remain disabled by default. Protected requests use `Authorization: Bearer <access-token>`; see the [identity and onboarding architecture](./docs/architecture/identity-onboarding.md), [marketplace discovery architecture](./docs/architecture/marketplace-discovery.md), and [trusted communication and commerce architecture](./docs/architecture/trusted-communication-commerce.md).
+Set the backend Supabase, Twilio Verify, storage, trust-policy, dispute, support, realtime, outbox, and Expo push variables from `apps/api/.env.example`. Routine token verification uses the publishable key; secure phone linking, controlled storage, and API-originated realtime use a backend-only Supabase secret key. Push and realtime remain disabled by default. Protected requests use `Authorization: Bearer <access-token>`; see the [identity and onboarding architecture](./docs/architecture/identity-onboarding.md), [marketplace discovery architecture](./docs/architecture/marketplace-discovery.md), and [trusted communication and commerce architecture](./docs/architecture/trusted-communication-commerce.md).
 
 Set `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_SUPABASE_URL`, and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in `apps/mobile/.env`. Configure `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in `apps/admin/.env.local`. Configure `thriftage://auth/callback` and `thriftage://auth/reset-password` as allowed redirects before testing confirmation or recovery links. No server secret belongs in an `EXPO_PUBLIC_*` or `NEXT_PUBLIC_*` variable.
 
@@ -115,6 +115,12 @@ Users can start persisted listing conversations, receive private realtime delive
 
 Buy Now supports one unique listing per COD order. PostgreSQL row locking atomically reserves inventory; sellers confirm and ship; buyers confirm receipt; the system completes the order, records COD collection, and marks the listing sold. In-app notifications are durable, while Expo push is delivered through a retryable outbox when configured. See the [architecture](./docs/architecture/trusted-communication-commerce.md) and [security audit](./docs/architecture/trusted-commerce-security-audit.md).
 
+## Trust, reputation, and safety
+
+Completed buyers and sellers can leave one transaction-backed review each. Reputation aggregates exclude administratively invalidated reviews while preserving audit history. Blocking prevents new discovery/social/messaging interaction without erasing active orders or historical conversations. Eligible order problems use private evidence and an auditable dispute timeline. Seller verification is explicitly an account-review badge, not KYC or an authenticity guarantee.
+
+Create `DISPUTE_EVIDENCE_BUCKET` as a private Supabase bucket before enabling evidence uploads. Configure dispute windows, seller-verification thresholds, current policy URLs/content, and `SUPPORT_URL` from approved business/legal inputs. See the [trust architecture](./docs/architecture/trust-reputation-safety.md) and [operations runbook](./docs/operations/trust-safety-runbook.md).
+
 ## Scope boundary
 
-Change-phone, identity merging, digital payments, courier integrations, ratings/reviews, disputes, refunds, seller verification documents, escrow, wallets/payouts, personalization, recommendations described as AI, and AI features are not implemented. Discovery's `RECOMMENDED` mode is explicitly deterministic. See [AGENTS.md](./AGENTS.md) for safety constraints and later phases.
+Change-phone, identity merging, digital payments, courier integrations, automated refunds/chargebacks, KYC or seller identity documents, escrow, wallets/payouts, personalization, recommendations described as AI, and AI features are not implemented. Discovery's `RECOMMENDED` mode is explicitly deterministic. See [AGENTS.md](./AGENTS.md) for safety constraints and later phases.
