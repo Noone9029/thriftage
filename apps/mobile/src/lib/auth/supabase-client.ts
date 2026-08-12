@@ -11,15 +11,19 @@ import { createPhoneSignInRequest } from './supabase-phone-sign-in';
 export const EMAIL_CONFIRMATION_REDIRECT_URL = 'thriftage://auth/callback';
 export const PASSWORD_RECOVERY_REDIRECT_URL = 'thriftage://auth/reset-password';
 
-const supabaseClient = createClient(mobileConfig.supabaseUrl, mobileConfig.supabasePublishableKey, {
-  auth: {
-    autoRefreshToken: true,
-    detectSessionInUrl: false,
-    lock: processLock,
-    persistSession: true,
-    storage: authStorage,
+export const supabaseClient = createClient(
+  mobileConfig.supabaseUrl,
+  mobileConfig.supabasePublishableKey,
+  {
+    auth: {
+      autoRefreshToken: true,
+      detectSessionInUrl: false,
+      lock: processLock,
+      persistSession: true,
+      storage: authStorage,
+    },
   },
-});
+);
 
 function requireSession(session: Session | null): Session {
   if (session === null) {

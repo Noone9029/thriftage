@@ -73,6 +73,23 @@ export default function OwnProfileScreen() {
               <Stat label="Following" value={profile?.followingCount ?? 0} />
               <Stat label="Sales" value={profile?.completedSalesCount ?? 0} />
             </View>
+            <View style={styles.hub}>
+              <HubAction
+                icon="chat-bubble-outline"
+                label="Messages"
+                onPress={() => router.push('/messages')}
+              />
+              <HubAction
+                icon="local-shipping"
+                label="Orders & sales"
+                onPress={() => router.push('/orders')}
+              />
+              <HubAction
+                icon="notifications-none"
+                label="Notifications"
+                onPress={() => router.push('/notifications')}
+              />
+            </View>
             <Text style={styles.section}>Active wardrobe</Text>
           </View>
         }
@@ -83,6 +100,24 @@ export default function OwnProfileScreen() {
         renderItem={({ item }) => <ListingCard listing={item} />}
       />
     </SafeAreaView>
+  );
+}
+
+function HubAction({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: keyof typeof MaterialIcons.glyphMap;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable onPress={onPress} style={styles.hubAction}>
+      <MaterialIcons color={marketplaceColors.forest} name={icon} size={21} />
+      <Text style={styles.hubLabel}>{label}</Text>
+      <MaterialIcons color={marketplaceColors.muted} name="chevron-right" size={20} />
+    </Pressable>
   );
 }
 
@@ -118,6 +153,23 @@ const styles = StyleSheet.create({
   editText: { color: marketplaceColors.forest, fontSize: 12, fontWeight: '900' },
   header: { paddingBottom: 12, paddingHorizontal: 10, paddingTop: 18 },
   identity: { alignItems: 'center', flexDirection: 'row', marginTop: 24 },
+  hub: {
+    borderColor: marketplaceColors.border,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginTop: 16,
+    overflow: 'hidden',
+  },
+  hubAction: {
+    alignItems: 'center',
+    backgroundColor: marketplaceColors.paper,
+    borderBottomColor: marketplaceColors.border,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    padding: 14,
+  },
+  hubLabel: { color: marketplaceColors.text, flex: 1, fontWeight: '800' },
   name: { color: marketplaceColors.text, fontSize: 21, fontWeight: '900' },
   nameBlock: { flex: 1, marginLeft: 13 },
   safeArea: { backgroundColor: marketplaceColors.background, flex: 1 },

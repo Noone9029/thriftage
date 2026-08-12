@@ -29,6 +29,29 @@ import {
   type SocialActionResult,
   type UserReportInput,
   type UsernameAvailability,
+  addressInputSchema,
+  addressSchema,
+  conversationDetailSchema,
+  conversationPageSchema,
+  messagePageSchema,
+  messageSchema,
+  notificationPageSchema,
+  orderDetailSchema,
+  orderPageSchema,
+  pushDeviceSchema,
+  type Address,
+  type AddressInput,
+  type CheckoutInput,
+  type ConversationDetail,
+  type ConversationPage,
+  type Message,
+  type MessagePage,
+  type NotificationPage,
+  type OrderDetail,
+  type OrderPage,
+  type PushDevice,
+  type PushDeviceInput,
+  type ShipmentInput,
 } from '@thriftage/shared';
 
 import { decodeApiError, MobileApiError } from './mobile-api-error';
@@ -286,6 +309,90 @@ export class ThriftageApiClient {
     return moderationReportSchema.parse(
       await this.request('/reports/users', { body: input, method: 'POST' }),
     );
+  }
+
+  public async startConversation(listingId: string): Promise<ConversationDetail> {
+    return conversationDetailSchema.parse(
+      await this.request('/conversations', { body: { listingId }, method: 'POST' }),
+    );
+  }
+  public async getConversations(): Promise<ConversationPage> {
+    return conversationPageSchema.parse(await this.request('/conversations')) as ConversationPage;
+  }
+  public async getConversation(id: string): Promise<ConversationDetail> {
+    return conversationDetailSchema.parse(await this.request(`/conversations/${id}`));
+  }
+  public async getMessages(id: string, cursor?: string): Promise<MessagePage> {
+    return messagePageSchema.parse(
+      await this.request(`/conversations/${id}/messages${queryString({ cursor })}`),
+    );
+  }
+  public async sendMessage(id: string, body: string): Promise<Message> {
+    return messageSchema.parse(
+      await this.request(`/conversations/${id}/messages`, { body: { body }, method: 'POST' }),
+    );
+  }
+  public async markConversationRead(id: string): Promise<void> {
+    await this.request(`/conversations/${id}/read`, { method: 'PATCH' });
+  }
+  public async getAddresses(): Promise<readonly Address[]> {
+    return addressSchema.array().parse(await this.request('/addresses'));
+  }
+  public async createAddress(input: AddressInput): Promise<Address> {
+    return addressSchema.parse(
+      await this.request('/addresses', { body: addressInputSchema.parse(input), method: 'POST' }),
+    );
+  }
+  public async placeOrder(input: CheckoutInput): Promise<OrderDetail> {
+    return orderDetailSchema.parse(await this.request('/orders', { body: input, method: 'POST' }));
+  }
+  public async getPurchases(cursor?: string): Promise<OrderPage> {
+    return orderPageSchema.parse(await this.request(`/orders/purchases${queryString({ cursor })}`));
+  }
+  public async getSales(cursor?: string): Promise<OrderPage> {
+    return orderPageSchema.parse(await this.request(`/orders/sales${queryString({ cursor })}`));
+  }
+  public async getOrder(id: string): Promise<OrderDetail> {
+    return orderDetailSchema.parse(await this.request(`/orders/${id}`));
+  }
+  public async confirmOrder(id: string): Promise<OrderDetail> {
+    return orderDetailSchema.parse(
+      await this.request(`/orders/${id}/confirm`, { method: 'PATCH' }),
+    );
+  }
+  public async cancelOrder(
+    id: string,
+    role: 'buyer' | 'seller',
+    reason: string,
+  ): Promise<OrderDetail> {
+    return orderDetailSchema.parse(
+      await this.request(`/orders/${id}/cancel-${role}`, { body: { reason }, method: 'PATCH' }),
+    );
+  }
+  public async shipOrder(id: string, input: ShipmentInput): Promise<OrderDetail> {
+    return orderDetailSchema.parse(
+      await this.request(`/orders/${id}/shipment`, { body: input, method: 'POST' }),
+    );
+  }
+  public async confirmDelivery(id: string): Promise<OrderDetail> {
+    return orderDetailSchema.parse(
+      await this.request(`/orders/${id}/confirm-delivery`, { method: 'PATCH' }),
+    );
+  }
+  public async getNotifications(): Promise<NotificationPage> {
+    return notificationPageSchema.parse(await this.request('/notifications'));
+  }
+  public async markAllNotificationsRead(): Promise<void> {
+    await this.request('/notifications/read-all', { method: 'PATCH' });
+  }
+  public async registerPushDevice(input: PushDeviceInput): Promise<PushDevice> {
+    return pushDeviceSchema.parse(
+      await this.request('/push-devices', { body: input, method: 'POST' }),
+    );
+  }
+
+  public async deactivatePushDevice(deviceId: string): Promise<void> {
+    await this.request(`/push-devices/${deviceId}`, { method: 'DELETE' });
   }
 
   private async request(

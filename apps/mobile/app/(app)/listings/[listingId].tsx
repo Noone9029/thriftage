@@ -22,6 +22,7 @@ export default function ListingDetailScreen() {
   const [reporting, setReporting] = useState(false);
   const { state } = useAuth();
   const actions = useListingActions();
+  const [startingConversation, setStartingConversation] = useState(false);
   const query = useQuery({
     queryFn: () => thriftageApiClient.getListing(listingId),
     queryKey: ['marketplace', 'listing', listingId],
@@ -87,6 +88,11 @@ export default function ListingDetailScreen() {
           <Text style={styles.category}>{listing.category.name.toUpperCase()}</Text>
           <Text style={styles.title}>{listing.title}</Text>
           <Text style={styles.price}>{formatMoney(listing.priceMinor, listing.currency)}</Text>
+          {listing.status !== 'ACTIVE' ? (
+            <Text style={styles.unavailableBanner}>
+              {listing.status === 'SOLD' ? 'SOLD' : 'RESERVED — checkout unavailable'}
+            </Text>
+          ) : null}
           <Pressable
             onPress={() => router.push(`/sellers/${listing.seller.username}`)}
             style={styles.seller}
@@ -124,6 +130,29 @@ export default function ListingDetailScreen() {
           {reporting ? (
             <ReportPanel listingId={listing.id} onClose={() => setReporting(false)} />
           ) : null}
+          {!ownListing && listing.status === 'ACTIVE' ? (
+            <View style={styles.commerceActions}>
+              <Pressable
+                disabled={startingConversation}
+                onPress={() => {
+                  setStartingConversation(true);
+                  void thriftageApiClient
+                    .startConversation(listing.id)
+                    .then((conversation) => router.push(`/messages/${conversation.id}`))
+                    .finally(() => setStartingConversation(false));
+                }}
+                style={styles.messageButton}
+              >
+                <Text style={styles.messageButtonText}>Message seller</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => router.push(`/checkout/${listing.id}`)}
+                style={styles.buyButton}
+              >
+                <Text style={styles.buyButtonText}>Buy now</Text>
+              </Pressable>
+            </View>
+          ) : null}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -140,6 +169,24 @@ function Spec({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
+  buyButton: {
+    alignItems: 'center',
+    backgroundColor: marketplaceColors.accent,
+    borderRadius: 15,
+    flex: 1,
+    padding: 16,
+  },
+  buyButtonText: { color: '#fff', fontWeight: '900' },
+  commerceActions: { flexDirection: 'row', gap: 10, marginTop: 24 },
+  messageButton: {
+    alignItems: 'center',
+    borderColor: marketplaceColors.forest,
+    borderRadius: 15,
+    borderWidth: 1,
+    flex: 1,
+    padding: 16,
+  },
+  messageButtonText: { color: marketplaceColors.forest, fontWeight: '900' },
   avatar: { borderRadius: 24, height: 48, width: 48 },
   avatarPlaceholder: {
     alignItems: 'center',
@@ -229,4 +276,15 @@ const styles = StyleSheet.create({
     width: 44,
   },
   username: { color: marketplaceColors.forest, fontSize: 14, fontWeight: '900', marginTop: 3 },
+  unavailableBanner: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#E8E4DB',
+    borderRadius: 999,
+    color: marketplaceColors.muted,
+    fontSize: 11,
+    fontWeight: '900',
+    marginTop: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
 });

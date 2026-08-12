@@ -13,6 +13,15 @@ import {
   type ListingStatus,
   type ModerationReport,
   type ModerationReportStatus,
+  adminConversationDetailSchema,
+  messageFlagPageSchema,
+  messageFlagSchema,
+  orderDetailSchema,
+  orderPageSchema,
+  type AdminConversationDetail,
+  type MessageFlag,
+  type OrderDetail,
+  type OrderSummary,
 } from '@thriftage/shared';
 
 export class AdminApiError extends Error {
@@ -94,6 +103,33 @@ export class AdminApi {
         method: 'PATCH',
       }),
     );
+  }
+
+  public async listMessageFlags(): Promise<readonly MessageFlag[]> {
+    return messageFlagPageSchema.parse(await this.request('/admin/message-moderation/flags')).items;
+  }
+  public async getModeratedConversation(id: string): Promise<AdminConversationDetail> {
+    return adminConversationDetailSchema.parse(
+      await this.request(`/admin/message-moderation/conversations/${id}`),
+    );
+  }
+  public async reviewMessageFlag(
+    id: string,
+    status: 'ACTIONED' | 'DISMISSED',
+    resolution: string,
+  ): Promise<MessageFlag> {
+    return messageFlagSchema.parse(
+      await this.request(`/admin/message-moderation/flags/${id}`, {
+        body: { resolution, status },
+        method: 'PATCH',
+      }),
+    );
+  }
+  public async listOrders(): Promise<readonly OrderSummary[]> {
+    return orderPageSchema.parse(await this.request('/admin/orders')).items;
+  }
+  public async getOrder(id: string): Promise<OrderDetail> {
+    return orderDetailSchema.parse(await this.request(`/admin/orders/${id}`));
   }
 
   private async request(path: string, options: RequestOptions = {}): Promise<unknown> {

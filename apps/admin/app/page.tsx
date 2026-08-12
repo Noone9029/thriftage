@@ -6,6 +6,10 @@ import type {
   Category,
   ListingStatus,
   ModerationReport,
+  AdminConversationDetail,
+  MessageFlag,
+  OrderDetail,
+  OrderSummary,
 } from '@thriftage/shared';
 import type { Session } from '@supabase/supabase-js';
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
@@ -13,7 +17,7 @@ import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react
 import { createAdminApi } from '../lib/admin-api';
 import { getSupabaseBrowserClient } from '../lib/supabase';
 
-type Workspace = 'CATEGORIES' | 'LISTINGS' | 'REPORTS';
+type Workspace = 'CATEGORIES' | 'LISTINGS' | 'REPORTS' | 'MESSAGES' | 'ORDERS';
 type AccessState = 'CHECKING' | 'DENIED' | 'SIGNED_OUT' | 'AUTHORIZED';
 
 export default function AdminHome() {
@@ -100,7 +104,7 @@ export default function AdminHome() {
       </header>
       <div className="mx-auto grid max-w-7xl gap-6 px-6 py-8 lg:grid-cols-[220px_1fr]">
         <nav className="space-y-2">
-          {(['LISTINGS', 'REPORTS', 'CATEGORIES'] as const).map((item) => (
+          {(['LISTINGS', 'MESSAGES', 'ORDERS', 'REPORTS', 'CATEGORIES'] as const).map((item) => (
             <button
               className={`w-full rounded-xl px-4 py-3 text-left text-sm font-bold ${workspace === item ? 'bg-[#123f33] text-white' : 'bg-white text-black/65 hover:bg-white/70'}`}
               key={item}
@@ -114,6 +118,8 @@ export default function AdminHome() {
           {workspace === 'LISTINGS' ? <ListingWorkspace api={api} /> : null}
           {workspace === 'REPORTS' ? <ReportWorkspace api={api} /> : null}
           {workspace === 'CATEGORIES' ? <CategoryWorkspace api={api} /> : null}
+          {workspace === 'MESSAGES' ? <MessageModerationWorkspace api={api} /> : null}
+          {workspace === 'ORDERS' ? <OrderWorkspace api={api} /> : null}
         </section>
       </div>
     </main>
@@ -384,6 +390,192 @@ function ReportWorkspace({ api }: { readonly api: ReturnType<typeof createAdminA
           </article>
         ))}
       </div>
+    </WorkspaceCard>
+  );
+}
+
+function MessageModerationWorkspace({ api }: { readonly api: ReturnType<typeof createAdminApi> }) {
+  const [flags, setFlags] = useState<readonly MessageFlag[]>([]);
+  const [detail, setDetail] = useState<AdminConversationDetail | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const load = useCallback(
+    () =>
+      api
+        .listMessageFlags()
+        .then(setFlags)
+        .catch((caught: unknown) =>
+          setError(caught instanceof Error ? caught.message : 'Could not load message flags.'),
+        ),
+    [api],
+  );
+  useEffect(() => void load(), [load]);
+  const review = async (flag: MessageFlag, status: 'ACTIONED' | 'DISMISSED') => {
+    const resolution = window.prompt('Document the moderation decision:')?.trim() ?? '';
+    if (resolution === '') return;
+    try {
+      await api.reviewMessageFlag(flag.id, status, resolution);
+      await load();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Review failed.');
+    }
+  };
+  return (
+    <WorkspaceCard
+      title="Flagged conversations"
+      subtitle="Purpose-limited review of deterministic contact-sharing flags. Every conversation read is audited."
+    >
+      {error !== null ? <ErrorBanner message={error} /> : null}
+      <div className="space-y-3">
+        {flags.map((flag) => (
+          <article className="rounded-2xl border border-black/10 bg-white p-5" key={flag.id}>
+            <div className="flex justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold text-[#d66b45]">
+                  {flag.category.replaceAll('_', ' ')} · {flag.blocked ? 'BLOCKED' : 'FLAGGED'} ·{' '}
+                  {flag.confidence}%
+                </p>
+                <p className="mt-2 text-sm text-black/60">
+                  Status: {flag.status} · Detector: {flag.detector}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <ActionButton
+                  label="Inspect context"
+                  onClick={() =>
+                    void api
+                      .getModeratedConversation(flag.conversationId)
+                      .then(setDetail)
+                      .catch((caught: unknown) =>
+                        setError(caught instanceof Error ? caught.message : 'Inspection failed.'),
+                      )
+                  }
+                />
+                <ActionButton label="Actioned" onClick={() => void review(flag, 'ACTIONED')} />
+                <ActionButton
+                  danger
+                  label="Dismiss"
+                  onClick={() => void review(flag, 'DISMISSED')}
+                />
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+      {detail !== null ? (
+        <div className="mt-6 rounded-2xl bg-[#f8f5ee] p-5">
+          <div className="flex justify-between">
+            <h3 className="font-bold">
+              Conversation context · {detail.conversation.listing.title}
+            </h3>
+            <button onClick={() => setDetail(null)}>Close</button>
+          </div>
+          <div className="mt-4 space-y-2">
+            {detail.messages.map((message) => (
+              <div className="rounded-xl bg-white p-3 text-sm" key={message.id}>
+                <span className="font-bold">
+                  {message.senderId === detail.conversation.buyer.id ? 'Buyer' : 'Seller'}:
+                </span>{' '}
+                {message.body}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </WorkspaceCard>
+  );
+}
+
+function OrderWorkspace({ api }: { readonly api: ReturnType<typeof createAdminApi> }) {
+  const [orders, setOrders] = useState<readonly OrderSummary[]>([]);
+  const [detail, setDetail] = useState<OrderDetail | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    void api
+      .listOrders()
+      .then(setOrders)
+      .catch((caught: unknown) =>
+        setError(caught instanceof Error ? caught.message : 'Could not load orders.'),
+      );
+  }, [api]);
+  return (
+    <WorkspaceCard
+      title="Order operations"
+      subtitle="Inspect transaction snapshots and immutable lifecycle history. State changes remain participant-owned domain actions."
+    >
+      {error !== null ? <ErrorBanner message={error} /> : null}
+      <div className="overflow-x-auto rounded-2xl border border-black/10 bg-white">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-stone-100 text-xs text-black/50">
+            <tr>
+              <th className="p-3">Order</th>
+              <th className="p-3">Listing</th>
+              <th className="p-3">Buyer / Seller</th>
+              <th className="p-3">Status</th>
+              <th className="p-3">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {orders.map((order) => (
+              <tr
+                className="cursor-pointer border-t border-black/10 hover:bg-stone-50"
+                key={order.id}
+                onClick={() => void api.getOrder(order.id).then(setDetail)}
+              >
+                <td className="p-3 font-bold">{order.orderNumber}</td>
+                <td className="p-3">{order.listingTitle}</td>
+                <td className="p-3">
+                  @{order.buyer.username} / @{order.seller.username}
+                </td>
+                <td className="p-3 font-bold text-[#d66b45]">{order.status}</td>
+                <td className="p-3">
+                  {order.currency} {(order.totalMinor / 100).toLocaleString()}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {detail !== null ? (
+        <div className="mt-6 rounded-2xl bg-[#f8f5ee] p-5">
+          <div className="flex justify-between">
+            <div>
+              <p className="text-xs font-bold text-[#d66b45]">
+                {detail.status} · {detail.payment.status}
+              </p>
+              <h3 className="mt-2 text-xl font-bold">{detail.orderNumber}</h3>
+            </div>
+            <button onClick={() => setDetail(null)}>Close</button>
+          </div>
+          <div className="mt-4 grid gap-3 text-sm md:grid-cols-2">
+            <p>
+              <b>Item:</b> {detail.listingTitle}
+            </p>
+            <p>
+              <b>Shipment:</b> {detail.shipment?.providerDisplayName ?? 'Not shipped'}
+            </p>
+            <p>
+              <b>Buyer:</b> @{detail.buyer.username}
+            </p>
+            <p>
+              <b>Seller:</b> @{detail.seller.username}
+            </p>
+            <p>
+              <b>Cancellation:</b> {detail.cancellationReason ?? 'None'}
+            </p>
+            <p>
+              <b>Destination:</b> {detail.address.city}, {detail.address.countryCode}
+            </p>
+          </div>
+          <h4 className="mt-5 font-bold">History</h4>
+          <ul className="mt-2 space-y-1 text-xs text-black/60">
+            {detail.events.map((event) => (
+              <li key={event.id}>
+                {new Date(event.createdAt).toLocaleString()} · {event.type} · {event.actorType}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </WorkspaceCard>
   );
 }

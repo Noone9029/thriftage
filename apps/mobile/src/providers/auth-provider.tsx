@@ -23,6 +23,7 @@ import {
 import { AppState, Platform } from 'react-native';
 
 import { mobileAuthController, thriftageApiClient } from '../lib/auth/auth-composition';
+import { deactivateCurrentPushDevice } from '../lib/notifications/push-registration';
 import { getMobileAuthErrorMessage } from '../lib/auth/auth-error-message';
 import { registerAuthStateListener } from '../lib/auth/auth-state-listener';
 import { parseAuthCallbackUrl } from '../lib/auth/deep-link';
@@ -147,7 +148,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
       resendPhoneLogin: () => mobileAuthController.resendPhoneLogin(),
       resendRequiredPhone: () => mobileAuthController.resendRequiredPhone(),
       signIn: (input) => mobileAuthController.signIn(input),
-      signOut: () => mobileAuthController.signOut(),
+      signOut: async () => {
+        await deactivateCurrentPushDevice().catch(() => undefined);
+        await mobileAuthController.signOut();
+      },
       signUp: (input) => mobileAuthController.signUp(input),
       startPhoneLogin: (input) => mobileAuthController.startPhoneLogin(input),
       startPhoneVerification: (phone) => mobileAuthController.startPhoneVerification(phone),
