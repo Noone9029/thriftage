@@ -13,7 +13,7 @@ export interface TwilioVerifyClient {
   ): Promise<{ readonly sid?: string | null; readonly status: string }>;
 }
 
-const rateLimitCodes = new Set([60203, 60207, 60624, 60626]);
+const rateLimitCodes = new Set([60202, 60203, 60207, 60624, 60626]);
 const expiredCodes = new Set([20404, 60623]);
 
 function numericProperty(error: unknown, property: 'code' | 'status'): number | null {

@@ -188,6 +188,22 @@ describe.sequential('PhoneLinkingService PostgreSQL integration', () => {
     ).resolves.toBe(1);
   });
 
+  it('does not send a stale start after the account gains a verified phone', async () => {
+    const user = await createUser();
+    await prisma.user.update({
+      data: { phone: '+14155552671', phoneVerified: true },
+      where: { id: user.id },
+    });
+
+    await expect(service.start(user, { phone: '+923001234567' })).rejects.toMatchObject({
+      code: 'PHONE_IDENTITY_CONFLICT',
+    });
+    expect(verificationProvider.sent).toHaveLength(0);
+    await expect(
+      prisma.phoneVerificationAttempt.count({ where: { userId: user.id } }),
+    ).resolves.toBe(0);
+  });
+
   it('blocks a phone already owned by another application user', async () => {
     await createUser({ phone: '+923001234567', phoneVerified: true });
     const requester = await createUser();
@@ -407,6 +423,7 @@ describe.sequential('PhoneLinkingService PostgreSQL integration', () => {
     await expect(prisma.user.findUnique({ where: { id: user.id } })).resolves.toMatchObject({
       phoneVerified: false,
     });
+    expect(verificationProvider.checked).toHaveLength(0);
     expect(authAdminProvider.updates).toHaveLength(0);
   });
 

@@ -99,7 +99,10 @@ export class PhoneVerificationRepository implements PhoneVerificationRepositoryC
   ): Promise<PhoneVerificationAttempt> {
     return this.client.$transaction(async (transaction) => {
       await lockUser(transaction, input.userId);
-      await requireActiveUser(transaction, input.userId);
+      const currentUser = await requireActiveUser(transaction, input.userId);
+      if (currentUser.phoneVerified) {
+        throw domainError('PHONE_IDENTITY_CONFLICT');
+      }
       const owner = await transaction.user.findUnique({ where: { phone: input.phone } });
       if (owner !== null && owner.id !== input.userId) {
         throw domainError('PHONE_ALREADY_IN_USE');
@@ -177,6 +180,8 @@ export class PhoneVerificationRepository implements PhoneVerificationRepositoryC
 
   public async reserveResend(input: ReserveAttemptInput): Promise<PhoneVerificationAttempt> {
     return this.client.$transaction(async (transaction) => {
+      await lockUser(transaction, input.userId);
+      await requireActiveUser(transaction, input.userId);
       await lockAttempt(transaction, input.attemptId);
       const attempt = await transaction.phoneVerificationAttempt.findFirst({
         where: { id: input.attemptId, userId: input.userId },
@@ -200,6 +205,8 @@ export class PhoneVerificationRepository implements PhoneVerificationRepositoryC
 
   public async reserveCheck(input: ReserveAttemptInput): Promise<PhoneVerificationAttempt> {
     return this.client.$transaction(async (transaction) => {
+      await lockUser(transaction, input.userId);
+      await requireActiveUser(transaction, input.userId);
       await lockAttempt(transaction, input.attemptId);
       const attempt = await transaction.phoneVerificationAttempt.findFirst({
         where: { id: input.attemptId, userId: input.userId },

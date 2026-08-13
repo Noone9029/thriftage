@@ -46,7 +46,7 @@ PENDING -> PROVIDER_VERIFIED -> LINKED
 PENDING -> EXPIRED | CANCELLED | FAILED
 ```
 
-User-row locks serialize starts and final database synchronization. The existing unique `User.phone` constraint is the final concurrent-ownership boundary. Persisted policy defaults are five starts/hour, a 60-second resend cooldown, five sends, five checks, and a ten-minute attempt lifetime. Provider-side fraud/rate controls remain required.
+User-row locks serialize starts, resend/check reservations, and final database synchronization. Each locked reservation rechecks the current application account state, so a stale request cannot continue after suspension, deactivation, or first-phone linking. The existing unique `User.phone` constraint is the final concurrent-ownership boundary. Persisted policy defaults are five starts/hour, a 60-second resend cooldown, five sends, five checks, and a ten-minute attempt lifetime. Provider-side fraud/rate controls remain required.
 
 ## Distributed consistency and retries
 

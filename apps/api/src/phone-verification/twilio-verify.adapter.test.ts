@@ -36,6 +36,7 @@ describe('TwilioVerifyAdapter', () => {
   });
 
   it.each([
+    [{ code: 60202 }, 'RATE_LIMITED'],
     [{ code: 60203 }, 'RATE_LIMITED'],
     [{ status: 429 }, 'RATE_LIMITED'],
     [{ code: 60623 }, 'EXPIRED'],
