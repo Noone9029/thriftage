@@ -11,6 +11,7 @@ import { ListingPresenter } from './listing.presenter';
 import { ListingRepository } from './listing.repository';
 import { ListingService } from './listing.service';
 import { TrustModule } from '../trust/trust.module';
+import { PersonalizationModule } from '../personalization/personalization.module';
 
 @Module({
   controllers: [ListingImageController, PublicListingController, SellerListingController],
@@ -21,7 +22,7 @@ import { TrustModule } from '../trust/trust.module';
     ListingService,
     ListingImageProcessor,
   ],
-  imports: [AuthModule, TrustModule],
+  imports: [AuthModule, PersonalizationModule, TrustModule],
   providers: [
     ListingImageProcessor,
     ListingImageService,

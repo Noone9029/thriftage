@@ -24,6 +24,10 @@ export const listingArgs = {
     category: true,
     images: { orderBy: { position: 'asc' as const } },
     seller: { include: { profile: true } },
+    styles: {
+      include: { styleDefinition: true },
+      orderBy: { styleDefinition: { sortOrder: 'asc' as const } },
+    },
   },
 } as const satisfies Prisma.ListingDefaultArgs;
 
@@ -79,6 +83,9 @@ export class ListingRepository {
       where: { id: input.categoryId, isActive: true },
     });
     if (category === null) throw new MarketplaceDomainError('CATEGORY_UNAVAILABLE');
+    if (input.personalization !== undefined) {
+      await this.assertActiveStyles(this.client, input.personalization.styleDefinitionIds);
+    }
     return this.client.listing.create({
       ...listingArgs,
       data: {
@@ -92,6 +99,20 @@ export class ListingRepository {
         sellerId: userId,
         size: input.size,
         title: input.title,
+        ...(input.personalization === undefined
+          ? {}
+          : {
+              colorFamily: input.personalization.colorFamily,
+              fitType: input.personalization.fitType,
+              garmentRole: input.personalization.garmentRole,
+              sizeCompatibilityKey: input.personalization.sizeCompatibilityKey.toUpperCase(),
+              sizeSystem: input.personalization.sizeSystem,
+              styles: {
+                create: input.personalization.styleDefinitionIds.map((styleDefinitionId) => ({
+                  styleDefinitionId,
+                })),
+              },
+            }),
       },
     });
   }
@@ -112,6 +133,9 @@ export class ListingRepository {
         });
         if (category === null) throw new MarketplaceDomainError('CATEGORY_UNAVAILABLE');
       }
+      if (input.personalization !== undefined) {
+        await this.assertActiveStyles(transaction, input.personalization.styleDefinitionIds);
+      }
       return transaction.listing.update({
         ...listingArgs,
         data: {
@@ -124,6 +148,21 @@ export class ListingRepository {
           ...(input.priceMinor === undefined ? {} : { priceMinor: input.priceMinor }),
           ...(input.size === undefined ? {} : { size: input.size }),
           ...(input.title === undefined ? {} : { title: input.title }),
+          ...(input.personalization === undefined
+            ? {}
+            : {
+                colorFamily: input.personalization.colorFamily,
+                fitType: input.personalization.fitType,
+                garmentRole: input.personalization.garmentRole,
+                sizeCompatibilityKey: input.personalization.sizeCompatibilityKey.toUpperCase(),
+                sizeSystem: input.personalization.sizeSystem,
+                styles: {
+                  create: input.personalization.styleDefinitionIds.map((styleDefinitionId) => ({
+                    styleDefinitionId,
+                  })),
+                  deleteMany: {},
+                },
+              }),
         },
         where: { id: listingId },
       });
@@ -148,14 +187,32 @@ export class ListingRepository {
       if (!editableStatuses.includes(listing.status)) {
         throw new MarketplaceDomainError('LISTING_TRANSITION_INVALID');
       }
-      const [imageCount, category] = await Promise.all([
+      const [imageCount, category, styleCount] = await Promise.all([
         transaction.listingImage.count({ where: { listingId } }),
         transaction.category.findFirst({ where: { id: listing.categoryId, isActive: true } }),
+        transaction.listingStyle.count({ where: { listingId } }),
       ]);
       if (imageCount < 3 || imageCount > 10) {
         throw new MarketplaceDomainError('LISTING_REQUIRES_IMAGES');
       }
       if (category === null) throw new MarketplaceDomainError('CATEGORY_UNAVAILABLE');
+      const metadata = await transaction.listing.findUnique({
+        select: {
+          colorFamily: true,
+          fitType: true,
+          garmentRole: true,
+          sizeCompatibilityKey: true,
+          sizeSystem: true,
+        },
+        where: { id: listingId },
+      });
+      if (
+        styleCount === 0 ||
+        metadata === null ||
+        Object.values(metadata).some((value) => value === null)
+      ) {
+        throw new MarketplaceDomainError('VALIDATION_FAILED');
+      }
       return transaction.listing.update({
         data: { rejectionReason: null, status: 'PENDING_REVIEW', submittedAt: new Date() },
         ...listingArgs,
@@ -218,6 +275,13 @@ export class ListingRepository {
     const where: Prisma.ListingWhereInput = {
       ...(categoryIds === undefined ? {} : { categoryId: { in: [...categoryIds] } }),
       ...(query.condition === undefined ? {} : { condition: query.condition }),
+      ...(query.colorFamily === undefined ? {} : { colorFamily: query.colorFamily }),
+      ...(query.fitType === undefined ? {} : { fitType: query.fitType }),
+      ...(query.garmentRole === undefined ? {} : { garmentRole: query.garmentRole }),
+      ...(query.sizeSystem === undefined ? {} : { sizeSystem: query.sizeSystem }),
+      ...(query.styleDefinitionIds === undefined || query.styleDefinitionIds.length === 0
+        ? {}
+        : { styles: { some: { styleDefinitionId: { in: query.styleDefinitionIds } } } }),
       ...(query.currency === undefined ? {} : { currency: query.currency }),
       ...(query.minPriceMinor === undefined && query.maxPriceMinor === undefined
         ? {}
@@ -425,6 +489,16 @@ export class ListingRepository {
     return listing;
   }
 
+  private async assertActiveStyles(
+    transaction: Prisma.TransactionClient | PrismaClient,
+    ids: readonly string[],
+  ): Promise<void> {
+    const count = await transaction.styleDefinition.count({
+      where: { id: { in: [...ids] }, isActive: true },
+    });
+    if (count !== ids.length) throw new MarketplaceDomainError('VALIDATION_FAILED');
+  }
+
   private async findDescendantIds(categoryId: string): Promise<readonly string[]> {
     const categories = await this.client.category.findMany({
       select: { id: true, parentId: true },
@@ -457,6 +531,7 @@ export class ListingRepository {
       case 'PRICE_HIGH':
         return [{ priceMinor: 'desc' }, { id: 'desc' }];
       case 'NEWEST':
+      case 'PERSONALIZED':
         return [{ createdAt: 'desc' }, { id: 'desc' }];
     }
   }

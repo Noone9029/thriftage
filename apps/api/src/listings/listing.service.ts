@@ -32,13 +32,14 @@ import {
   type ListingRecord,
   type SearchCursor,
 } from './listing.repository';
+import { PersonalizationService } from '../personalization/personalization.service';
 
 const searchCursorSchema = z.strictObject({
   createdAt: z.string().datetime({ offset: true }),
   id: z.string().uuid(),
   kind: z.literal('SEARCH'),
   priceMinor: z.number().int().positive().optional(),
-  sort: z.enum(['NEWEST', 'OLDEST', 'PRICE_LOW', 'PRICE_HIGH']),
+  sort: z.enum(['NEWEST', 'OLDEST', 'PRICE_LOW', 'PRICE_HIGH', 'PERSONALIZED']),
 });
 
 const chronologicalCursorSchema = z.strictObject({
@@ -58,6 +59,7 @@ export class ListingService {
     @Inject(MARKETPLACE_EVENT_PUBLISHER) private readonly events: MarketplaceEventPublisher,
     @Inject(PolicyService) private readonly policies: PolicyService,
     @Inject(SafetyService) private readonly safety: SafetyService,
+    @Inject(PersonalizationService) private readonly personalization: PersonalizationService,
   ) {}
 
   public async create(userId: string, input: ListingDraftInput): Promise<ListingDetail> {
@@ -155,7 +157,35 @@ export class ListingService {
         listingId,
         name: 'listing_viewed',
       });
-      return this.presentOne(record, viewerId);
+      const match =
+        viewerId === undefined
+          ? null
+          : await this.personalization.matchForListing(viewerId, listingId);
+      if (viewerId !== undefined) {
+        void this.personalization
+          .recordEvent(viewerId, { listingId, source: 'LISTING_DETAIL', type: 'VIEW' })
+          .catch(() =>
+            this.logger.warn(`Recommendation view event was not recorded: listingId=${listingId}`),
+          );
+      }
+      const state = await this.repository.getViewerState(viewerId, [record.id]);
+      const [presented] = await this.presenter.presentMany(
+        [record],
+        state,
+        match === null ? new Map() : new Map([[listingId, match]]),
+      );
+      if (presented === undefined) throw new MarketplaceDomainError('MARKETPLACE_SERVICE_ERROR');
+      return presented;
+    } catch (error: unknown) {
+      throw mapMarketplaceError(error);
+    }
+  }
+
+  public async similar(listingId: string, viewerId?: string): Promise<ListingPage> {
+    try {
+      const ids = await this.personalization.similarListingIds(viewerId, listingId, 12);
+      const records = await this.repository.findByIds(ids);
+      return this.presentPage(records, false, viewerId, this.encodeChronologicalCursor);
     } catch (error: unknown) {
       throw mapMarketplaceError(error);
     }
@@ -168,6 +198,39 @@ export class ListingService {
       const excludedSellerIds =
         viewerId === undefined ? [] : await this.safety.blockedCounterpartIds(viewerId);
       const result = await this.repository.search(query, cursor, excludedSellerIds);
+      if (query.sort === 'PERSONALIZED' && viewerId !== undefined) {
+        const ranked = await this.personalization.rankForYou(viewerId, new Date());
+        const rankIndex = new Map(ranked.ranked.map((item, index) => [item.id, index]));
+        const matches = new Map(
+          ranked.ranked
+            .filter(({ match }) => match.contributions.length > 0)
+            .map(({ id, match }) => [id, match]),
+        );
+        const displayRecords = [...result.records].sort(
+          (left, right) =>
+            (rankIndex.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
+              (rankIndex.get(right.id) ?? Number.MAX_SAFE_INTEGER) ||
+            left.id.localeCompare(right.id),
+        );
+        const state = await this.repository.getViewerState(
+          viewerId,
+          displayRecords.map(({ id }) => id),
+        );
+        const items = await this.presenter.presentMany(displayRecords, state, matches);
+        const cursorRecord = result.records.at(-1);
+        return {
+          items,
+          nextCursor:
+            result.hasMore && cursorRecord !== undefined
+              ? encodeCursor({
+                  createdAt: cursorRecord.createdAt.toISOString(),
+                  id: cursorRecord.id,
+                  kind: 'SEARCH',
+                  sort: query.sort,
+                })
+              : null,
+        };
+      }
       return this.presentPage(result.records, result.hasMore, viewerId, (last) =>
         encodeCursor({
           createdAt: last.createdAt.toISOString(),

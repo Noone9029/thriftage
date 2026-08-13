@@ -18,6 +18,7 @@ import { TrustModule } from './trust/trust.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { SellerVerificationModule } from './seller-verification/seller-verification.module';
 import { DisputesModule } from './disputes/disputes.module';
+import { PersonalizationModule } from './personalization/personalization.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { DisputesModule } from './disputes/disputes.module';
     ModerationModule,
     NotificationsModule,
     PhoneVerificationModule,
+    PersonalizationModule,
     ProfilesModule,
     SocialModule,
     ReviewsModule,

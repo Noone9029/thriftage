@@ -243,14 +243,32 @@ export class ModerationRepository {
         throw new ModerationTransitionError('VALIDATION_FAILED');
       }
       if (action === 'APPROVE') {
-        const [imageCount, category] = await Promise.all([
+        const [imageCount, category, styleCount, metadata] = await Promise.all([
           transaction.listingImage.count({ where: { listingId } }),
           transaction.category.findFirst({ where: { id: listing.categoryId, isActive: true } }),
+          transaction.listingStyle.count({ where: { listingId } }),
+          transaction.listing.findUnique({
+            select: {
+              colorFamily: true,
+              fitType: true,
+              garmentRole: true,
+              sizeCompatibilityKey: true,
+              sizeSystem: true,
+            },
+            where: { id: listingId },
+          }),
         ]);
         if (imageCount < 3 || imageCount > 10) {
           throw new MarketplaceDomainError('LISTING_REQUIRES_IMAGES');
         }
         if (category === null) throw new MarketplaceDomainError('CATEGORY_UNAVAILABLE');
+        if (
+          styleCount === 0 ||
+          metadata === null ||
+          Object.values(metadata).some((value) => value === null)
+        ) {
+          throw new ModerationTransitionError('VALIDATION_FAILED');
+        }
       }
       const nextStatus =
         action === 'APPROVE' ? 'ACTIVE' : action === 'REJECT' ? 'REJECTED' : 'REMOVED';

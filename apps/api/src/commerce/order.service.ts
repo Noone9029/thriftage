@@ -24,6 +24,7 @@ import {
 import { OrderPresenter } from './order.presenter';
 import { OrderRepository } from './order.repository';
 import { SafetyService } from '../trust/safety.service';
+import { PersonalizationService } from '../personalization/personalization.service';
 
 const orderCursorSchema = z.strictObject({
   createdAt: z.string().datetime({ offset: true }),
@@ -46,6 +47,7 @@ export class OrderService {
     @Inject(OrderPresenter) private readonly presenter: OrderPresenter,
     @Inject(MARKETPLACE_EVENT_PUBLISHER) private readonly events: MarketplaceEventPublisher,
     @Inject(SafetyService) private readonly safety: SafetyService,
+    @Inject(PersonalizationService) private readonly personalization: PersonalizationService,
   ) {}
 
   private async requireParticipant(userId: string, orderId: string): Promise<OrderDetail> {
@@ -72,6 +74,13 @@ export class OrderService {
         orderId: order.id,
       });
       this.events.publish({ actorId: userId, name: 'payment_started', orderId: order.id });
+      void this.personalization
+        .recordEvent(userId, {
+          listingId: order.listingId,
+          source: 'LISTING_DETAIL',
+          type: 'PURCHASE',
+        })
+        .catch(() => undefined);
       return order;
     } catch (error) {
       throw mapCommerceError(error);

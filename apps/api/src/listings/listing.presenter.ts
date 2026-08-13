@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { listingDetailSchema, type ListingDetail } from '@thriftage/shared';
+import { listingDetailSchema, type ListingDetail, type ListingMatch } from '@thriftage/shared';
 
 import {
   LISTING_IMAGE_STORAGE,
@@ -18,6 +18,7 @@ export class ListingPresenter {
   public async presentMany(
     records: readonly ListingRecord[],
     viewerState: ViewerListingState,
+    matches: ReadonlyMap<string, ListingMatch> = new Map(),
   ): Promise<ListingDetail[]> {
     const keys = records.flatMap(({ images }) => images.map(({ storageKey }) => storageKey));
     const urls = await this.storage.createSignedUrls(keys);
@@ -72,6 +73,30 @@ export class ListingPresenter {
         submittedAt: record.submittedAt?.toISOString() ?? null,
         title: record.title,
         updatedAt: record.updatedAt.toISOString(),
+        personalization:
+          record.colorFamily === null ||
+          record.fitType === null ||
+          record.garmentRole === null ||
+          record.sizeCompatibilityKey === null ||
+          record.sizeSystem === null ||
+          record.styles.length === 0
+            ? null
+            : {
+                colorFamily: record.colorFamily,
+                fitType: record.fitType,
+                garmentRole: record.garmentRole,
+                sizeCompatibilityKey: record.sizeCompatibilityKey,
+                sizeSystem: record.sizeSystem,
+                styles: record.styles.map(({ styleDefinition }) => ({
+                  description: styleDefinition.description,
+                  displayName: styleDefinition.displayName,
+                  id: styleDefinition.id,
+                  isActive: styleDefinition.isActive,
+                  slug: styleDefinition.slug,
+                  sortOrder: styleDefinition.sortOrder,
+                })),
+              },
+        match: matches.get(record.id) ?? null,
       }),
     );
   }

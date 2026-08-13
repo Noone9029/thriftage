@@ -5,10 +5,11 @@ import { ListingsModule } from '../listings/listings.module';
 import { DiscoveryController } from './discovery.controller';
 import { DiscoveryRepository } from './discovery.repository';
 import { DiscoveryService } from './discovery.service';
+import { PersonalizationModule } from '../personalization/personalization.module';
 
 @Module({
   controllers: [DiscoveryController],
-  imports: [AuthModule, ListingsModule],
+  imports: [AuthModule, ListingsModule, PersonalizationModule],
   providers: [
     { provide: DiscoveryRepository, useFactory: () => new DiscoveryRepository() },
     DiscoveryService,

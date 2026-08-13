@@ -57,6 +57,15 @@ export class PublicListingController {
   ): Promise<ListingDetail> {
     return this.listings.getPublic(listingId, viewer?.id);
   }
+
+  @Get(':listingId/similar')
+  @UseGuards(OptionalAuthenticationGuard)
+  public similar(
+    @OptionalCurrentUser() viewer: User | undefined,
+    @Param('listingId', listingIdPipe) listingId: string,
+  ): Promise<ListingPage> {
+    return this.listings.similar(listingId, viewer?.id);
+  }
 }
 
 @Controller('seller/listings')

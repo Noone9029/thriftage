@@ -70,6 +70,11 @@ const listingService = new ListingService(
   events,
   policy as never,
   safety as never,
+  {
+    matchForListing: () => Promise.resolve(null),
+    recordEvent: () => Promise.resolve({ accepted: true }),
+    similarListingIds: () => Promise.resolve([]),
+  } as never,
 );
 const moderation = new ModerationRepository(prisma);
 const social = new SocialRepository(prisma);
@@ -115,7 +120,32 @@ const draftInput = (categoryId: string, title = 'Vintage denim overshirt') => ({
   priceMinor: 275_000,
   size: 'M',
   title,
+  personalization: {
+    colorFamily: 'BLUE' as const,
+    fitType: 'RELAXED' as const,
+    garmentRole: 'TOP' as const,
+    sizeCompatibilityKey: 'M',
+    sizeSystem: 'ALPHA' as const,
+    styleDefinitionIds: ['f0000000-0000-4000-8000-000000000003'],
+  },
 });
+
+const directListingInput = (categoryId: string, title?: string) => {
+  const { personalization, ...input } = draftInput(categoryId, title);
+  return {
+    ...input,
+    colorFamily: personalization.colorFamily,
+    fitType: personalization.fitType,
+    garmentRole: personalization.garmentRole,
+    sizeCompatibilityKey: personalization.sizeCompatibilityKey,
+    sizeSystem: personalization.sizeSystem,
+    styles: {
+      create: personalization.styleDefinitionIds.map((styleDefinitionId) => ({
+        styleDefinitionId,
+      })),
+    },
+  };
+};
 
 async function addImages(sellerId: string, listingId: string, count: number): Promise<void> {
   for (let index = 0; index < count; index += 1) {
@@ -179,7 +209,7 @@ describe.sequential('marketplace integration', () => {
     const buyer = await user('social_viewer');
     const selectedCategory = await category();
     const listing = await prisma.listing.create({
-      data: { ...draftInput(selectedCategory.id), sellerId: seller.id, status: 'ACTIVE' },
+      data: { ...directListingInput(selectedCategory.id), sellerId: seller.id, status: 'ACTIVE' },
     });
     await expect(social.setLike(buyer.id, listing.id, true)).resolves.toMatchObject({ count: 1 });
     await expect(social.setLike(buyer.id, listing.id, true)).resolves.toMatchObject({ count: 1 });
@@ -193,7 +223,11 @@ describe.sequential('marketplace integration', () => {
     const selectedCategory = await category();
     for (const title of ['Vintage coat alpha', 'Vintage coat beta', 'Vintage coat gamma']) {
       await prisma.listing.create({
-        data: { ...draftInput(selectedCategory.id, title), sellerId: seller.id, status: 'ACTIVE' },
+        data: {
+          ...directListingInput(selectedCategory.id, title),
+          sellerId: seller.id,
+          status: 'ACTIVE',
+        },
       });
     }
     const first = await listingService.search({ limit: 2, q: 'coat', sort: 'NEWEST' });
@@ -217,14 +251,14 @@ describe.sequential('marketplace integration', () => {
     await prisma.follow.create({ data: { followedId: followedSeller.id, followerId: viewer.id } });
     const followedListing = await prisma.listing.create({
       data: {
-        ...draftInput(selectedCategory.id, 'Followed seller piece'),
+        ...directListingInput(selectedCategory.id, 'Followed seller piece'),
         sellerId: followedSeller.id,
         status: 'ACTIVE',
       },
     });
     await prisma.listing.create({
       data: {
-        ...draftInput(selectedCategory.id, 'Other seller piece'),
+        ...directListingInput(selectedCategory.id, 'Other seller piece'),
         sellerId: otherSeller.id,
         status: 'ACTIVE',
       },
@@ -239,7 +273,7 @@ describe.sequential('marketplace integration', () => {
     const admin = await user('safety_admin', 'ADMIN');
     const selectedCategory = await category();
     const listing = await prisma.listing.create({
-      data: { ...draftInput(selectedCategory.id), sellerId: seller.id, status: 'ACTIVE' },
+      data: { ...directListingInput(selectedCategory.id), sellerId: seller.id, status: 'ACTIVE' },
     });
     const report = await moderation.createListingReport(reporter.id, {
       listingId: listing.id,

@@ -24,6 +24,7 @@ import { SocialRepository, type SavedCursor } from './social.repository';
 import { PolicyService } from '../trust/policy.service';
 import { SafetyService } from '../trust/safety.service';
 import { ReputationReader } from '../trust/reputation.reader';
+import { PersonalizationService } from '../personalization/personalization.service';
 
 const savedCursorSchema = z.strictObject({
   kind: z.literal('SAVED'),
@@ -42,6 +43,7 @@ export class SocialService {
     @Inject(PolicyService) private readonly policies: PolicyService,
     @Inject(SafetyService) private readonly safety: SafetyService,
     @Inject(ReputationReader) private readonly reputation: ReputationReader,
+    @Inject(PersonalizationService) private readonly personalization: PersonalizationService,
   ) {}
 
   public setLike(userId: string, listingId: string, active: boolean): Promise<SocialActionResult> {
@@ -154,6 +156,13 @@ export class SocialService {
           listingId,
           name: type === 'LIKE' ? 'item_liked' : 'item_saved',
         });
+        void this.personalization
+          .recordEvent(userId, {
+            listingId,
+            source: 'LISTING_DETAIL',
+            type,
+          })
+          .catch(() => undefined);
       }
       return socialActionResultSchema.parse(result);
     } catch (error: unknown) {

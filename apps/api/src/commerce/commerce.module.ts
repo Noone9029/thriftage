@@ -13,11 +13,12 @@ import { OrderRepository } from './order.repository';
 import { OrderService } from './order.service';
 import { PAYMENT_PROVIDER } from './payment-provider.interface';
 import { TrustModule } from '../trust/trust.module';
+import { PersonalizationModule } from '../personalization/personalization.module';
 
 @Module({
   controllers: [AddressController, AdminOrderController, OrderController],
   exports: [OrderRepository, OrderService],
-  imports: [AuthModule, ListingsModule, TrustModule],
+  imports: [AuthModule, ListingsModule, PersonalizationModule, TrustModule],
   providers: [
     { provide: AddressRepository, useFactory: () => new AddressRepository() },
     AddressService,
