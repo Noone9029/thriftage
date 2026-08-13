@@ -1,7 +1,7 @@
 import * as Crypto from 'expo-crypto';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -18,6 +18,12 @@ export default function CheckoutScreen() {
     queryFn: () => thriftageApiClient.getListing(listingId),
     queryKey: ['marketplace', 'listing', listingId],
   });
+  useEffect(() => {
+    if (listingId !== '')
+      void thriftageApiClient
+        .recordRecommendationEvent({ listingId, source: 'LISTING_DETAIL', type: 'CHECKOUT' })
+        .catch(() => undefined);
+  }, [listingId]);
   const addresses = useQuery({
     queryFn: () => thriftageApiClient.getAddresses(),
     queryKey: ['addresses'],

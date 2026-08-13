@@ -80,6 +80,16 @@ import {
   type SellerVerificationEligibility,
   type UserBlock,
   userBlockSchema,
+  privacyStatusSchema,
+  recommendationEventInputSchema,
+  recommendationFeedbackSchema,
+  styleDefinitionSchema,
+  styleProfileInputSchema,
+  styleProfileSchema,
+  type RecommendationEventInput,
+  type StyleDefinition,
+  type StyleProfile,
+  type StyleProfileInput,
 } from '@thriftage/shared';
 
 import { decodeApiError, MobileApiError } from './mobile-api-error';
@@ -212,6 +222,54 @@ export class ThriftageApiClient {
     );
   }
 
+  public async getStyles(): Promise<readonly StyleDefinition[]> {
+    return styleDefinitionSchema
+      .array()
+      .parse(await this.request('/styles', { authenticated: false }));
+  }
+
+  public async getStyleProfile(): Promise<StyleProfile> {
+    return styleProfileSchema.parse(await this.request('/me/style-profile'));
+  }
+
+  public async saveStyleProfile(input: StyleProfileInput, complete = false): Promise<StyleProfile> {
+    return styleProfileSchema.parse(
+      await this.request(complete ? '/me/style-profile/complete' : '/me/style-profile', {
+        body: (complete ? styleProfileInputSchema : styleProfileInputSchema).parse(input),
+        method: complete ? 'POST' : 'PUT',
+      }),
+    );
+  }
+
+  public async resetStyleProfile(): Promise<StyleProfile> {
+    return styleProfileSchema.parse(await this.request('/me/style-profile', { method: 'DELETE' }));
+  }
+
+  public async getPersonalizationPrivacy() {
+    return privacyStatusSchema.parse(await this.request('/me/personalization/privacy'));
+  }
+
+  public async resetLearnedSignals(): Promise<{ behavioralResetAt: string }> {
+    return (await this.request('/me/personalization/learned-signals', { method: 'DELETE' })) as {
+      behavioralResetAt: string;
+    };
+  }
+
+  public async setNotInterested(listingId: string, hidden: boolean) {
+    return recommendationFeedbackSchema.parse(
+      await this.request(`/listings/${listingId}/not-interested`, {
+        method: hidden ? 'PUT' : 'DELETE',
+      }),
+    );
+  }
+
+  public async recordRecommendationEvent(input: RecommendationEventInput): Promise<void> {
+    await this.request('/me/personalization/events', {
+      body: recommendationEventInputSchema.parse(input),
+      method: 'POST',
+    });
+  }
+
   public async searchListings(query: Partial<ListingSearchQuery>): Promise<ListingPage> {
     return listingPageSchema.parse(
       await this.request(
@@ -226,6 +284,11 @@ export class ThriftageApiClient {
           q: query.q,
           size: query.size,
           sort: query.sort,
+          colorFamily: query.colorFamily,
+          fitType: query.fitType,
+          garmentRole: query.garmentRole,
+          sizeSystem: query.sizeSystem,
+          styleDefinitionIds: query.styleDefinitionIds?.join(','),
         })}`,
       ),
     );
@@ -233,6 +296,10 @@ export class ThriftageApiClient {
 
   public async getListing(listingId: string): Promise<ListingDetail> {
     return listingDetailSchema.parse(await this.request(`/listings/${listingId}`));
+  }
+
+  public async getSimilarListings(listingId: string): Promise<ListingPage> {
+    return listingPageSchema.parse(await this.request(`/listings/${listingId}/similar`));
   }
 
   public async getMyListings(cursor?: string, status?: string): Promise<ListingPage> {

@@ -21,7 +21,7 @@ Only the API receives the backend secret key. It verifies declared type, decodes
 
 ## Search and discovery
 
-Search is PostgreSQL-native and isolated behind the listing repository. It filters approved `ACTIVE` inventory by category descendants, size, price range, currency, and condition; sorts by time or minor-unit price; and uses validated opaque keyset cursors. Trigram indexes support title, description, and brand matching without an external search service.
+Search is PostgreSQL-native and isolated behind the listing repository. It filters approved `ACTIVE` inventory by category descendants, size, price range, currency, condition, normalized color, fit, garment role, size system, and style; sorts by time or minor-unit price; and uses validated opaque keyset cursors. Trigram indexes support title, description, and brand matching without an external search service.
 
 Feed cursors freeze an `asOf` timestamp. `NEW` sorts by creation time. `TRENDING` uses the documented integer score:
 
@@ -29,7 +29,7 @@ Feed cursors freeze an `asOf` timestamp. `NEW` sorts by creation time. `TRENDING
 30 × unique likes + 40 × unique saves + max(0, 720 − age in hours)
 ```
 
-`RECOMMENDED` adds 1000 points for followed sellers. Unique database relationships limit repeat engagement, and the system does not claim this deterministic ranking is AI.
+For authenticated users, `RECOMMENDED` delegates to the versioned deterministic personalization engine. It combines explicit preferences, decayed marketplace behavior, followed sellers, freshness, trust, engagement, diversity, and controlled deterministic exploration after eligibility and safety filtering. Anonymous discovery retains the baseline deterministic feed. See [Style Intelligence and Personalized Discovery](./style-intelligence-personalized-discovery.md) for formulas and cursor behavior. The system does not claim this rule-based ranking is AI.
 
 ## Social and safety rules
 
@@ -41,6 +41,7 @@ After applying migrations, run:
 
 ```powershell
 pnpm.cmd db:seed:categories
+pnpm.cmd db:seed:styles
 ```
 
 The seed is idempotent and contains taxonomy only. Create users and listings through normal application flows. Automated tests generate synthetic users and inventory in a dedicated `TEST_DATABASE_URL` and clean them afterward. Never copy production users, private images, reports, or credentials into local/test databases.

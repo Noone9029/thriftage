@@ -47,6 +47,8 @@ export default function ProtectedAppLayout() {
       <Stack.Screen name="blocked-users" />
       <Stack.Screen name="seller-verification" />
       <Stack.Screen name="safety" />
+      <Stack.Screen name="style-profile" />
+      <Stack.Screen name="personalization-settings" />
     </Stack>
   );
 }

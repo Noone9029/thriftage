@@ -1,5 +1,17 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import type { ListingCondition, ListingDetail, ListingDraftInput } from '@thriftage/shared';
+import {
+  colorFamilyValues,
+  fitTypeValues,
+  garmentRoleValues,
+  sizeSystemValues,
+  type ColorFamily,
+  type FitType,
+  type GarmentRole,
+  type ListingCondition,
+  type ListingDetail,
+  type ListingDraftInput,
+  type SizeSystem,
+} from '@thriftage/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { useMemo, useState } from 'react';
@@ -27,10 +39,28 @@ export function ListingEditorForm({ listing, onCreated, onDeleted }: ListingEdit
   const [color, setColor] = useState(listing?.color ?? '');
   const [condition, setCondition] = useState<ListingCondition>(listing?.condition ?? 'GOOD');
   const [categoryId, setCategoryId] = useState(listing?.category.id ?? '');
+  const [colorFamily, setColorFamily] = useState<ColorFamily>(
+    listing?.personalization?.colorFamily ?? 'BLACK',
+  );
+  const [fitType, setFitType] = useState<FitType>(listing?.personalization?.fitType ?? 'REGULAR');
+  const [garmentRole, setGarmentRole] = useState<GarmentRole>(
+    listing?.personalization?.garmentRole ?? 'TOP',
+  );
+  const [sizeSystem, setSizeSystem] = useState<SizeSystem>(
+    listing?.personalization?.sizeSystem ?? 'ALPHA',
+  );
+  const [styleDefinitionIds, setStyleDefinitionIds] = useState<string[]>(
+    listing?.personalization?.styles.map(({ id }) => id) ?? [],
+  );
   const [error, setError] = useState<string | null>(null);
   const categories = useQuery({
     queryFn: () => thriftageApiClient.getCategories(),
     queryKey: ['marketplace', 'categories'],
+  });
+  const stylesQuery = useQuery({
+    queryFn: () => thriftageApiClient.getStyles(),
+    queryKey: ['personalization', 'styles'],
+    staleTime: 300_000,
   });
   const categoryOptions = useMemo(
     () => (categories.data ?? []).flatMap((parent) => [parent, ...parent.children]),
@@ -55,6 +85,14 @@ export function ListingEditorForm({ listing, onCreated, onDeleted }: ListingEdit
         priceMinor: Math.round(parsedPrice * 100),
         size,
         title,
+        personalization: {
+          colorFamily,
+          fitType,
+          garmentRole,
+          sizeCompatibilityKey: size.trim().toUpperCase(),
+          sizeSystem,
+          styleDefinitionIds,
+        },
       };
       return listing === undefined
         ? thriftageApiClient.createListing(input)
@@ -178,6 +216,69 @@ export function ListingEditorForm({ listing, onCreated, onDeleted }: ListingEdit
           />
         ))}
       </View>
+      <Text style={styles.label}>Style tags (choose 1–5)</Text>
+      <View style={styles.wrap}>
+        {(stylesQuery.data ?? []).map((item) => (
+          <Choice
+            active={styleDefinitionIds.includes(item.id)}
+            key={item.id}
+            label={item.displayName}
+            onPress={() =>
+              setStyleDefinitionIds((current) =>
+                current.includes(item.id)
+                  ? current.filter((id) => id !== item.id)
+                  : current.length < 5
+                    ? [...current, item.id]
+                    : current,
+              )
+            }
+          />
+        ))}
+      </View>
+      <Text style={styles.label}>Normalized color family</Text>
+      <View style={styles.wrap}>
+        {colorFamilyValues.map((item) => (
+          <Choice
+            active={colorFamily === item}
+            key={item}
+            label={item}
+            onPress={() => setColorFamily(item)}
+          />
+        ))}
+      </View>
+      <Text style={styles.label}>Fit</Text>
+      <View style={styles.wrap}>
+        {fitTypeValues.map((item) => (
+          <Choice
+            active={fitType === item}
+            key={item}
+            label={item.replaceAll('_', ' ')}
+            onPress={() => setFitType(item)}
+          />
+        ))}
+      </View>
+      <Text style={styles.label}>Garment role</Text>
+      <View style={styles.wrap}>
+        {garmentRoleValues.map((item) => (
+          <Choice
+            active={garmentRole === item}
+            key={item}
+            label={item}
+            onPress={() => setGarmentRole(item)}
+          />
+        ))}
+      </View>
+      <Text style={styles.label}>Size system</Text>
+      <View style={styles.wrap}>
+        {sizeSystemValues.map((item) => (
+          <Choice
+            active={sizeSystem === item}
+            key={item}
+            label={item.replaceAll('_', ' ')}
+            onPress={() => setSizeSystem(item)}
+          />
+        ))}
+      </View>
       {listing !== undefined ? (
         <>
           <View style={styles.sectionHeading}>
@@ -238,9 +339,21 @@ export function ListingEditorForm({ listing, onCreated, onDeleted }: ListingEdit
       {error !== null ? <Text style={styles.error}>{error}</Text> : null}
       {editable ? (
         <Pressable
-          disabled={save.isPending || categoryId === ''}
+          disabled={
+            save.isPending ||
+            categoryId === '' ||
+            styleDefinitionIds.length === 0 ||
+            size.trim() === ''
+          }
           onPress={() => save.mutate()}
-          style={[styles.primary, (save.isPending || categoryId === '') && styles.disabled]}
+          style={[
+            styles.primary,
+            (save.isPending ||
+              categoryId === '' ||
+              styleDefinitionIds.length === 0 ||
+              size.trim() === '') &&
+              styles.disabled,
+          ]}
         >
           <Text style={styles.primaryText}>
             {listing === undefined ? 'Create draft' : 'Save changes'}

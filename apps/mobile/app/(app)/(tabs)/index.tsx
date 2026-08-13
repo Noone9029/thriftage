@@ -1,5 +1,12 @@
 import type { FeedMode, ListingDetail, ListingPage } from '@thriftage/shared';
-import { type InfiniteData, useInfiniteQuery } from '@tanstack/react-query';
+import {
+  type InfiniteData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
+import { router } from 'expo-router';
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -18,7 +25,21 @@ const modes: readonly { readonly label: string; readonly value: FeedMode }[] = [
 
 export default function DiscoveryScreen() {
   const [mode, setMode] = useState<FeedMode>('NEW');
+  const [hiddenListing, setHiddenListing] = useState<ListingDetail | null>(null);
+  const queryClient = useQueryClient();
   const actions = useListingActions();
+  const styleProfile = useQuery({
+    queryFn: () => thriftageApiClient.getStyleProfile(),
+    queryKey: ['personalization', 'profile'],
+  });
+  const feedback = useMutation({
+    mutationFn: ({ hidden, listingId }: { hidden: boolean; listingId: string }) =>
+      thriftageApiClient.setNotInterested(listingId, hidden),
+    onSuccess: async (_result, variables) => {
+      if (!variables.hidden) setHiddenListing(null);
+      await queryClient.invalidateQueries({ queryKey: ['marketplace', 'feed', 'RECOMMENDED'] });
+    },
+  });
   const feed = useInfiniteQuery<
     ListingPage,
     Error,
@@ -77,6 +98,33 @@ export default function DiscoveryScreen() {
                 </Pressable>
               ))}
             </View>
+            {mode === 'RECOMMENDED' && styleProfile.data?.quizStatus !== 'COMPLETED' ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.push('/style-profile')}
+                style={styles.profilePrompt}
+              >
+                <View style={styles.promptText}>
+                  <Text style={styles.promptTitle}>Make For You truly yours</Text>
+                  <Text style={styles.promptBody}>
+                    Complete your private style profile for stronger matches and explanations.
+                  </Text>
+                </View>
+                <Text style={styles.promptAction}>Start</Text>
+              </Pressable>
+            ) : null}
+            {hiddenListing !== null ? (
+              <View style={styles.undo}>
+                <Text numberOfLines={1} style={styles.undoText}>
+                  Hidden “{hiddenListing.title}”
+                </Text>
+                <Pressable
+                  onPress={() => feedback.mutate({ hidden: false, listingId: hiddenListing.id })}
+                >
+                  <Text style={styles.undoAction}>Undo</Text>
+                </Pressable>
+              </View>
+            ) : null}
           </View>
         }
         contentContainerStyle={styles.content}
@@ -100,6 +148,14 @@ export default function DiscoveryScreen() {
             listing={item}
             onLike={(listing) => actions.like.mutate(listing)}
             onSave={(listing) => actions.save.mutate(listing)}
+            {...(mode === 'RECOMMENDED'
+              ? {
+                  onNotInterested: (listing: ListingDetail) => {
+                    setHiddenListing(listing);
+                    feedback.mutate({ hidden: true, listingId: listing.id });
+                  },
+                }
+              : {})}
           />
         )}
       />
@@ -125,6 +181,28 @@ const styles = StyleSheet.create({
   modeRow: { flexDirection: 'row', gap: 6, marginTop: 22 },
   modeText: { color: marketplaceColors.muted, fontSize: 13, fontWeight: '800' },
   modeTextActive: { color: marketplaceColors.white },
+  profilePrompt: {
+    alignItems: 'center',
+    backgroundColor: '#E1E7E1',
+    borderRadius: 18,
+    flexDirection: 'row',
+    marginTop: 16,
+    padding: 15,
+  },
+  promptAction: { color: marketplaceColors.forest, fontSize: 12, fontWeight: '900' },
+  promptBody: { color: marketplaceColors.muted, fontSize: 11, lineHeight: 16, marginTop: 3 },
+  promptText: { flex: 1, paddingRight: 12 },
+  promptTitle: { color: marketplaceColors.forest, fontSize: 14, fontWeight: '900' },
   safeArea: { backgroundColor: marketplaceColors.background, flex: 1 },
   subheading: { color: marketplaceColors.muted, fontSize: 14, marginTop: 8 },
+  undo: {
+    alignItems: 'center',
+    backgroundColor: marketplaceColors.text,
+    borderRadius: 12,
+    flexDirection: 'row',
+    marginTop: 12,
+    padding: 12,
+  },
+  undoAction: { color: '#E8B663', fontSize: 12, fontWeight: '900' },
+  undoText: { color: marketplaceColors.white, flex: 1, fontSize: 12 },
 });

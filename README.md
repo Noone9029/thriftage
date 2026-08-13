@@ -52,17 +52,21 @@ npm.cmd install --global pnpm@11.16.0
    pnpm.cmd db:generate
    pnpm.cmd db:validate
    pnpm.cmd db:migrate:deploy
-   pnpm.cmd db:seed:categories
    ```
+
+pnpm.cmd db:seed:categories
+pnpm.cmd db:seed:styles
+
+````
 
 4. Start all applications, or run one workspace at a time:
 
-   ```powershell
-   pnpm.cmd dev
-   pnpm.cmd --filter @thriftage/api dev
-   pnpm.cmd --filter @thriftage/admin dev
-   pnpm.cmd --filter @thriftage/mobile dev
-   ```
+```powershell
+pnpm.cmd dev
+pnpm.cmd --filter @thriftage/api dev
+pnpm.cmd --filter @thriftage/admin dev
+pnpm.cmd --filter @thriftage/mobile dev
+````
 
 The API health check is available at `http://localhost:4000/api/v1/health`; the admin app uses port 3000, and Expo selects its available development port.
 
@@ -121,6 +125,12 @@ Completed buyers and sellers can leave one transaction-backed review each. Reput
 
 Create `DISPUTE_EVIDENCE_BUCKET` as a private Supabase bucket before enabling evidence uploads. Configure dispute windows, seller-verification thresholds, current policy URLs/content, and `SUPPORT_URL` from approved business/legal inputs. See the [trust architecture](./docs/architecture/trust-reputation-safety.md) and [operations runbook](./docs/operations/trust-safety-runbook.md).
 
+## Style intelligence and personalized discovery
+
+Run `pnpm db:seed:styles` after migrations to idempotently seed the approved style taxonomy and `rules-v1` scoring configuration. Users can privately save/resume a structured style quiz, edit or reset it, reset learned ranking signals without deleting marketplace history, and hide recommendations with undo. New listing submissions require normalized style, color, fit, garment-role, and size metadata.
+
+Authenticated `RECOMMENDED` discovery computes versioned 0–100 matches, truthful reasons, bounded behavior-aware ranking, diversity, deterministic exploration, and stable pagination. It never calls generative AI or labels rule-based ranking as machine learning. See the [style intelligence architecture](./docs/architecture/style-intelligence-personalized-discovery.md) and [privacy audit](./docs/architecture/personalization-privacy-audit.md).
+
 ## Scope boundary
 
-Change-phone, identity merging, digital payments, courier integrations, automated refunds/chargebacks, KYC or seller identity documents, escrow, wallets/payouts, personalization, recommendations described as AI, and AI features are not implemented. Discovery's `RECOMMENDED` mode is explicitly deterministic. See [AGENTS.md](./AGENTS.md) for safety constraints and later phases.
+Change-phone, identity merging, digital payments, courier integrations, automated refunds/chargebacks, KYC or seller identity documents, escrow, wallets/payouts, generative AI, vector search, and AI stylist features are not implemented. See [AGENTS.md](./AGENTS.md) for safety constraints and later phases.

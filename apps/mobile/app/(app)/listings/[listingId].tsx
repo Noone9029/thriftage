@@ -7,6 +7,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } fr
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MarketplaceState } from '../../../src/components/marketplace/marketplace-state';
+import { ListingCard } from '../../../src/components/marketplace/listing-card';
 import {
   formatMoney,
   marketplaceColors,
@@ -26,6 +27,11 @@ export default function ListingDetailScreen() {
   const query = useQuery({
     queryFn: () => thriftageApiClient.getListing(listingId),
     queryKey: ['marketplace', 'listing', listingId],
+  });
+  const similar = useQuery({
+    enabled: listingId !== '',
+    queryFn: () => thriftageApiClient.getSimilarListings(listingId),
+    queryKey: ['marketplace', 'listing', listingId, 'similar'],
   });
   if (query.isLoading) {
     return <MarketplaceState loading message="Loading listing details." title="Opening piece" />;
@@ -88,6 +94,22 @@ export default function ListingDetailScreen() {
           <Text style={styles.category}>{listing.category.name.toUpperCase()}</Text>
           <Text style={styles.title}>{listing.title}</Text>
           <Text style={styles.price}>{formatMoney(listing.priceMinor, listing.currency)}</Text>
+          {listing.match !== null ? (
+            <View style={styles.matchPanel}>
+              <View style={styles.matchScore}>
+                <Text style={styles.matchNumber}>{listing.match.score}%</Text>
+                <Text style={styles.matchLabel}>STYLE MATCH</Text>
+              </View>
+              <View style={styles.matchReasons}>
+                {listing.match.reasons.map((reason) => (
+                  <View key={reason} style={styles.reasonRow}>
+                    <MaterialIcons color={marketplaceColors.accent} name="check-circle" size={16} />
+                    <Text style={styles.reasonText}>{reason}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
           {listing.status !== 'ACTIVE' ? (
             <Text style={styles.unavailableBanner}>
               {listing.status === 'SOLD' ? 'SOLD' : 'RESERVED — checkout unavailable'}
@@ -118,6 +140,19 @@ export default function ListingDetailScreen() {
           </View>
           <Text style={styles.sectionTitle}>About this piece</Text>
           <Text style={styles.description}>{listing.description}</Text>
+          {listing.personalization !== null ? (
+            <View style={styles.tags}>
+              {listing.personalization.styles.map((style) => (
+                <Text key={style.id} style={styles.tag}>
+                  {style.displayName}
+                </Text>
+              ))}
+              <Text style={styles.tag}>{listing.personalization.fitType.replaceAll('_', ' ')}</Text>
+              <Text style={styles.tag}>
+                {listing.personalization.colorFamily.replaceAll('_', ' ')}
+              </Text>
+            </View>
+          ) : null}
           <View style={styles.engagement}>
             <Text style={styles.engagementText}>{listing.likeCount} likes</Text>
             <Text style={styles.engagementText}>{listing.saveCount} saves</Text>
@@ -151,6 +186,22 @@ export default function ListingDetailScreen() {
               >
                 <Text style={styles.buyButtonText}>Buy now</Text>
               </Pressable>
+            </View>
+          ) : null}
+          {(similar.data?.items.length ?? 0) > 0 ? (
+            <View style={styles.similarSection}>
+              <Text style={styles.sectionTitle}>Similar pieces</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.similarScroll}
+              >
+                {similar.data?.items.map((item) => (
+                  <View key={item.id} style={styles.similarCard}>
+                    <ListingCard listing={item} />
+                  </View>
+                ))}
+              </ScrollView>
             </View>
           ) : null}
         </View>
@@ -214,6 +265,25 @@ const styles = StyleSheet.create({
     paddingTop: 15,
   },
   engagementText: { color: marketplaceColors.muted, fontSize: 12, fontWeight: '700' },
+  matchLabel: { color: marketplaceColors.white, fontSize: 9, fontWeight: '900', letterSpacing: 1 },
+  matchNumber: { color: marketplaceColors.white, fontSize: 24, fontWeight: '900' },
+  matchPanel: {
+    alignItems: 'center',
+    backgroundColor: marketplaceColors.forest,
+    borderRadius: 18,
+    flexDirection: 'row',
+    marginTop: 16,
+    padding: 16,
+  },
+  matchReasons: { flex: 1, gap: 7, paddingLeft: 16 },
+  matchScore: {
+    alignItems: 'center',
+    borderRightColor: 'rgba(255,255,255,0.25)',
+    borderRightWidth: 1,
+    paddingRight: 16,
+  },
+  reasonRow: { alignItems: 'center', flexDirection: 'row', gap: 7 },
+  reasonText: { color: marketplaceColors.white, flex: 1, fontSize: 11, fontWeight: '700' },
   price: { color: marketplaceColors.forest, fontSize: 22, fontWeight: '900', marginTop: 9 },
   reportLink: {
     color: marketplaceColors.danger,
@@ -223,6 +293,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   safeArea: { backgroundColor: marketplaceColors.background, flex: 1 },
+  similarCard: { width: 190 },
+  similarScroll: { marginHorizontal: -6, marginTop: 10 },
+  similarSection: { marginTop: 12 },
   sectionTitle: { color: marketplaceColors.text, fontSize: 18, fontWeight: '900', marginTop: 25 },
   seller: {
     alignItems: 'center',
@@ -248,6 +321,18 @@ const styles = StyleSheet.create({
     padding: 15,
   },
   specValue: { color: marketplaceColors.text, fontSize: 13, fontWeight: '800', marginTop: 4 },
+  tag: {
+    backgroundColor: '#E1E7E1',
+    borderRadius: 999,
+    color: marketplaceColors.forest,
+    fontSize: 10,
+    fontWeight: '800',
+    overflow: 'hidden',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    textTransform: 'capitalize',
+  },
+  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 18 },
   title: {
     color: marketplaceColors.text,
     fontSize: 29,

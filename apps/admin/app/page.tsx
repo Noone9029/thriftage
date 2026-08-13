@@ -10,6 +10,7 @@ import type {
   MessageFlag,
   OrderDetail,
   OrderSummary,
+  RecommendationConfigurationInput,
 } from '@thriftage/shared';
 import type { Session } from '@supabase/supabase-js';
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
@@ -18,7 +19,8 @@ import { createAdminApi } from '../lib/admin-api';
 import { getSupabaseBrowserClient } from '../lib/supabase';
 import { TrustOperationsWorkspace } from '../components/trust-operations-workspace';
 
-type Workspace = 'CATEGORIES' | 'LISTINGS' | 'REPORTS' | 'MESSAGES' | 'ORDERS' | 'TRUST';
+type Workspace =
+  'CATEGORIES' | 'LISTINGS' | 'REPORTS' | 'MESSAGES' | 'ORDERS' | 'TRUST' | 'PERSONALIZATION';
 type AccessState = 'CHECKING' | 'DENIED' | 'SIGNED_OUT' | 'AUTHORIZED';
 
 export default function AdminHome() {
@@ -105,17 +107,25 @@ export default function AdminHome() {
       </header>
       <div className="mx-auto grid max-w-7xl gap-6 px-6 py-8 lg:grid-cols-[220px_1fr]">
         <nav className="space-y-2">
-          {(['LISTINGS', 'MESSAGES', 'ORDERS', 'REPORTS', 'TRUST', 'CATEGORIES'] as const).map(
-            (item) => (
-              <button
-                className={`w-full rounded-xl px-4 py-3 text-left text-sm font-bold ${workspace === item ? 'bg-[#123f33] text-white' : 'bg-white text-black/65 hover:bg-white/70'}`}
-                key={item}
-                onClick={() => setWorkspace(item)}
-              >
-                {item.charAt(0) + item.slice(1).toLowerCase()}
-              </button>
-            ),
-          )}
+          {(
+            [
+              'LISTINGS',
+              'MESSAGES',
+              'ORDERS',
+              'REPORTS',
+              'TRUST',
+              'PERSONALIZATION',
+              'CATEGORIES',
+            ] as const
+          ).map((item) => (
+            <button
+              className={`w-full rounded-xl px-4 py-3 text-left text-sm font-bold ${workspace === item ? 'bg-[#123f33] text-white' : 'bg-white text-black/65 hover:bg-white/70'}`}
+              key={item}
+              onClick={() => setWorkspace(item)}
+            >
+              {item.charAt(0) + item.slice(1).toLowerCase()}
+            </button>
+          ))}
         </nav>
         <section>
           {workspace === 'LISTINGS' ? <ListingWorkspace api={api} /> : null}
@@ -124,6 +134,7 @@ export default function AdminHome() {
           {workspace === 'MESSAGES' ? <MessageModerationWorkspace api={api} /> : null}
           {workspace === 'ORDERS' ? <OrderWorkspace api={api} /> : null}
           {workspace === 'TRUST' ? <TrustOperationsWorkspace api={api} /> : null}
+          {workspace === 'PERSONALIZATION' ? <PersonalizationWorkspace api={api} /> : null}
         </section>
       </div>
     </main>
@@ -581,6 +592,260 @@ function OrderWorkspace({ api }: { readonly api: ReturnType<typeof createAdminAp
         </div>
       ) : null}
     </WorkspaceCard>
+  );
+}
+
+function PersonalizationWorkspace({ api }: { readonly api: ReturnType<typeof createAdminApi> }) {
+  const [summary, setSummary] = useState<Awaited<
+    ReturnType<typeof api.getPersonalizationSummary>
+  > | null>(null);
+  const [configurations, setConfigurations] = useState<
+    Awaited<ReturnType<typeof api.getRecommendationConfigurations>>
+  >([]);
+  const [styles, setStyles] = useState<Awaited<ReturnType<typeof api.getStyleDefinitions>>>([]);
+  const [draft, setDraft] = useState<RecommendationConfigurationInput | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const load = useCallback(async () => {
+    try {
+      const [nextSummary, nextConfigurations, nextStyles] = await Promise.all([
+        api.getPersonalizationSummary(),
+        api.getRecommendationConfigurations(),
+        api.getStyleDefinitions(),
+      ]);
+      setSummary(nextSummary);
+      setConfigurations(nextConfigurations);
+      setStyles(nextStyles);
+      const active = nextConfigurations.find(({ isActive }) => isActive);
+      if (active !== undefined) {
+        setDraft(
+          (current) =>
+            current ?? {
+              behaviorWeight: active.behaviorWeight,
+              candidateLimit: active.candidateLimit,
+              engagementWeight: active.engagementWeight,
+              explorationPercent: active.explorationPercent,
+              explorationWeight: active.explorationWeight,
+              freshnessWeight: active.freshnessWeight,
+              maxPerSeller: active.maxPerSeller,
+              maxPerStyle: active.maxPerStyle,
+              personalWeight: active.personalWeight,
+              sellerWeight: active.sellerWeight,
+              trustWeight: active.trustWeight,
+              version: `${active.version}-next`,
+            },
+        );
+      }
+      setError(null);
+    } catch (caught: unknown) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : 'Personalization operations could not be loaded.',
+      );
+    }
+  }, [api]);
+  useEffect(() => {
+    void load();
+  }, [load]);
+  const eventTotal = summary?.events.reduce((total, event) => total + event._count._all, 0) ?? 0;
+  return (
+    <div className="space-y-6">
+      <div>
+        <p className="text-xs font-bold tracking-[0.18em] text-[#a24c2f]">
+          PRIVACY-SAFE OPERATIONS
+        </p>
+        <h2 className="mt-1 text-3xl font-semibold">Style intelligence</h2>
+        <p className="mt-2 max-w-3xl text-sm text-black/60">
+          Aggregate taxonomy, scoring versions, and funnel health. Individual preference profiles
+          are deliberately unavailable here.
+        </p>
+      </div>
+      {error !== null ? (
+        <p className="rounded-xl bg-red-50 p-4 text-sm font-semibold text-red-800">{error}</p>
+      ) : null}
+      <div className="grid gap-3 md:grid-cols-4">
+        <Metric label="Profiles started" value={summary?.profiles ?? 0} />
+        <Metric label="Profiles completed" value={summary?.completedProfiles ?? 0} />
+        <Metric label="Ranking events" value={eventTotal} />
+        <Metric label="Not interested" value={summary?.hiddenRecommendations ?? 0} />
+      </div>
+      <p className="text-sm text-black/55">
+        {summary?.impressionMatchCount ?? 0} scored impressions · average match{' '}
+        {summary?.impressionMatchAverage === null || summary?.impressionMatchAverage === undefined
+          ? 'not available'
+          : `${Math.round(summary.impressionMatchAverage)}%`}
+      </p>
+      <section className="rounded-2xl border border-black/10 bg-white p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-bold">Ranking configuration</h3>
+            <p className="text-sm text-black/55">
+              Create an audited version. Active feed cursors refresh when the version changes.
+            </p>
+          </div>
+          <span className="rounded-full bg-[#dce9e2] px-3 py-1 text-xs font-bold text-[#123f33]">
+            {configurations.find(({ isActive }) => isActive)?.version ?? 'No active version'}
+          </span>
+        </div>
+        {configurations.map((configuration) => (
+          <div
+            className="mt-4 grid gap-2 rounded-xl bg-[#f3f0e9] p-4 text-xs sm:grid-cols-4"
+            key={configuration.id}
+          >
+            <span>Personal {configuration.personalWeight}%</span>
+            <span>Behavior {configuration.behaviorWeight}%</span>
+            <span>Freshness {configuration.freshnessWeight}%</span>
+            <span>Diversity {configuration.maxPerSeller}/seller</span>
+          </div>
+        ))}
+        {draft !== null ? (
+          <form
+            className="mt-5 space-y-4 border-t border-black/10 pt-5"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void api
+                .activateRecommendationConfiguration(draft)
+                .then(async () => {
+                  setDraft(null);
+                  await load();
+                })
+                .catch((caught: unknown) =>
+                  setError(
+                    caught instanceof Error ? caught.message : 'Configuration activation failed.',
+                  ),
+                );
+            }}
+          >
+            <div className="grid gap-3 sm:grid-cols-4">
+              <ConfigField
+                label="Version"
+                value={draft.version}
+                onChange={(value) => setDraft({ ...draft, version: value })}
+              />
+              <ConfigField
+                label="Personal %"
+                numeric
+                value={draft.personalWeight}
+                onChange={(value) => setDraft({ ...draft, personalWeight: Number(value) })}
+              />
+              <ConfigField
+                label="Behavior %"
+                numeric
+                value={draft.behaviorWeight}
+                onChange={(value) => setDraft({ ...draft, behaviorWeight: Number(value) })}
+              />
+              <ConfigField
+                label="Seller %"
+                numeric
+                value={draft.sellerWeight}
+                onChange={(value) => setDraft({ ...draft, sellerWeight: Number(value) })}
+              />
+              <ConfigField
+                label="Freshness %"
+                numeric
+                value={draft.freshnessWeight}
+                onChange={(value) => setDraft({ ...draft, freshnessWeight: Number(value) })}
+              />
+              <ConfigField
+                label="Trust %"
+                numeric
+                value={draft.trustWeight}
+                onChange={(value) => setDraft({ ...draft, trustWeight: Number(value) })}
+              />
+              <ConfigField
+                label="Engagement %"
+                numeric
+                value={draft.engagementWeight}
+                onChange={(value) => setDraft({ ...draft, engagementWeight: Number(value) })}
+              />
+              <ConfigField
+                label="Exploration %"
+                numeric
+                value={draft.explorationWeight}
+                onChange={(value) => setDraft({ ...draft, explorationWeight: Number(value) })}
+              />
+            </div>
+            <p className="text-xs text-black/50">
+              Weights must total 100. Candidate and diversity limits remain copied from the active
+              version.
+            </p>
+            <button
+              className="rounded-xl bg-[#123f33] px-4 py-2 text-sm font-bold text-white"
+              type="submit"
+            >
+              Activate new version
+            </button>
+          </form>
+        ) : null}
+      </section>
+      <section className="rounded-2xl border border-black/10 bg-white p-5">
+        <h3 className="text-lg font-bold">Style taxonomy</h3>
+        <p className="text-sm text-black/55">
+          Deactivate styles to prevent new selection; existing historical references remain intact.
+        </p>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          {styles.map((style) => (
+            <div
+              className="flex items-start justify-between rounded-xl border border-black/10 p-4"
+              key={style.id}
+            >
+              <div>
+                <p className="font-bold">{style.displayName}</p>
+                <p className="mt-1 text-xs text-black/50">{style.description}</p>
+                <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-black/35">
+                  {summary?.styleSelectionCounts.find(
+                    ({ styleDefinitionId }) => styleDefinitionId === style.id,
+                  )?._count._all ?? 0}{' '}
+                  selections
+                </p>
+              </div>
+              <button
+                className={`rounded-full px-3 py-1 text-xs font-bold ${style.isActive ? 'bg-[#dce9e2] text-[#123f33]' : 'bg-black/10 text-black/50'}`}
+                onClick={() =>
+                  void api.updateStyleDefinition(style.id, { isActive: !style.isActive }).then(load)
+                }
+              >
+                {style.isActive ? 'Active' : 'Inactive'}
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function Metric({ label, value }: { readonly label: string; readonly value: number }) {
+  return (
+    <div className="rounded-2xl border border-black/10 bg-white p-4">
+      <p className="text-2xl font-bold text-[#123f33]">{value.toLocaleString()}</p>
+      <p className="mt-1 text-xs font-semibold text-black/50">{label}</p>
+    </div>
+  );
+}
+
+function ConfigField({
+  label,
+  numeric = false,
+  onChange,
+  value,
+}: {
+  readonly label: string;
+  readonly numeric?: boolean;
+  readonly onChange: (value: string) => void;
+  readonly value: number | string;
+}) {
+  return (
+    <label className="text-xs font-bold text-black/55">
+      {label}
+      <input
+        className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm text-black"
+        min={numeric ? 0 : undefined}
+        onChange={(event) => onChange(event.target.value)}
+        type={numeric ? 'number' : 'text'}
+        value={value}
+      />
+    </label>
   );
 }
 

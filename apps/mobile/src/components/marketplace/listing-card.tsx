@@ -10,9 +10,10 @@ interface ListingCardProps {
   readonly listing: ListingDetail;
   readonly onLike?: (listing: ListingDetail) => void;
   readonly onSave?: (listing: ListingDetail) => void;
+  readonly onNotInterested?: (listing: ListingDetail) => void;
 }
 
-export function ListingCard({ listing, onLike, onSave }: ListingCardProps) {
+export function ListingCard({ listing, onLike, onSave, onNotInterested }: ListingCardProps) {
   const cover = listing.images[0]?.url;
   return (
     <View style={styles.card}>
@@ -35,6 +36,11 @@ export function ListingCard({ listing, onLike, onSave }: ListingCardProps) {
             transition={160}
           />
         )}
+        {listing.match !== null ? (
+          <View style={styles.matchBadge}>
+            <Text style={styles.matchText}>{listing.match.score}% match</Text>
+          </View>
+        ) : null}
         <View style={styles.body}>
           <Text numberOfLines={1} style={styles.title}>
             {listing.title}
@@ -46,9 +52,14 @@ export function ListingCard({ listing, onLike, onSave }: ListingCardProps) {
             </Text>
             <Text style={styles.condition}>{listing.condition.replaceAll('_', ' ')}</Text>
           </View>
+          {listing.match?.reasons[0] !== undefined ? (
+            <Text numberOfLines={1} style={styles.reason}>
+              {listing.match.reasons[0]}
+            </Text>
+          ) : null}
         </View>
       </Pressable>
-      {onLike !== undefined || onSave !== undefined ? (
+      {onLike !== undefined || onSave !== undefined || onNotInterested !== undefined ? (
         <View style={styles.actions}>
           {onLike !== undefined ? (
             <Pressable
@@ -75,6 +86,15 @@ export function ListingCard({ listing, onLike, onSave }: ListingCardProps) {
                 name={listing.savedByViewer ? 'bookmark' : 'bookmark-border'}
                 size={21}
               />
+            </Pressable>
+          ) : null}
+          {onNotInterested !== undefined ? (
+            <Pressable
+              accessibilityLabel="Not interested in this item"
+              onPress={() => onNotInterested(listing)}
+              style={styles.iconButton}
+            >
+              <MaterialIcons color={marketplaceColors.muted} name="visibility-off" size={19} />
             </Pressable>
           ) : null}
         </View>
@@ -107,7 +127,23 @@ const styles = StyleSheet.create({
   image: { aspectRatio: 0.82, backgroundColor: '#E9E4DA', width: '100%' },
   meta: { color: marketplaceColors.muted, flex: 1, fontSize: 11 },
   metaRow: { alignItems: 'center', flexDirection: 'row', gap: 4 },
+  matchBadge: {
+    backgroundColor: marketplaceColors.forest,
+    borderRadius: 999,
+    left: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    position: 'absolute',
+    top: 8,
+  },
+  matchText: {
+    color: marketplaceColors.white,
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
   placeholder: { alignItems: 'center', justifyContent: 'center' },
   price: { color: marketplaceColors.forest, fontSize: 14, fontWeight: '900' },
+  reason: { color: marketplaceColors.accent, fontSize: 10, fontWeight: '700', marginTop: 4 },
   title: { color: marketplaceColors.text, fontSize: 14, fontWeight: '700' },
 });

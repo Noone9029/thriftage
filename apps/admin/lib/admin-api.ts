@@ -49,6 +49,13 @@ import {
   type SellerVerification,
   type SellerVerificationDecision,
   type TrustMetrics,
+  personalizationAdminSummarySchema,
+  recommendationConfigurationSchema,
+  styleDefinitionSchema,
+  type PersonalizationAdminSummary,
+  type RecommendationConfiguration,
+  type RecommendationConfigurationInput,
+  type StyleDefinition,
 } from '@thriftage/shared';
 
 export class AdminApiError extends Error {
@@ -74,6 +81,47 @@ export class AdminApi {
 
   public async verifyAccess(): Promise<void> {
     adminAccessSchema.parse(await this.request('/admin/access'));
+  }
+
+  public async getPersonalizationSummary(): Promise<PersonalizationAdminSummary> {
+    return personalizationAdminSummarySchema.parse(
+      await this.request('/admin/personalization/summary'),
+    );
+  }
+
+  public async getRecommendationConfigurations(): Promise<readonly RecommendationConfiguration[]> {
+    return recommendationConfigurationSchema
+      .array()
+      .parse(await this.request('/admin/personalization/configuration'));
+  }
+
+  public async activateRecommendationConfiguration(
+    input: RecommendationConfigurationInput,
+  ): Promise<RecommendationConfiguration> {
+    return recommendationConfigurationSchema.parse(
+      await this.request('/admin/personalization/configuration', {
+        body: input,
+        method: 'POST',
+      }),
+    );
+  }
+
+  public async getStyleDefinitions(): Promise<readonly StyleDefinition[]> {
+    return styleDefinitionSchema.array().parse(await this.request('/admin/personalization/styles'));
+  }
+
+  public async updateStyleDefinition(
+    id: string,
+    input: {
+      displayName?: string;
+      description?: string | null;
+      isActive?: boolean;
+      sortOrder?: number;
+    },
+  ): Promise<StyleDefinition> {
+    return styleDefinitionSchema.parse(
+      await this.request(`/admin/personalization/styles/${id}`, { body: input, method: 'PATCH' }),
+    );
   }
 
   public async listCategories(): Promise<readonly Category[]> {

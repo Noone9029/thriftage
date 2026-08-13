@@ -94,6 +94,16 @@ export default function OwnProfileScreen() {
                 label="Safety Center"
                 onPress={() => router.push('/safety')}
               />
+              <HubAction
+                icon="style"
+                label="Style profile"
+                onPress={() => router.push('/style-profile')}
+              />
+              <HubAction
+                icon="tune"
+                label="Personalization & privacy"
+                onPress={() => router.push('/personalization-settings')}
+              />
             </View>
             <Text style={styles.section}>Active wardrobe</Text>
           </View>

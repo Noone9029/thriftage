@@ -6,6 +6,14 @@ import type {
   ListingPage,
   ListingSearchQuery,
 } from '@thriftage/shared';
+import {
+  colorFamilyValues,
+  fitTypeValues,
+  garmentRoleValues,
+  type ColorFamily,
+  type FitType,
+  type GarmentRole,
+} from '@thriftage/shared';
 import { type InfiniteData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -19,6 +27,7 @@ import { thriftageApiClient } from '../../../src/lib/auth/auth-composition';
 
 const conditions: readonly ListingCondition[] = ['NEW', 'LIKE_NEW', 'GOOD', 'FAIR'];
 const sorts: readonly { readonly label: string; readonly value: ListingSearchQuery['sort'] }[] = [
+  { label: 'For you', value: 'PERSONALIZED' },
   { label: 'Newest', value: 'NEWEST' },
   { label: 'Price ↑', value: 'PRICE_LOW' },
   { label: 'Price ↓', value: 'PRICE_HIGH' },
@@ -43,10 +52,19 @@ export default function SearchScreen() {
   const [minimum, setMinimum] = useState('');
   const [maximum, setMaximum] = useState('');
   const [sort, setSort] = useState<ListingSearchQuery['sort']>('NEWEST');
+  const [styleDefinitionId, setStyleDefinitionId] = useState<string>();
+  const [colorFamily, setColorFamily] = useState<ColorFamily>();
+  const [fitType, setFitType] = useState<FitType>();
+  const [garmentRole, setGarmentRole] = useState<GarmentRole>();
   const actions = useListingActions();
   const categories = useQuery({
     queryFn: () => thriftageApiClient.getCategories(),
     queryKey: ['marketplace', 'categories'],
+  });
+  const styleDefinitions = useQuery({
+    queryFn: () => thriftageApiClient.getStyles(),
+    queryKey: ['personalization', 'styles'],
+    staleTime: 300_000,
   });
   const filters = {
     categoryId,
@@ -57,6 +75,10 @@ export default function SearchScreen() {
     q: query || undefined,
     size: size.trim() || undefined,
     sort,
+    colorFamily,
+    fitType,
+    garmentRole,
+    styleDefinitionIds: styleDefinitionId === undefined ? undefined : [styleDefinitionId],
   };
   const results = useInfiniteQuery<
     ListingPage,
@@ -152,6 +174,77 @@ export default function SearchScreen() {
                     key={item}
                     label={item.replaceAll('_', ' ')}
                     onPress={() => setCondition(item)}
+                  />
+                ))}
+              </View>
+            </ScrollView>
+            <Text style={styles.filterLabel}>Style</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.chipRow}>
+                <FilterChip
+                  active={styleDefinitionId === undefined}
+                  label="Any"
+                  onPress={() => setStyleDefinitionId(undefined)}
+                />
+                {(styleDefinitions.data ?? []).map((item) => (
+                  <FilterChip
+                    active={styleDefinitionId === item.id}
+                    key={item.id}
+                    label={item.displayName}
+                    onPress={() => setStyleDefinitionId(item.id)}
+                  />
+                ))}
+              </View>
+            </ScrollView>
+            <Text style={styles.filterLabel}>Color family</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.chipRow}>
+                <FilterChip
+                  active={colorFamily === undefined}
+                  label="Any"
+                  onPress={() => setColorFamily(undefined)}
+                />
+                {colorFamilyValues.map((item) => (
+                  <FilterChip
+                    active={colorFamily === item}
+                    key={item}
+                    label={item}
+                    onPress={() => setColorFamily(item)}
+                  />
+                ))}
+              </View>
+            </ScrollView>
+            <Text style={styles.filterLabel}>Fit & garment</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.chipRow}>
+                <FilterChip
+                  active={fitType === undefined}
+                  label="Any fit"
+                  onPress={() => setFitType(undefined)}
+                />
+                {fitTypeValues.map((item) => (
+                  <FilterChip
+                    active={fitType === item}
+                    key={item}
+                    label={item.replaceAll('_', ' ')}
+                    onPress={() => setFitType(item)}
+                  />
+                ))}
+              </View>
+            </ScrollView>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.chipRow}>
+                <FilterChip
+                  active={garmentRole === undefined}
+                  label="Any garment"
+                  onPress={() => setGarmentRole(undefined)}
+                />
+                {garmentRoleValues.map((item) => (
+                  <FilterChip
+                    active={garmentRole === item}
+                    key={item}
+                    label={item}
+                    onPress={() => setGarmentRole(item)}
                   />
                 ))}
               </View>
