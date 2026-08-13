@@ -2,6 +2,14 @@ import { z } from 'zod';
 
 import { categorySchema } from './category-contracts';
 import { ratingSummarySchema } from '../trust/review-contracts';
+import {
+  colorFamilySchema,
+  fitTypeSchema,
+  garmentRoleSchema,
+  listingMatchSchema,
+  sizeSystemSchema,
+  styleDefinitionSchema,
+} from '../personalization/personalization-contracts';
 
 export const listingStatusValues = [
   'DRAFT',
@@ -15,7 +23,13 @@ export const listingStatusValues = [
 ] as const;
 export const listingConditionValues = ['NEW', 'LIKE_NEW', 'GOOD', 'FAIR'] as const;
 export const currencyCodeValues = ['PKR', 'USD', 'GBP', 'EUR', 'AED', 'SAR', 'CAD'] as const;
-export const listingSortValues = ['NEWEST', 'OLDEST', 'PRICE_LOW', 'PRICE_HIGH'] as const;
+export const listingSortValues = [
+  'NEWEST',
+  'OLDEST',
+  'PRICE_LOW',
+  'PRICE_HIGH',
+  'PERSONALIZED',
+] as const;
 export const feedModeValues = ['NEW', 'TRENDING', 'RECOMMENDED'] as const;
 
 export const listingStatusSchema = z.enum(listingStatusValues);
@@ -43,6 +57,16 @@ export const listingDraftInputSchema = z.strictObject({
   priceMinor: z.number().int().positive().max(2_000_000_000),
   size: z.string().trim().min(1).max(50),
   title: z.string().trim().min(5).max(120),
+  personalization: z
+    .strictObject({
+      colorFamily: colorFamilySchema,
+      fitType: fitTypeSchema,
+      garmentRole: garmentRoleSchema,
+      sizeCompatibilityKey: z.string().trim().min(1).max(40),
+      sizeSystem: sizeSystemSchema,
+      styleDefinitionIds: z.array(z.string().uuid()).min(1).max(5),
+    })
+    .optional(),
 });
 
 export const listingUpdateInputSchema = listingDraftInputSchema
@@ -86,6 +110,17 @@ const listingBaseShape = {
   status: listingStatusSchema,
   title: z.string(),
   updatedAt: z.string().datetime({ offset: true }),
+  personalization: z
+    .strictObject({
+      colorFamily: colorFamilySchema,
+      fitType: fitTypeSchema,
+      garmentRole: garmentRoleSchema,
+      sizeCompatibilityKey: z.string(),
+      sizeSystem: sizeSystemSchema,
+      styles: z.array(styleDefinitionSchema).max(5),
+    })
+    .nullable(),
+  match: listingMatchSchema.nullable(),
 } as const;
 
 export const listingSummarySchema = z.strictObject(listingBaseShape);
@@ -115,6 +150,14 @@ export const listingSearchQuerySchema = cursorPageQuerySchema
     minPriceMinor: z.coerce.number().int().positive().max(2_000_000_000).optional(),
     q: z.string().trim().max(120).optional(),
     size: z.string().trim().max(50).optional(),
+    colorFamily: colorFamilySchema.optional(),
+    fitType: fitTypeSchema.optional(),
+    garmentRole: garmentRoleSchema.optional(),
+    sizeSystem: sizeSystemSchema.optional(),
+    styleDefinitionIds: z.preprocess(
+      (value) => (typeof value === 'string' ? value.split(',').filter(Boolean) : value),
+      z.array(z.string().uuid()).max(5).optional(),
+    ),
     sort: listingSortSchema.default('NEWEST'),
   })
   .refine(

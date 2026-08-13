@@ -10,6 +10,7 @@ export * from './marketplace/marketplace-error-contracts';
 export * from './marketplace/moderation-contracts';
 export * from './marketplace/social-contracts';
 export * from './notifications/notification-contracts';
+export * from './personalization/personalization-contracts';
 export * from './users/user-contracts';
 export * from './trust/review-contracts';
 export * from './trust/policy-contracts';

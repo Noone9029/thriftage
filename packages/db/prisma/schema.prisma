@@ -320,6 +320,123 @@ enum PushDeliveryStatus {
   DEVICE_UNREGISTERED
 }
 
+enum StyleQuizStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum ColorFamily {
+  BLACK
+  WHITE
+  GREY
+  BROWN
+  BEIGE
+  RED
+  ORANGE
+  YELLOW
+  GREEN
+  BLUE
+  PURPLE
+  PINK
+  METALLIC
+  MULTICOLOR
+}
+
+enum ColorPreferenceSentiment {
+  PREFER
+  AVOID
+}
+
+enum FitType {
+  OVERSIZED
+  RELAXED
+  REGULAR
+  SLIM
+  TAILORED
+}
+
+enum FashionPriority {
+  COMFORT
+  PRICE
+  AESTHETICS
+  SUSTAINABILITY
+  EXCLUSIVITY
+}
+
+enum LifestyleType {
+  STUDENT
+  PROFESSIONAL
+  ENTREPRENEUR
+  CREATIVE
+  ATHLETE
+}
+
+enum StyleExpression {
+  OUTGOING
+  RESERVED
+  CREATIVE
+  AMBITIOUS
+  EXPERIMENTAL
+  CLASSIC
+}
+
+enum SizeSystem {
+  ALPHA
+  EU
+  UK
+  US
+  WAIST_INCHES
+  SHOE_EU
+  SHOE_UK
+  SHOE_US
+  ONE_SIZE
+}
+
+enum GarmentRole {
+  TOP
+  BOTTOM
+  DRESS
+  OUTERWEAR
+  SHOES
+  BAG
+  JEWELRY
+  ACCESSORY
+  OTHER
+}
+
+enum RecommendationEventType {
+  IMPRESSION
+  VIEW
+  LIKE
+  SAVE
+  FOLLOW_SELLER
+  MESSAGE_SELLER
+  CHECKOUT
+  PURCHASE
+  NOT_INTERESTED
+}
+
+enum RecommendationSource {
+  FOR_YOU
+  SEARCH
+  SIMILAR
+  LISTING_DETAIL
+}
+
+enum PersonalizationAuditAction {
+  QUIZ_STARTED
+  QUIZ_SAVED
+  QUIZ_COMPLETED
+  PROFILE_UPDATED
+  PROFILE_RESET
+  LEARNED_SIGNALS_RESET
+  NOT_INTERESTED
+  NOT_INTERESTED_UNDONE
+  CONFIG_ACTIVATED
+  TAXONOMY_UPDATED
+}
+
 model User {
   id                          String                     @id @default(uuid()) @db.Uuid
   authProviderUserId          String                     @unique(map: "users_auth_provider_user_id_key") @map("auth_provider_user_id") @db.VarChar(255)
@@ -381,6 +498,11 @@ model User {
   safetyActionsReceived       SafetyAction[]             @relation("SafetyActionTarget")
   trustAuditsPerformed        TrustAudit[]               @relation("TrustAuditActor")
   trustAuditsTargeting        TrustAudit[]               @relation("TrustAuditTarget")
+  styleProfile                UserStyleProfile?
+  recommendationFeedback      RecommendationFeedback[]
+  recommendationEvents        RecommendationEvent[]
+  personalizationAudits       PersonalizationAudit[]     @relation("PersonalizationAuditUser")
+  personalizationAuditActions PersonalizationAudit[]     @relation("PersonalizationAuditActor")
 
   @@index([accountStatus], map: "users_account_status_idx")
   @@index([createdAt], map: "users_created_at_idx")
@@ -451,43 +573,53 @@ model Category {
 }
 
 model Listing {
-  id                 String               @id @default(uuid()) @db.Uuid
-  sellerId           String               @map("seller_id") @db.Uuid
-  categoryId         String               @map("category_id") @db.Uuid
-  title              String               @db.VarChar(120)
-  description        String               @db.VarChar(2000)
-  priceMinor         Int                  @map("price_minor")
-  currency           CurrencyCode         @default(PKR)
-  condition          ListingCondition
-  size               String               @db.VarChar(50)
-  brand              String?              @db.VarChar(80)
-  color              String?              @db.VarChar(50)
-  status             ListingStatus        @default(DRAFT)
-  rejectionReason    String?              @map("rejection_reason") @db.VarChar(500)
-  submittedAt        DateTime?            @map("submitted_at") @db.Timestamptz(3)
-  moderatedAt        DateTime?            @map("moderated_at") @db.Timestamptz(3)
-  activatedAt        DateTime?            @map("activated_at") @db.Timestamptz(3)
-  archivedAt         DateTime?            @map("archived_at") @db.Timestamptz(3)
-  createdAt          DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt          DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
-  seller             User                 @relation("ListingSeller", fields: [sellerId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "listings_seller_id_fkey")
-  category           Category             @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "listings_category_id_fkey")
-  images             ListingImage[]
-  likes              ListingLike[]
-  saves              SavedListing[]
-  reports            ModerationReport[]
-  moderationAudits   ModerationAudit[]
-  conversations      Conversation[]
-  orders             Order[]              @relation("OrderListing")
-  reservedOrderId    String?              @unique(map: "listings_reserved_order_id_key") @map("reserved_order_id") @db.Uuid
-  reservedByOrder    Order?               @relation("CurrentListingReservation", fields: [reservedOrderId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "listings_reserved_order_id_fkey")
-  notifications      Notification[]
-  notificationOutbox NotificationOutbox[]
+  id                     String                   @id @default(uuid()) @db.Uuid
+  sellerId               String                   @map("seller_id") @db.Uuid
+  categoryId             String                   @map("category_id") @db.Uuid
+  title                  String                   @db.VarChar(120)
+  description            String                   @db.VarChar(2000)
+  priceMinor             Int                      @map("price_minor")
+  currency               CurrencyCode             @default(PKR)
+  condition              ListingCondition
+  size                   String                   @db.VarChar(50)
+  brand                  String?                  @db.VarChar(80)
+  color                  String?                  @db.VarChar(50)
+  colorFamily            ColorFamily?             @map("color_family")
+  fitType                FitType?                 @map("fit_type")
+  garmentRole            GarmentRole?             @map("garment_role")
+  sizeSystem             SizeSystem?              @map("size_system")
+  sizeCompatibilityKey   String?                  @map("size_compatibility_key") @db.VarChar(40)
+  status                 ListingStatus            @default(DRAFT)
+  rejectionReason        String?                  @map("rejection_reason") @db.VarChar(500)
+  submittedAt            DateTime?                @map("submitted_at") @db.Timestamptz(3)
+  moderatedAt            DateTime?                @map("moderated_at") @db.Timestamptz(3)
+  activatedAt            DateTime?                @map("activated_at") @db.Timestamptz(3)
+  archivedAt             DateTime?                @map("archived_at") @db.Timestamptz(3)
+  createdAt              DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt              DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
+  seller                 User                     @relation("ListingSeller", fields: [sellerId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "listings_seller_id_fkey")
+  category               Category                 @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "listings_category_id_fkey")
+  images                 ListingImage[]
+  likes                  ListingLike[]
+  saves                  SavedListing[]
+  reports                ModerationReport[]
+  moderationAudits       ModerationAudit[]
+  conversations          Conversation[]
+  orders                 Order[]                  @relation("OrderListing")
+  reservedOrderId        String?                  @unique(map: "listings_reserved_order_id_key") @map("reserved_order_id") @db.Uuid
+  reservedByOrder        Order?                   @relation("CurrentListingReservation", fields: [reservedOrderId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "listings_reserved_order_id_fkey")
+  notifications          Notification[]
+  notificationOutbox     NotificationOutbox[]
+  styles                 ListingStyle[]
+  recommendationFeedback RecommendationFeedback[]
+  recommendationEvents   RecommendationEvent[]
 
   @@index([status, createdAt, id], map: "listings_status_created_id_idx")
   @@index([sellerId, status, updatedAt], map: "listings_seller_status_updated_idx")
   @@index([categoryId, status, createdAt], map: "listings_category_status_created_idx")
   @@index([status, currency, priceMinor, id], map: "listings_status_currency_price_id_idx")
+  @@index([status, colorFamily, fitType, garmentRole], map: "listings_status_style_metadata_idx")
+  @@index([status, sizeSystem, sizeCompatibilityKey], map: "listings_status_size_compatibility_idx")
   @@index([title(ops: raw("gin_trgm_ops"))], type: Gin, map: "listings_title_trgm_idx")
   @@index([description(ops: raw("gin_trgm_ops"))], type: Gin, map: "listings_description_trgm_idx")
   @@index([brand(ops: raw("gin_trgm_ops"))], type: Gin, map: "listings_brand_trgm_idx")
@@ -1192,4 +1324,170 @@ model TrustAudit {
   @@index([actorId, createdAt], map: "trust_audits_actor_created_idx")
   @@index([targetUserId, createdAt], map: "trust_audits_target_created_idx")
   @@map("trust_audits")
+}
+
+model StyleDefinition {
+  id              String                @id @default(uuid()) @db.Uuid
+  slug            String                @unique(map: "style_definitions_slug_key") @db.VarChar(60)
+  displayName     String                @map("display_name") @db.VarChar(80)
+  description     String?               @db.VarChar(240)
+  isActive        Boolean               @default(true) @map("is_active")
+  sortOrder       Int                   @default(0) @map("sort_order")
+  createdAt       DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
+  userPreferences UserStylePreference[]
+  listings        ListingStyle[]
+
+  @@index([isActive, sortOrder], map: "style_definitions_active_sort_idx")
+  @@map("style_definitions")
+}
+
+model UserStyleProfile {
+  id                String                @id @default(uuid()) @db.Uuid
+  userId            String                @unique(map: "user_style_profiles_user_id_key") @map("user_id") @db.Uuid
+  quizStatus        StyleQuizStatus       @default(NOT_STARTED) @map("quiz_status")
+  quizStep          Int                   @default(0) @map("quiz_step")
+  profileVersion    Int                   @default(1) @map("profile_version")
+  currency          CurrencyCode          @default(PKR)
+  budgetMinMinor    Int?                  @map("budget_min_minor")
+  budgetMaxMinor    Int?                  @map("budget_max_minor")
+  priorities        FashionPriority[]     @default([])
+  lifestyles        LifestyleType[]       @default([])
+  expressions       StyleExpression[]     @default([])
+  behavioralResetAt DateTime?             @map("behavioral_reset_at") @db.Timestamptz(3)
+  completedAt       DateTime?             @map("completed_at") @db.Timestamptz(3)
+  createdAt         DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "user_style_profiles_user_id_fkey")
+  styles            UserStylePreference[]
+  colors            UserColorPreference[]
+  fits              UserFitPreference[]
+  sizes             UserSizePreference[]
+
+  @@index([quizStatus, updatedAt], map: "user_style_profiles_status_updated_idx")
+  @@map("user_style_profiles")
+}
+
+model UserStylePreference {
+  profileId         String           @map("profile_id") @db.Uuid
+  styleDefinitionId String           @map("style_definition_id") @db.Uuid
+  strength          Int
+  profile           UserStyleProfile @relation(fields: [profileId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "user_style_preferences_profile_id_fkey")
+  styleDefinition   StyleDefinition  @relation(fields: [styleDefinitionId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "user_style_preferences_style_definition_id_fkey")
+
+  @@id([profileId, styleDefinitionId], map: "user_style_preferences_pkey")
+  @@index([styleDefinitionId], map: "user_style_preferences_style_definition_idx")
+  @@map("user_style_preferences")
+}
+
+model UserColorPreference {
+  profileId   String                   @map("profile_id") @db.Uuid
+  colorFamily ColorFamily              @map("color_family")
+  sentiment   ColorPreferenceSentiment
+  profile     UserStyleProfile         @relation(fields: [profileId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "user_color_preferences_profile_id_fkey")
+
+  @@id([profileId, colorFamily], map: "user_color_preferences_pkey")
+  @@map("user_color_preferences")
+}
+
+model UserFitPreference {
+  profileId String           @map("profile_id") @db.Uuid
+  fitType   FitType          @map("fit_type")
+  rank      Int
+  profile   UserStyleProfile @relation(fields: [profileId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "user_fit_preferences_profile_id_fkey")
+
+  @@id([profileId, fitType], map: "user_fit_preferences_pkey")
+  @@map("user_fit_preferences")
+}
+
+model UserSizePreference {
+  profileId   String           @map("profile_id") @db.Uuid
+  garmentRole GarmentRole      @map("garment_role")
+  sizeSystem  SizeSystem       @map("size_system")
+  sizeKey     String           @map("size_key") @db.VarChar(40)
+  profile     UserStyleProfile @relation(fields: [profileId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "user_size_preferences_profile_id_fkey")
+
+  @@id([profileId, garmentRole, sizeSystem], map: "user_size_preferences_pkey")
+  @@index([sizeSystem, sizeKey], map: "user_size_preferences_size_idx")
+  @@map("user_size_preferences")
+}
+
+model ListingStyle {
+  listingId         String          @map("listing_id") @db.Uuid
+  styleDefinitionId String          @map("style_definition_id") @db.Uuid
+  listing           Listing         @relation(fields: [listingId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "listing_styles_listing_id_fkey")
+  styleDefinition   StyleDefinition @relation(fields: [styleDefinitionId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "listing_styles_style_definition_id_fkey")
+
+  @@id([listingId, styleDefinitionId], map: "listing_styles_pkey")
+  @@index([styleDefinitionId, listingId], map: "listing_styles_style_listing_idx")
+  @@map("listing_styles")
+}
+
+model RecommendationFeedback {
+  userId    String    @map("user_id") @db.Uuid
+  listingId String    @map("listing_id") @db.Uuid
+  hiddenAt  DateTime? @map("hidden_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "recommendation_feedback_user_id_fkey")
+  listing   Listing   @relation(fields: [listingId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "recommendation_feedback_listing_id_fkey")
+
+  @@id([userId, listingId], map: "recommendation_feedback_pkey")
+  @@index([userId, hiddenAt], map: "recommendation_feedback_user_hidden_idx")
+  @@map("recommendation_feedback")
+}
+
+model RecommendationEvent {
+  id               String                  @id @default(uuid()) @db.Uuid
+  userId           String                  @map("user_id") @db.Uuid
+  listingId        String                  @map("listing_id") @db.Uuid
+  type             RecommendationEventType
+  source           RecommendationSource
+  algorithmVersion String?                 @map("algorithm_version") @db.VarChar(40)
+  matchScore       Int?                    @map("match_score")
+  occurredAt       DateTime                @default(now()) @map("occurred_at") @db.Timestamptz(3)
+  user             User                    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "recommendation_events_user_id_fkey")
+  listing          Listing                 @relation(fields: [listingId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "recommendation_events_listing_id_fkey")
+
+  @@index([userId, occurredAt], map: "recommendation_events_user_occurred_idx")
+  @@index([listingId, type, occurredAt], map: "recommendation_events_listing_type_occurred_idx")
+  @@index([type, matchScore, occurredAt], map: "recommendation_events_type_score_occurred_idx")
+  @@map("recommendation_events")
+}
+
+model RecommendationConfiguration {
+  id                 String   @id @default(uuid()) @db.Uuid
+  version            String   @unique(map: "recommendation_configurations_version_key") @db.VarChar(40)
+  isActive           Boolean  @default(false) @map("is_active")
+  personalWeight     Int      @default(45) @map("personal_weight")
+  behaviorWeight     Int      @default(15) @map("behavior_weight")
+  sellerWeight       Int      @default(8) @map("seller_weight")
+  freshnessWeight    Int      @default(12) @map("freshness_weight")
+  trustWeight        Int      @default(8) @map("trust_weight")
+  engagementWeight   Int      @default(7) @map("engagement_weight")
+  explorationWeight  Int      @default(5) @map("exploration_weight")
+  maxPerSeller       Int      @default(2) @map("max_per_seller")
+  maxPerStyle        Int      @default(4) @map("max_per_style")
+  explorationPercent Int      @default(10) @map("exploration_percent")
+  candidateLimit     Int      @default(200) @map("candidate_limit")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([isActive], map: "recommendation_configurations_active_idx")
+  @@map("recommendation_configurations")
+}
+
+model PersonalizationAudit {
+  id        String                     @id @default(uuid()) @db.Uuid
+  userId    String?                    @map("user_id") @db.Uuid
+  actorId   String?                    @map("actor_id") @db.Uuid
+  action    PersonalizationAuditAction
+  metadata  Json?
+  createdAt DateTime                   @default(now()) @map("created_at") @db.Timestamptz(3)
+  user      User?                      @relation("PersonalizationAuditUser", fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "personalization_audits_user_id_fkey")
+  actor     User?                      @relation("PersonalizationAuditActor", fields: [actorId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "personalization_audits_actor_id_fkey")
+
+  @@index([userId, createdAt], map: "personalization_audits_user_created_idx")
+  @@index([action, createdAt], map: "personalization_audits_action_created_idx")
+  @@map("personalization_audits")
 }

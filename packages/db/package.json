@@ -21,6 +21,7 @@
     "prisma:format": "prisma format",
     "prisma:validate": "prisma validate",
     "seed:categories": "pnpm build && node dist/seed-categories.js",
+    "seed:styles": "pnpm build && node dist/seed-style-intelligence.js",
     "test:integration": "vitest run --config vitest.integration.config.mts",
     "typecheck": "pnpm generate && tsc --noEmit"
   },

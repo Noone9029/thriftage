@@ -41,6 +41,18 @@ export {
   PushDeliveryStatus,
   PushPlatform,
   UserRole,
+  StyleQuizStatus,
+  ColorFamily,
+  ColorPreferenceSentiment,
+  FitType,
+  FashionPriority,
+  LifestyleType,
+  StyleExpression,
+  SizeSystem,
+  GarmentRole,
+  RecommendationEventType,
+  RecommendationSource,
+  PersonalizationAuditAction,
 } from './generated/client/client';
 export type {
   Address,
@@ -81,6 +93,17 @@ export type {
   UserRestriction,
   SafetyAction,
   TrustAudit,
+  StyleDefinition,
+  UserStyleProfile,
+  UserStylePreference,
+  UserColorPreference,
+  UserFitPreference,
+  UserSizePreference,
+  ListingStyle,
+  RecommendationFeedback,
+  RecommendationEvent,
+  RecommendationConfiguration,
+  PersonalizationAudit,
 } from './generated/client/client';
 
 export const DATABASE_PROVIDER = 'postgresql' as const;
