@@ -100,6 +100,12 @@ export default function StylistConversationScreen() {
       void queryClient.invalidateQueries({ queryKey: ['ai-stylist', 'saved-outfits'] });
     },
   });
+  const messageSeller = useMutation({
+    mutationFn: (listingId: string) => thriftageApiClient.startConversation(listingId),
+    onSuccess: (marketplaceConversation) => {
+      router.push(`/messages/${marketplaceConversation.id}`);
+    },
+  });
 
   const submit = (text: string) => {
     const trimmed = text.trim();
@@ -191,6 +197,7 @@ export default function StylistConversationScreen() {
                 .catch(() => undefined);
               router.push(`/listings/${listingId}?aiGenerationId=${generationId}`);
             }}
+            onMessageSeller={(listingId) => messageSeller.mutate(listingId)}
             onSaveItem={(generationId, listing) => {
               void Promise.allSettled([
                 thriftageApiClient.setSaved(listing.id, true),
@@ -207,6 +214,7 @@ export default function StylistConversationScreen() {
             }
             savedOutfitIds={savedOutfitIds}
             saving={saveOutfit.isPending}
+            startingMessage={messageSeller.isPending}
           />
         ))}
         {pendingBody !== null ? (
@@ -267,6 +275,11 @@ export default function StylistConversationScreen() {
             That outfit could not be saved. Try again without regenerating it.
           </Text>
         ) : null}
+        {messageSeller.isError ? (
+          <Text style={styles.notice}>
+            Seller messaging could not start. Open the item to review its current eligibility.
+          </Text>
+        ) : null}
         {latestAssistant?.assistantPayload !== null &&
         latestAssistant?.assistantPayload !== undefined ? (
           <View style={styles.refinements}>
@@ -323,19 +336,23 @@ export default function StylistConversationScreen() {
 function StylistMessageView({
   message,
   onOpen,
+  onMessageSeller,
   onSaveItem,
   onSaveOutfit,
   onShop,
   savedOutfitIds,
   saving,
+  startingMessage,
 }: {
   readonly message: AiStylistMessage;
+  readonly onMessageSeller: (listingId: string) => void;
   readonly onOpen: (generationId: string, listingId: string) => void;
   readonly onSaveItem: (generationId: string, listing: ListingDetail) => void;
   readonly onSaveOutfit: (generationId: string, outfit: AiStylistOutfit) => void;
   readonly onShop: (generationId: string, listingId: string) => void;
   readonly savedOutfitIds: ReadonlySet<string>;
   readonly saving: boolean;
+  readonly startingMessage: boolean;
 }) {
   if (message.role === 'USER')
     return (
@@ -357,6 +374,8 @@ function StylistMessageView({
       {payload?.outfits.map((outfit) => (
         <OutfitCard
           key={outfit.id}
+          messaging={startingMessage}
+          onMessageSeller={onMessageSeller}
           onOpenListing={(listingId) => onOpen(payload.generationId, listingId)}
           onSaveItem={(listing) => onSaveItem(payload.generationId, listing)}
           onSaveOutfit={(selection) => onSaveOutfit(payload.generationId, selection)}

@@ -17,7 +17,7 @@ const apiEnvironmentSchema = z.object({
     .default(2_000_000),
   AI_STYLIST_MAX_CONCURRENT_GENERATIONS: z.coerce.number().int().min(1).max(1000).default(50),
   AI_STYLIST_MAX_INPUT_CHARACTERS: z.coerce.number().int().min(200).max(10_000).default(2000),
-  AI_STYLIST_MAX_OUTFIT_OPTIONS: z.coerce.number().int().min(1).max(5).default(3),
+  AI_STYLIST_MAX_OUTFIT_OPTIONS: z.coerce.number().int().min(1).max(3).default(3),
   AI_STYLIST_MAX_OUTPUT_TOKENS: z.coerce.number().int().min(200).max(16_000).default(1800),
   AI_STYLIST_MAX_REQUESTS_PER_MINUTE: z.coerce.number().int().min(1).max(120).default(4),
   AI_STYLIST_MAX_TOOL_CALLS: z.coerce.number().int().min(1).max(20).default(6),

@@ -180,7 +180,7 @@ export default function ListingDetailScreen() {
                       params: {
                         anchorListingId: listing.id,
                         conversationId: conversation.id,
-                        starter: `Build an outfit around ${listing.title}.`,
+                        starter: 'Build an outfit around this piece.',
                       },
                     }),
                   )

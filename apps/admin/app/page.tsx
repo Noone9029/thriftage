@@ -271,7 +271,7 @@ function AiStylistWorkspace({ api }: { readonly api: ReturnType<typeof createAdm
                 value={metrics.configuration.sessionTurnLimit.toLocaleString()}
               />
               <AiConfig
-                label="Max concurrent / user"
+                label="Global concurrent limit"
                 value={metrics.configuration.maxConcurrentGenerations.toLocaleString()}
               />
               <AiConfig

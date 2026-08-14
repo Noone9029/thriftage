@@ -104,6 +104,9 @@ describe('loadApiConfig', () => {
     expect(() =>
       loadApiConfig({ ...requiredAuthEnvironment, AI_STYLIST_MAX_TOOL_CALLS: '0' }),
     ).toThrow();
+    expect(() =>
+      loadApiConfig({ ...requiredAuthEnvironment, AI_STYLIST_MAX_OUTFIT_OPTIONS: '4' }),
+    ).toThrow();
   });
 
   it('rejects invalid ports', () => {

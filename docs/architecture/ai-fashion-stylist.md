@@ -30,7 +30,7 @@ The adapter uses the OpenAI Responses API with:
 - one retry in the SDK, an application timeout, and stable mapped failures;
 - a stable `prompt_cache_key` and static instructions/tool definitions before user-specific data.
 
-The versioned system prompt is `thriftage-stylist-v1`; the tool schema is `tools-v1`. Generation records persist requested/returned model, versions, reasoning configuration, latency, token and cached-token usage, tool count, status, failure code, and estimated cost. Hidden reasoning and raw provider responses are neither requested nor stored.
+The versioned system prompt is `thriftage-stylist-v1`; the tool schema is `thriftage-stylist-tools-v1`. Generation records persist requested/returned model, versions, reasoning configuration, latency, token and cached-token usage, tool count, status, failure code, and estimated cost. Hidden reasoning and raw provider responses are neither requested nor stored.
 
 Streaming is intentionally not enabled in this release. The authenticated mobile request is bounded and cancellable locally; only the final validated structured result becomes authoritative. This avoids rendering partial prose as verified inventory.
 

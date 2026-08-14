@@ -80,6 +80,24 @@ export class OpenAiStylistAdapter implements AiStylistProvider {
           (item): item is ParsedResponseFunctionToolCall => item.type === 'function_call',
         );
         if (toolCalls.length === 0) {
+          const refused = response.output.some(
+            (item) =>
+              item.type === 'message' && item.content.some((content) => content.type === 'refusal'),
+          );
+          if (refused)
+            return {
+              latencyMs: Date.now() - startedAt,
+              plan: {
+                assistantMessage:
+                  "I can't help with that request, but I can help with safe fashion and outfit recommendations.",
+                kind: 'REFUSAL',
+                quickRefinements: [],
+                selections: [],
+              },
+              returnedModel: response.model,
+              toolCallCount: calls,
+              usage,
+            };
           if (response.output_parsed === null)
             throw new AiStylistDomainError('AI_RESPONSE_INVALID');
           return {

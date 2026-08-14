@@ -226,7 +226,7 @@ export const aiStylistRuntimeConfigurationSchema = z.strictObject({
   evalVersion: z.string().min(1).max(60),
   maxConcurrentGenerations: z.number().int().positive(),
   maxInputCharacters: z.number().int().positive(),
-  maxOutfitOptions: z.number().int().min(1).max(5),
+  maxOutfitOptions: z.number().int().min(1).max(3),
   maxOutputTokens: z.number().int().positive(),
   maxRequestsPerMinute: z.number().int().positive(),
   maxToolCalls: z.number().int().positive(),

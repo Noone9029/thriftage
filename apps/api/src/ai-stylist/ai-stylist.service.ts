@@ -274,6 +274,7 @@ export class AiStylistService {
       const { finalPlan, outfits, validationFallback } = await this.finalizePlan(
         userId,
         intent,
+        personalization,
         generationPlan.plan,
         allCandidates,
         deterministic,
@@ -438,13 +439,14 @@ export class AiStylistService {
           : input.event === 'PURCHASE'
             ? 'ai_outfit_item_purchased'
             : 'ai_outfit_item_opened';
-    this.events.publish({
-      actorId: userId,
-      generationId: input.generationId,
-      listingId: input.listingId,
-      name,
-      ...(input.orderId === undefined ? {} : { orderId: input.orderId }),
-    });
+    if (result.recorded)
+      this.events.publish({
+        actorId: userId,
+        generationId: input.generationId,
+        listingId: input.listingId,
+        name,
+        ...(input.orderId === undefined ? {} : { orderId: input.orderId }),
+      });
     return result;
   }
 
@@ -476,7 +478,7 @@ export class AiStylistService {
       listingClickThroughRate: total === 0 ? 0 : metrics.openedGenerations / total,
       outfitSaveRate: total === 0 ? 0 : metrics.savedGenerations / total,
       outputTokens: metrics.aggregate._sum.outputTokens ?? 0,
-      providerErrorRate: total === 0 ? 0 : (statusCounts.get('FAILED') ?? 0) / total,
+      providerErrorRate: total === 0 ? 0 : metrics.providerErrors / total,
       savedOutfits: metrics.savedOutfits,
     };
   }
@@ -627,6 +629,7 @@ export class AiStylistService {
   private async finalizePlan(
     userId: string,
     intent: StylistIntent,
+    personalization: StylistPersonalizationContext,
     plan: ProviderStylistPlan,
     candidates: ReadonlyMap<string, ComposedOutfitCandidate>,
     deterministic: readonly ComposedOutfitCandidate[],
@@ -637,9 +640,14 @@ export class AiStylistService {
   }> {
     if (this.unsafeModelCopy(plan.assistantMessage)) {
       const fallback = this.fallbackPlan(deterministic, 'AI_RESPONSE_INVALID', 0);
-      return this.finalizePlan(userId, intent, fallback.plan, candidates, deterministic).then(
-        (result) => ({ ...result, validationFallback: true }),
-      );
+      return this.finalizePlan(
+        userId,
+        intent,
+        personalization,
+        fallback.plan,
+        candidates,
+        deterministic,
+      ).then((result) => ({ ...result, validationFallback: true }));
     }
     if (plan.kind !== 'OUTFITS')
       return { finalPlan: { ...plan, selections: [] }, outfits: [], validationFallback: false };
@@ -672,7 +680,7 @@ export class AiStylistService {
           },
         }))
       : selections;
-    let outfits = await this.presentSelections(userId, intent, selected);
+    let outfits = await this.presentSelections(userId, intent, personalization, selected);
     if (outfits.length !== selected.length) {
       validationFallback = true;
       selected = deterministic.slice(0, intent.optionCount).map((candidate, index) => ({
@@ -683,7 +691,7 @@ export class AiStylistService {
           title: `Current option ${index + 1}`,
         },
       }));
-      outfits = await this.presentSelections(userId, intent, selected);
+      outfits = await this.presentSelections(userId, intent, personalization, selected);
     }
     if (outfits.length === 0) {
       return {
@@ -711,6 +719,7 @@ export class AiStylistService {
   private async presentSelections(
     userId: string,
     intent: StylistIntent,
+    personalization: StylistPersonalizationContext,
     selected: readonly {
       readonly candidate: ComposedOutfitCandidate;
       readonly selection: { readonly explanation: string; readonly title: string };
@@ -720,11 +729,25 @@ export class AiStylistService {
     const listings = await this.inventory.presentEligible(userId, listingIds);
     return selected.flatMap(({ candidate, selection }) => {
       if (candidate.items.some(({ id }) => !listings.has(id))) return [];
-      const resolved = candidate.items.map(({ id }) => listings.get(id));
-      if (resolved.some((listing) => listing === undefined)) return [];
-      const current = resolved.filter(
-        (listing): listing is NonNullable<typeof listing> => listing !== undefined,
-      );
+      const currentItems = candidate.items.map((item) => ({
+        candidate: item,
+        listing: listings.get(item.id),
+      }));
+      if (
+        currentItems.some(
+          ({ candidate: item, listing }) =>
+            listing === undefined ||
+            listing.personalization?.garmentRole !== item.garmentRole ||
+            this.currentSizeConfidence(
+              item.garmentRole as GarmentRole,
+              listing,
+              intent,
+              personalization,
+            ) === 'MISMATCH',
+        )
+      )
+        return [];
+      const current = currentItems.map(({ listing }) => listing!);
       const currencies = new Set(current.map(({ currency }) => currency));
       if (currencies.size !== 1 || !currencies.has(intent.currency)) return [];
       const totalPriceMinor = current.reduce((sum, listing) => sum + listing.priceMinor, 0);
@@ -735,7 +758,12 @@ export class AiStylistService {
         position,
         role: item.garmentRole as GarmentRole,
         uncertainConstraints: [
-          ...(item.sizeConfidence === 'UNKNOWN'
+          ...(this.currentSizeConfidence(
+            item.garmentRole as GarmentRole,
+            listings.get(item.id)!,
+            intent,
+            personalization,
+          ) === 'UNKNOWN'
             ? ['Size compatibility is unknown; check the listing details.']
             : []),
           ...(intent.modesty === true
@@ -756,6 +784,26 @@ export class AiStylistService {
         },
       ];
     });
+  }
+
+  private currentSizeConfidence(
+    role: GarmentRole,
+    listing: AiStylistOutfit['items'][number]['listing'],
+    intent: StylistIntent,
+    personalization: StylistPersonalizationContext,
+  ): 'MATCH' | 'MISMATCH' | 'UNKNOWN' {
+    const constraints =
+      intent.sizeConstraints.length > 0 ? intent.sizeConstraints : personalization.sizes;
+    const forRole = constraints.filter(({ garmentRole }) => garmentRole === role);
+    const metadata = listing.personalization;
+    if (forRole.length === 0 || metadata === null) return 'UNKNOWN';
+    const comparable = forRole.filter(({ sizeSystem }) => sizeSystem === metadata.sizeSystem);
+    if (comparable.length === 0) return 'UNKNOWN';
+    return comparable.some(
+      ({ sizeKey }) => sizeKey.toUpperCase() === metadata.sizeCompatibilityKey.toUpperCase(),
+    )
+      ? 'MATCH'
+      : 'MISMATCH';
   }
 
   private nextContext(

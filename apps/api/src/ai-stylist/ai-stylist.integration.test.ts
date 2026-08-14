@@ -262,15 +262,23 @@ describe.sequential('AI Stylist PostgreSQL integration', () => {
     expect(
       reopened.messages
         .find(({ role }) => role === 'ASSISTANT')
-        ?.assistantPayload?.outfits[0]?.items.find(
-          ({ listing }) => listing.id === listings[2]!.id,
-        ),
+        ?.assistantPayload?.outfits[0]?.items.find(({ listing }) => listing.id === listings[2]!.id),
     ).toMatchObject({ available: false });
     await stylist.recordAttribution(viewer.id, {
       event: 'OPEN',
       generationId: payload!.generationId,
       listingId: listings[0]!.id,
     });
+    await stylist.recordAttribution(viewer.id, {
+      event: 'OPEN',
+      generationId: payload!.generationId,
+      listingId: listings[0]!.id,
+    });
+    await expect(
+      prisma.aiAttributionEvent.count({
+        where: { generationId: payload!.generationId, type: 'OPEN' },
+      }),
+    ).resolves.toBe(1);
     const metrics = await stylist.adminMetrics();
     expect(metrics).toMatchObject({
       generations: 1,
@@ -338,5 +346,6 @@ describe.sequential('AI Stylist PostgreSQL integration', () => {
       kind: 'NO_MATCH',
       outfits: [],
     });
+    await expect(stylist.adminMetrics()).resolves.toMatchObject({ providerErrorRate: 1 });
   });
 });

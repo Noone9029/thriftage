@@ -1639,8 +1639,9 @@ model AiAttributionEvent {
   user         User                   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "ai_attribution_events_user_id_fkey")
   generation   AiGeneration           @relation(fields: [generationId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "ai_attribution_events_generation_id_fkey")
   listing      Listing                @relation(fields: [listingId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "ai_attribution_events_listing_id_fkey")
-  order        Order?                 @relation(fields: [orderId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "ai_attribution_events_order_id_fkey")
+  order        Order?                 @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "ai_attribution_events_order_id_fkey")
 
+  @@unique([userId, generationId, listingId, type], map: "ai_attribution_events_user_generation_listing_type_key")
   @@index([userId, createdAt], map: "ai_attribution_events_user_created_idx")
   @@index([generationId, listingId, type], map: "ai_attribution_events_generation_listing_type_idx")
   @@index([type, createdAt], map: "ai_attribution_events_type_created_idx")

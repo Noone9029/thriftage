@@ -469,7 +469,7 @@ export class AiStylistRepository {
     listingId: string;
     orderId?: string;
     userId: string;
-  }): Promise<{ recorded: true }> {
+  }): Promise<{ recorded: boolean }> {
     const payload = await this.generationPayload(input.userId, input.generationId);
     if (
       !payload.outfits.some(({ items }) =>
@@ -485,16 +485,19 @@ export class AiStylistRepository {
       });
       if (order === null) throw new AiStylistDomainError('AI_OUTFIT_NOT_FOUND');
     }
-    await this.prisma.aiAttributionEvent.create({
-      data: {
-        generationId: input.generationId,
-        listingId: input.listingId,
-        ...(input.orderId === undefined ? {} : { orderId: input.orderId }),
-        type: input.event,
-        userId: input.userId,
-      },
+    const created = await this.prisma.aiAttributionEvent.createMany({
+      data: [
+        {
+          generationId: input.generationId,
+          listingId: input.listingId,
+          ...(input.orderId === undefined ? {} : { orderId: input.orderId }),
+          type: input.event,
+          userId: input.userId,
+        },
+      ],
+      skipDuplicates: true,
     });
-    return { recorded: true };
+    return { recorded: created.count === 1 };
   }
 
   public async adminMetrics(since: Date) {
@@ -507,6 +510,7 @@ export class AiStylistRepository {
       savedGenerations,
       openedGenerations,
       savedOutfits,
+      providerErrors,
     ] = await this.prisma.$transaction([
       this.prisma.aiGeneration.aggregate({
         _avg: { latencyMs: true },
@@ -544,15 +548,28 @@ export class AiStylistRepository {
         where: { createdAt: { gte: since }, type: 'OPEN' },
       }),
       this.prisma.savedOutfit.count({ where: { createdAt: { gte: since } } }),
+      this.prisma.aiGeneration.count({
+        where: {
+          failureCode: {
+            in: [
+              'AI_PROVIDER_UNAVAILABLE',
+              'AI_PROVIDER_TIMEOUT',
+              'AI_RESPONSE_INVALID',
+              'AI_TOOL_LIMIT_EXCEEDED',
+            ],
+          },
+          startedAt: { gte: since },
+        },
+      }),
     ]);
     const latency = await this.prisma.$queryRaw<
       readonly { latencyP50Ms: number | null; latencyP95Ms: number | null }[]
     >(Prisma.sql`
       SELECT
-        percentile_cont(0.5) WITHIN GROUP (ORDER BY "latencyMs")::float8 AS "latencyP50Ms",
-        percentile_cont(0.95) WITHIN GROUP (ORDER BY "latencyMs")::float8 AS "latencyP95Ms"
-      FROM "AiGeneration"
-      WHERE "startedAt" >= ${since} AND "latencyMs" IS NOT NULL
+        percentile_cont(0.5) WITHIN GROUP (ORDER BY "latency_ms")::float8 AS "latencyP50Ms",
+        percentile_cont(0.95) WITHIN GROUP (ORDER BY "latency_ms")::float8 AS "latencyP95Ms"
+      FROM "ai_generations"
+      WHERE "started_at" >= ${since} AND "latency_ms" IS NOT NULL
     `);
     return {
       activeUsers: activeUsers.length,
@@ -562,6 +579,7 @@ export class AiStylistRepository {
       byStatus,
       latency: latency[0] ?? { latencyP50Ms: null, latencyP95Ms: null },
       openedGenerations: openedGenerations.length,
+      providerErrors,
       savedGenerations: savedGenerations.length,
       savedOutfits,
     };

@@ -6,7 +6,9 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { formatMoney, marketplaceColors } from '../marketplace/marketplace-theme';
 
 interface OutfitCardProps {
+  readonly messaging: boolean;
   readonly outfit: AiStylistOutfit;
+  readonly onMessageSeller: (listingId: string) => void;
   readonly onOpenListing: (listingId: string) => void;
   readonly onSaveItem: (listing: ListingDetail) => void;
   readonly onSaveOutfit: (outfit: AiStylistOutfit) => void;
@@ -16,7 +18,9 @@ interface OutfitCardProps {
 }
 
 export function OutfitCard({
+  messaging,
   outfit,
+  onMessageSeller,
   onOpenListing,
   onSaveItem,
   onSaveOutfit,
@@ -116,6 +120,14 @@ export function OutfitCard({
                     />
                   </Pressable>
                   <Pressable
+                    accessibilityLabel={`Message seller about ${listing.title}`}
+                    disabled={messaging}
+                    onPress={() => onMessageSeller(listing.id)}
+                    style={styles.messageAction}
+                  >
+                    <Text style={styles.messageText}>{messaging ? 'Opening...' : 'Message'}</Text>
+                  </Pressable>
+                  <Pressable
                     accessibilityLabel={`Shop ${listing.title}`}
                     onPress={() => onShopListing(listing.id)}
                     style={styles.shopAction}
@@ -195,6 +207,16 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   items: { gap: 11, paddingHorizontal: 18 },
+  messageAction: {
+    alignItems: 'center',
+    borderColor: marketplaceColors.forest,
+    borderRadius: 10,
+    borderWidth: 1,
+    flex: 1,
+    justifyContent: 'center',
+    paddingVertical: 9,
+  },
+  messageText: { color: marketplaceColors.forest, fontSize: 10, fontWeight: '900' },
   placeholder: { alignItems: 'center', justifyContent: 'center' },
   price: { color: marketplaceColors.forest, fontSize: 13, fontWeight: '900', marginTop: 5 },
   role: {

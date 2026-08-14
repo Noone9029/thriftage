@@ -120,6 +120,7 @@ CREATE UNIQUE INDEX "saved_outfit_items_outfit_position_key" ON "saved_outfit_it
 CREATE UNIQUE INDEX "saved_outfit_items_outfit_replacement_request_key" ON "saved_outfit_items"("saved_outfit_id", "replacement_request_id");
 CREATE INDEX "saved_outfit_items_listing_id_idx" ON "saved_outfit_items"("listing_id");
 CREATE INDEX "ai_attribution_events_user_created_idx" ON "ai_attribution_events"("user_id", "created_at");
+CREATE UNIQUE INDEX "ai_attribution_events_user_generation_listing_type_key" ON "ai_attribution_events"("user_id", "generation_id", "listing_id", "type");
 CREATE INDEX "ai_attribution_events_generation_listing_type_idx" ON "ai_attribution_events"("generation_id", "listing_id", "type");
 CREATE INDEX "ai_attribution_events_type_created_idx" ON "ai_attribution_events"("type", "created_at");
 
@@ -135,4 +136,4 @@ ALTER TABLE "saved_outfit_items" ADD CONSTRAINT "saved_outfit_items_listing_id_f
 ALTER TABLE "ai_attribution_events" ADD CONSTRAINT "ai_attribution_events_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "ai_attribution_events" ADD CONSTRAINT "ai_attribution_events_generation_id_fkey" FOREIGN KEY ("generation_id") REFERENCES "ai_generations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "ai_attribution_events" ADD CONSTRAINT "ai_attribution_events_listing_id_fkey" FOREIGN KEY ("listing_id") REFERENCES "listings"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-ALTER TABLE "ai_attribution_events" ADD CONSTRAINT "ai_attribution_events_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "orders"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "ai_attribution_events" ADD CONSTRAINT "ai_attribution_events_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "orders"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

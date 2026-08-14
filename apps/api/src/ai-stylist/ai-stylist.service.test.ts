@@ -225,6 +225,29 @@ describe('AiStylistService generation pipeline', () => {
     expect(JSON.stringify(published)).toContain('ai_fallback_used');
   });
 
+  it('persists a safe provider refusal as a normal refusal response', async () => {
+    const provider = new FakeAiStylistProvider({
+      assistantMessage: 'I can help with safe fashion and outfit requests instead.',
+      kind: 'REFUSAL',
+      quickRefinements: [],
+      selections: [],
+    });
+    const { repository, service } = harness(provider);
+
+    const result = await service.generate(userId, conversationId, {
+      body: 'Build a safe university outfit',
+      requestId: '80000000-0000-4000-8000-000000000010',
+    });
+
+    expect(result.status).toBe('REFUSED');
+    expect(result.message.assistantPayload).toMatchObject({ kind: 'REFUSAL', outfits: [] });
+    expect(repository.completeGeneration).toHaveBeenCalledWith(
+      generationId,
+      conversationId,
+      expect.objectContaining({ status: 'REFUSED' }),
+    );
+  });
+
   it('accounts for provider usage already incurred before a grounded fallback', async () => {
     const provider: AiStylistProvider = {
       generate: vi.fn().mockRejectedValue(
@@ -374,5 +397,27 @@ describe('AiStylistService generation pipeline', () => {
     expect(outfit?.items[2]?.listing.id).toBe(listingIds[2]);
     expect(outfit?.totalPriceMinor).toBeNull();
     expect(outfit?.unmetConstraints).toContain('One or more items are no longer available.');
+  });
+
+  it('rejects stale size metadata during final inventory revalidation', async () => {
+    const { inventory, service } = harness(new FakeAiStylistProvider());
+    const changedSize = listing(0);
+    changedSize.personalization!.sizeCompatibilityKey = 'XS';
+    vi.mocked(inventory.presentEligible).mockResolvedValue(
+      new Map([
+        [listingIds[0], changedSize],
+        [listingIds[1], listing(1)],
+        [listingIds[2], listing(2)],
+      ]),
+    );
+
+    const result = await service.generate(userId, conversationId, {
+      body: 'Build a minimalist university outfit under PKR 9,000',
+      requestId: '80000000-0000-4000-8000-000000000009',
+    });
+
+    expect(result.status).toBe('FALLBACK');
+    expect(result.message.assistantPayload?.kind).toBe('NO_MATCH');
+    expect(result.message.assistantPayload?.outfits).toEqual([]);
   });
 });
