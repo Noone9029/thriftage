@@ -420,6 +420,65 @@ export class PersonalizationService {
     return match === undefined || match.contributions.length === 0 ? null : match;
   }
 
+  public async contextForStylist(userId: string) {
+    const profile = await this.prisma.userStyleProfile.findUnique({
+      include: profileInclude,
+      where: { userId },
+    });
+    const since = profile?.behavioralResetAt ?? new Date(0);
+    const recentEvents = await this.prisma.recommendationEvent.findMany({
+      include: { listing: { include: { styles: { include: { styleDefinition: true } } } } },
+      orderBy: { occurredAt: 'desc' },
+      take: 50,
+      where: { occurredAt: { gt: since }, userId },
+    });
+    const affinity = new Map<string, number>();
+    const eventWeight = {
+      CHECKOUT: 6,
+      FOLLOW_SELLER: 3,
+      IMPRESSION: 0,
+      LIKE: 3,
+      MESSAGE_SELLER: 4,
+      NOT_INTERESTED: -5,
+      PURCHASE: 9,
+      SAVE: 4,
+      VIEW: 1,
+    } as const;
+    for (const event of recentEvents) {
+      for (const style of event.listing.styles) {
+        affinity.set(
+          style.styleDefinition.slug,
+          (affinity.get(style.styleDefinition.slug) ?? 0) + eventWeight[event.type],
+        );
+      }
+    }
+    return {
+      budgetMaxMinor: profile?.budgetMaxMinor ?? null,
+      budgetMinMinor: profile?.budgetMinMinor ?? null,
+      colors:
+        profile?.colors.map(({ colorFamily, sentiment }) => ({ colorFamily, sentiment })) ?? [],
+      currency: profile?.currency ?? ('PKR' as const),
+      fits: profile?.fits.map(({ fitType }) => fitType) ?? [],
+      profileVersion: profile?.profileVersion ?? null,
+      recentStyleAffinities: [...affinity.entries()]
+        .filter(([, score]) => score > 0)
+        .sort((left, right) => right[1] - left[1])
+        .slice(0, 5)
+        .map(([slug, score]) => ({ score, slug })),
+      sizes:
+        profile?.sizes.map(({ garmentRole, sizeKey, sizeSystem }) => ({
+          garmentRole,
+          sizeKey,
+          sizeSystem,
+        })) ?? [],
+      styles:
+        profile?.styles.map(({ strength, styleDefinition }) => ({
+          slug: styleDefinition.slug,
+          strength,
+        })) ?? [],
+    };
+  }
+
   public async similarListingIds(
     viewerId: string | undefined,
     listingId: string,

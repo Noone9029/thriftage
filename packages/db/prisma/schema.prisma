@@ -437,6 +437,32 @@ enum PersonalizationAuditAction {
   TAXONOMY_UPDATED
 }
 
+enum AiStylistMessageRole {
+  USER
+  ASSISTANT
+}
+
+enum AiGenerationStatus {
+  PROCESSING
+  SUCCEEDED
+  FALLBACK
+  FAILED
+  CANCELLED
+  REFUSED
+}
+
+enum AiProviderCode {
+  OPENAI
+  DETERMINISTIC
+}
+
+enum AiAttributionEventType {
+  OPEN
+  SAVE
+  CHECKOUT
+  PURCHASE
+}
+
 model User {
   id                          String                     @id @default(uuid()) @db.Uuid
   authProviderUserId          String                     @unique(map: "users_auth_provider_user_id_key") @map("auth_provider_user_id") @db.VarChar(255)
@@ -503,6 +529,10 @@ model User {
   recommendationEvents        RecommendationEvent[]
   personalizationAudits       PersonalizationAudit[]     @relation("PersonalizationAuditUser")
   personalizationAuditActions PersonalizationAudit[]     @relation("PersonalizationAuditActor")
+  aiStylistConversations      AiStylistConversation[]
+  aiStylistGenerations        AiGeneration[]
+  savedOutfits                SavedOutfit[]
+  aiAttributionEvents         AiAttributionEvent[]
 
   @@index([accountStatus], map: "users_account_status_idx")
   @@index([createdAt], map: "users_created_at_idx")
@@ -613,6 +643,8 @@ model Listing {
   styles                 ListingStyle[]
   recommendationFeedback RecommendationFeedback[]
   recommendationEvents   RecommendationEvent[]
+  savedOutfitItems       SavedOutfitItem[]
+  aiAttributionEvents    AiAttributionEvent[]
 
   @@index([status, createdAt, id], map: "listings_status_created_id_idx")
   @@index([sellerId, status, updatedAt], map: "listings_seller_status_updated_idx")
@@ -884,6 +916,7 @@ model Order {
   events               OrderEvent[]
   notifications        Notification[]
   notificationOutbox   NotificationOutbox[]
+  aiAttributionEvents  AiAttributionEvent[]
   reviews              Review[]
   disputes             Dispute[]
 
@@ -1490,4 +1523,126 @@ model PersonalizationAudit {
   @@index([userId, createdAt], map: "personalization_audits_user_created_idx")
   @@index([action, createdAt], map: "personalization_audits_action_created_idx")
   @@map("personalization_audits")
+}
+
+model AiStylistConversation {
+  id              String             @id @default(uuid()) @db.Uuid
+  userId          String             @map("user_id") @db.Uuid
+  title           String             @db.VarChar(120)
+  contextSnapshot Json               @default("{}") @map("context_snapshot") @db.JsonB
+  archivedAt      DateTime?          @map("archived_at") @db.Timestamptz(3)
+  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "ai_stylist_conversations_user_id_fkey")
+  messages        AiStylistMessage[]
+  generations     AiGeneration[]
+  savedOutfits    SavedOutfit[]
+
+  @@index([userId, archivedAt, updatedAt, id], map: "ai_stylist_conversations_user_archive_updated_idx")
+  @@map("ai_stylist_conversations")
+}
+
+model AiStylistMessage {
+  id               String                @id @default(uuid()) @db.Uuid
+  conversationId   String                @map("conversation_id") @db.Uuid
+  role             AiStylistMessageRole
+  content          String                @db.VarChar(4000)
+  assistantPayload Json?                 @map("assistant_payload") @db.JsonB
+  createdAt        DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  conversation     AiStylistConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "ai_stylist_messages_conversation_id_fkey")
+
+  @@index([conversationId, createdAt, id], map: "ai_stylist_messages_conversation_created_idx")
+  @@map("ai_stylist_messages")
+}
+
+model AiGeneration {
+  id                    String                @id @default(uuid()) @db.Uuid
+  conversationId        String                @map("conversation_id") @db.Uuid
+  userId                String                @map("user_id") @db.Uuid
+  clientRequestId       String                @map("client_request_id") @db.Uuid
+  provider              AiProviderCode
+  requestedModel        String                @map("requested_model") @db.VarChar(100)
+  returnedModel         String?               @map("returned_model") @db.VarChar(100)
+  promptVersion         String                @map("prompt_version") @db.VarChar(60)
+  toolSchemaVersion     String                @map("tool_schema_version") @db.VarChar(60)
+  reasoningEffort       String                @map("reasoning_effort") @db.VarChar(20)
+  status                AiGenerationStatus    @default(PROCESSING)
+  inputTokens           Int                   @default(0) @map("input_tokens")
+  cachedInputTokens     Int                   @default(0) @map("cached_input_tokens")
+  outputTokens          Int                   @default(0) @map("output_tokens")
+  estimatedCostMicroUsd Int                   @default(0) @map("estimated_cost_micro_usd")
+  latencyMs             Int?                  @map("latency_ms")
+  toolCallCount         Int                   @default(0) @map("tool_call_count")
+  failureCode           String?               @map("failure_code") @db.VarChar(60)
+  intentCategory        String?               @map("intent_category") @db.VarChar(60)
+  responsePayload       Json?                 @map("response_payload") @db.JsonB
+  startedAt             DateTime              @default(now()) @map("started_at") @db.Timestamptz(3)
+  completedAt           DateTime?             @map("completed_at") @db.Timestamptz(3)
+  conversation          AiStylistConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "ai_generations_conversation_id_fkey")
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "ai_generations_user_id_fkey")
+  savedOutfits          SavedOutfit[]
+  attributionEvents     AiAttributionEvent[]
+
+  @@unique([userId, clientRequestId], map: "ai_generations_user_request_key")
+  @@index([conversationId, startedAt, id], map: "ai_generations_conversation_started_idx")
+  @@index([userId, startedAt, status], map: "ai_generations_user_started_status_idx")
+  @@index([status, startedAt], map: "ai_generations_status_started_idx")
+  @@index([provider, requestedModel, startedAt], map: "ai_generations_provider_model_started_idx")
+  @@map("ai_generations")
+}
+
+model SavedOutfit {
+  id                   String                 @id @default(uuid()) @db.Uuid
+  userId               String                 @map("user_id") @db.Uuid
+  title                String                 @db.VarChar(120)
+  sourceConversationId String?                @map("source_conversation_id") @db.Uuid
+  sourceGenerationId   String?                @map("source_generation_id") @db.Uuid
+  sourceOutfitId       String                 @map("source_outfit_id") @db.Uuid
+  createdAt            DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime               @updatedAt @map("updated_at") @db.Timestamptz(3)
+  user                 User                   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "saved_outfits_user_id_fkey")
+  sourceConversation   AiStylistConversation? @relation(fields: [sourceConversationId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "saved_outfits_source_conversation_id_fkey")
+  sourceGeneration     AiGeneration?          @relation(fields: [sourceGenerationId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "saved_outfits_source_generation_id_fkey")
+  items                SavedOutfitItem[]
+
+  @@unique([userId, sourceOutfitId], map: "saved_outfits_user_source_outfit_key")
+  @@index([userId, createdAt, id], map: "saved_outfits_user_created_idx")
+  @@map("saved_outfits")
+}
+
+model SavedOutfitItem {
+  id                   String      @id @default(uuid()) @db.Uuid
+  savedOutfitId        String      @map("saved_outfit_id") @db.Uuid
+  listingId            String?     @map("listing_id") @db.Uuid
+  listingReferenceId   String      @map("listing_reference_id") @db.Uuid
+  replacementRequestId String?     @map("replacement_request_id") @db.Uuid
+  garmentRole          GarmentRole @map("garment_role")
+  position             Int
+  createdAt            DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  savedOutfit          SavedOutfit @relation(fields: [savedOutfitId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "saved_outfit_items_saved_outfit_id_fkey")
+  listing              Listing?    @relation(fields: [listingId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "saved_outfit_items_listing_id_fkey")
+
+  @@unique([savedOutfitId, position], map: "saved_outfit_items_outfit_position_key")
+  @@unique([savedOutfitId, replacementRequestId], map: "saved_outfit_items_outfit_replacement_request_key")
+  @@index([listingId], map: "saved_outfit_items_listing_id_idx")
+  @@map("saved_outfit_items")
+}
+
+model AiAttributionEvent {
+  id           String                 @id @default(uuid()) @db.Uuid
+  userId       String                 @map("user_id") @db.Uuid
+  generationId String                 @map("generation_id") @db.Uuid
+  listingId    String                 @map("listing_id") @db.Uuid
+  orderId      String?                @map("order_id") @db.Uuid
+  type         AiAttributionEventType
+  createdAt    DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  user         User                   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "ai_attribution_events_user_id_fkey")
+  generation   AiGeneration           @relation(fields: [generationId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "ai_attribution_events_generation_id_fkey")
+  listing      Listing                @relation(fields: [listingId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "ai_attribution_events_listing_id_fkey")
+  order        Order?                 @relation(fields: [orderId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "ai_attribution_events_order_id_fkey")
+
+  @@index([userId, createdAt], map: "ai_attribution_events_user_created_idx")
+  @@index([generationId, listingId, type], map: "ai_attribution_events_generation_listing_type_idx")
+  @@index([type, createdAt], map: "ai_attribution_events_type_created_idx")
+  @@map("ai_attribution_events")
 }

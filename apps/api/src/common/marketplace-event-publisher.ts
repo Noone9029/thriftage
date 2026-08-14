@@ -8,6 +8,8 @@ export interface MarketplaceEvent {
   readonly orderId?: string;
   readonly reviewId?: string;
   readonly disputeId?: string;
+  readonly generationId?: string;
+  readonly outfitId?: string;
   readonly sellerVerificationId?: string;
   readonly name:
     | 'item_liked'
@@ -46,7 +48,18 @@ export interface MarketplaceEvent {
     | 'seller_verification_approved'
     | 'seller_verification_rejected'
     | 'restriction_applied'
-    | 'policy_accepted';
+    | 'policy_accepted'
+    | 'ai_stylist_opened'
+    | 'ai_message_sent'
+    | 'ai_response_completed'
+    | 'ai_response_failed'
+    | 'ai_outfit_generated'
+    | 'ai_outfit_saved'
+    | 'ai_outfit_item_opened'
+    | 'ai_outfit_item_saved'
+    | 'ai_outfit_item_purchased'
+    | 'ai_refinement_requested'
+    | 'ai_fallback_used';
   readonly targetUserId?: string;
 }
 

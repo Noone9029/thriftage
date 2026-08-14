@@ -15,6 +15,21 @@ describe('loadApiConfig', () => {
 
   it('returns safe local defaults', () => {
     expect(loadApiConfig(requiredAuthEnvironment)).toEqual({
+      aiStylistCachedInputCostMicroUsdPerMillion: 200_000,
+      aiStylistDailyUserLimit: 20,
+      aiStylistEnabled: false,
+      aiStylistInputCostMicroUsdPerMillion: 2_000_000,
+      aiStylistMaxConcurrentGenerations: 50,
+      aiStylistMaxInputCharacters: 2000,
+      aiStylistMaxOutfitOptions: 3,
+      aiStylistMaxOutputTokens: 1800,
+      aiStylistMaxRequestsPerMinute: 4,
+      aiStylistMaxToolCalls: 6,
+      aiStylistModel: 'gpt-5.6-terra',
+      aiStylistOutputCostMicroUsdPerMillion: 12_000_000,
+      aiStylistReasoningEffort: 'medium',
+      aiStylistSessionTurnLimit: 40,
+      aiStylistTimeoutMs: 20_000,
       conversationMaxStartsPerDay: 25,
       corsOrigins: [],
       disputeEvidenceBucket: 'dispute-evidence',
@@ -69,6 +84,26 @@ describe('loadApiConfig', () => {
       nodeEnv: 'production',
       port: 4100,
     });
+  });
+
+  it('validates backend-only AI controls without requiring a provider key while disabled', () => {
+    expect(
+      loadApiConfig({
+        ...requiredAuthEnvironment,
+        AI_STYLIST_DAILY_BUDGET_MICRO_USD: '250000',
+        AI_STYLIST_ENABLED: 'true',
+        AI_STYLIST_REASONING_EFFORT: 'high',
+        OPENAI_API_KEY: 'sk-test-placeholder-not-a-real-key',
+      }),
+    ).toMatchObject({
+      aiStylistDailyBudgetMicroUsd: 250_000,
+      aiStylistEnabled: true,
+      aiStylistReasoningEffort: 'high',
+      openAiApiKey: 'sk-test-placeholder-not-a-real-key',
+    });
+    expect(() =>
+      loadApiConfig({ ...requiredAuthEnvironment, AI_STYLIST_MAX_TOOL_CALLS: '0' }),
+    ).toThrow();
   });
 
   it('rejects invalid ports', () => {

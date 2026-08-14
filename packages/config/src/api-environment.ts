@@ -2,6 +2,36 @@ import { parseCommaSeparatedList } from '@thriftage/shared';
 import { z } from 'zod';
 
 const apiEnvironmentSchema = z.object({
+  AI_STYLIST_CACHED_INPUT_COST_MICRO_USD_PER_MILLION: z.coerce
+    .number()
+    .int()
+    .nonnegative()
+    .default(200_000),
+  AI_STYLIST_DAILY_BUDGET_MICRO_USD: z.coerce.number().int().positive().optional(),
+  AI_STYLIST_DAILY_USER_LIMIT: z.coerce.number().int().min(1).max(1000).default(20),
+  AI_STYLIST_ENABLED: z.enum(['true', 'false']).default('false'),
+  AI_STYLIST_INPUT_COST_MICRO_USD_PER_MILLION: z.coerce
+    .number()
+    .int()
+    .nonnegative()
+    .default(2_000_000),
+  AI_STYLIST_MAX_CONCURRENT_GENERATIONS: z.coerce.number().int().min(1).max(1000).default(50),
+  AI_STYLIST_MAX_INPUT_CHARACTERS: z.coerce.number().int().min(200).max(10_000).default(2000),
+  AI_STYLIST_MAX_OUTFIT_OPTIONS: z.coerce.number().int().min(1).max(5).default(3),
+  AI_STYLIST_MAX_OUTPUT_TOKENS: z.coerce.number().int().min(200).max(16_000).default(1800),
+  AI_STYLIST_MAX_REQUESTS_PER_MINUTE: z.coerce.number().int().min(1).max(120).default(4),
+  AI_STYLIST_MAX_TOOL_CALLS: z.coerce.number().int().min(1).max(20).default(6),
+  AI_STYLIST_MODEL: z.string().trim().min(1).max(100).default('gpt-5.6-terra'),
+  AI_STYLIST_OUTPUT_COST_MICRO_USD_PER_MILLION: z.coerce
+    .number()
+    .int()
+    .nonnegative()
+    .default(12_000_000),
+  AI_STYLIST_REASONING_EFFORT: z
+    .enum(['none', 'low', 'medium', 'high', 'xhigh', 'max'])
+    .default('medium'),
+  AI_STYLIST_SESSION_TURN_LIMIT: z.coerce.number().int().min(1).max(500).default(40),
+  AI_STYLIST_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120_000).default(20_000),
   API_HOST: z.string().min(1).default('0.0.0.0'),
   API_PORT: z.coerce.number().int().min(1).max(65_535).default(4000),
   CONVERSATION_MAX_STARTS_PER_DAY: z.coerce.number().int().min(1).max(100).default(25),
@@ -27,6 +57,7 @@ const apiEnvironmentSchema = z.object({
   MESSAGE_MAX_BLOCKED_PER_HOUR: z.coerce.number().int().min(1).max(100).default(10),
   MESSAGE_MAX_SENDS_PER_MINUTE: z.coerce.number().int().min(1).max(120).default(20),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  OPENAI_API_KEY: z.string().trim().min(16).optional(),
   OUTBOX_BATCH_SIZE: z.coerce.number().int().min(1).max(100).default(25),
   OUTBOX_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(25).default(10),
   OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(250).max(60_000).default(1000),
@@ -76,6 +107,22 @@ const apiEnvironmentSchema = z.object({
 });
 
 export interface ApiConfig {
+  readonly aiStylistCachedInputCostMicroUsdPerMillion: number;
+  readonly aiStylistDailyBudgetMicroUsd?: number;
+  readonly aiStylistDailyUserLimit: number;
+  readonly aiStylistEnabled: boolean;
+  readonly aiStylistInputCostMicroUsdPerMillion: number;
+  readonly aiStylistMaxConcurrentGenerations: number;
+  readonly aiStylistMaxInputCharacters: number;
+  readonly aiStylistMaxOutfitOptions: number;
+  readonly aiStylistMaxOutputTokens: number;
+  readonly aiStylistMaxRequestsPerMinute: number;
+  readonly aiStylistMaxToolCalls: number;
+  readonly aiStylistModel: string;
+  readonly aiStylistOutputCostMicroUsdPerMillion: number;
+  readonly aiStylistReasoningEffort: 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+  readonly aiStylistSessionTurnLimit: number;
+  readonly aiStylistTimeoutMs: number;
   readonly conversationMaxStartsPerDay: number;
   readonly corsOrigins: readonly string[];
   readonly disputeEvidenceBucket: string;
@@ -92,6 +139,7 @@ export interface ApiConfig {
   readonly messageMaxBlockedPerHour: number;
   readonly messageMaxSendsPerMinute: number;
   readonly nodeEnv: 'development' | 'test' | 'production';
+  readonly openAiApiKey?: string;
   readonly outboxBatchSize: number;
   readonly outboxMaxAttempts: number;
   readonly outboxPollIntervalMs: number;
@@ -121,6 +169,25 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
   const parsed = apiEnvironmentSchema.parse(environment);
 
   return Object.freeze({
+    aiStylistCachedInputCostMicroUsdPerMillion:
+      parsed.AI_STYLIST_CACHED_INPUT_COST_MICRO_USD_PER_MILLION,
+    ...(parsed.AI_STYLIST_DAILY_BUDGET_MICRO_USD === undefined
+      ? {}
+      : { aiStylistDailyBudgetMicroUsd: parsed.AI_STYLIST_DAILY_BUDGET_MICRO_USD }),
+    aiStylistDailyUserLimit: parsed.AI_STYLIST_DAILY_USER_LIMIT,
+    aiStylistEnabled: parsed.AI_STYLIST_ENABLED === 'true',
+    aiStylistInputCostMicroUsdPerMillion: parsed.AI_STYLIST_INPUT_COST_MICRO_USD_PER_MILLION,
+    aiStylistMaxConcurrentGenerations: parsed.AI_STYLIST_MAX_CONCURRENT_GENERATIONS,
+    aiStylistMaxInputCharacters: parsed.AI_STYLIST_MAX_INPUT_CHARACTERS,
+    aiStylistMaxOutfitOptions: parsed.AI_STYLIST_MAX_OUTFIT_OPTIONS,
+    aiStylistMaxOutputTokens: parsed.AI_STYLIST_MAX_OUTPUT_TOKENS,
+    aiStylistMaxRequestsPerMinute: parsed.AI_STYLIST_MAX_REQUESTS_PER_MINUTE,
+    aiStylistMaxToolCalls: parsed.AI_STYLIST_MAX_TOOL_CALLS,
+    aiStylistModel: parsed.AI_STYLIST_MODEL,
+    aiStylistOutputCostMicroUsdPerMillion: parsed.AI_STYLIST_OUTPUT_COST_MICRO_USD_PER_MILLION,
+    aiStylistReasoningEffort: parsed.AI_STYLIST_REASONING_EFFORT,
+    aiStylistSessionTurnLimit: parsed.AI_STYLIST_SESSION_TURN_LIMIT,
+    aiStylistTimeoutMs: parsed.AI_STYLIST_TIMEOUT_MS,
     conversationMaxStartsPerDay: parsed.CONVERSATION_MAX_STARTS_PER_DAY,
     corsOrigins: parseCommaSeparatedList(parsed.CORS_ORIGINS),
     disputeEvidenceBucket: parsed.DISPUTE_EVIDENCE_BUCKET,
@@ -141,6 +208,7 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
     messageMaxBlockedPerHour: parsed.MESSAGE_MAX_BLOCKED_PER_HOUR,
     messageMaxSendsPerMinute: parsed.MESSAGE_MAX_SENDS_PER_MINUTE,
     nodeEnv: parsed.NODE_ENV,
+    ...(parsed.OPENAI_API_KEY === undefined ? {} : { openAiApiKey: parsed.OPENAI_API_KEY }),
     outboxBatchSize: parsed.OUTBOX_BATCH_SIZE,
     outboxMaxAttempts: parsed.OUTBOX_MAX_ATTEMPTS,
     outboxPollIntervalMs: parsed.OUTBOX_POLL_INTERVAL_MS,

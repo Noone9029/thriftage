@@ -19,9 +19,11 @@ import { ReviewsModule } from './reviews/reviews.module';
 import { SellerVerificationModule } from './seller-verification/seller-verification.module';
 import { DisputesModule } from './disputes/disputes.module';
 import { PersonalizationModule } from './personalization/personalization.module';
+import { AiStylistModule } from './ai-stylist/ai-stylist.module';
 
 @Module({
   imports: [
+    AiStylistModule,
     AdminModule,
     AuthModule,
     CategoriesModule,

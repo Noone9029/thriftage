@@ -1,5 +1,6 @@
 export * from './constants/application';
 export * from './auth/auth-contracts';
+export * from './ai-stylist/ai-stylist-contracts';
 export * from './auth/phone-verification-contracts';
 export * from './communication/communication-contracts';
 export * from './commerce/commerce-contracts';

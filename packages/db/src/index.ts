@@ -53,6 +53,10 @@ export {
   RecommendationEventType,
   RecommendationSource,
   PersonalizationAuditAction,
+  AiStylistMessageRole,
+  AiGenerationStatus,
+  AiProviderCode,
+  AiAttributionEventType,
 } from './generated/client/client';
 export type {
   Address,
@@ -104,6 +108,12 @@ export type {
   RecommendationEvent,
   RecommendationConfiguration,
   PersonalizationAudit,
+  AiStylistConversation,
+  AiStylistMessage,
+  AiGeneration,
+  SavedOutfit,
+  SavedOutfitItem,
+  AiAttributionEvent,
 } from './generated/client/client';
 
 export const DATABASE_PROVIDER = 'postgresql' as const;
