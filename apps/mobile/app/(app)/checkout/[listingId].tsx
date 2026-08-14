@@ -13,7 +13,10 @@ import {
 import { thriftageApiClient } from '../../../src/lib/auth/auth-composition';
 
 export default function CheckoutScreen() {
-  const { listingId = '' } = useLocalSearchParams<{ listingId?: string }>();
+  const { aiGenerationId, listingId = '' } = useLocalSearchParams<{
+    aiGenerationId?: string;
+    listingId?: string;
+  }>();
   const listing = useQuery({
     queryFn: () => thriftageApiClient.getListing(listingId),
     queryKey: ['marketplace', 'listing', listingId],
@@ -58,7 +61,24 @@ export default function CheckoutScreen() {
         paymentMethod: 'CASH_ON_DELIVERY',
       });
     },
-    onSuccess: (order) => router.replace(`/orders/${order.id}`),
+    onSuccess: (order) => {
+      if (aiGenerationId !== undefined)
+        void Promise.allSettled([
+          thriftageApiClient.recordStylistAttribution({
+            event: 'CHECKOUT',
+            generationId: aiGenerationId,
+            listingId,
+            orderId: order.id,
+          }),
+          thriftageApiClient.recordStylistAttribution({
+            event: 'PURCHASE',
+            generationId: aiGenerationId,
+            listingId,
+            orderId: order.id,
+          }),
+        ]);
+      router.replace(`/orders/${order.id}`);
+    },
   });
   if (listing.isLoading || addresses.isLoading)
     return (

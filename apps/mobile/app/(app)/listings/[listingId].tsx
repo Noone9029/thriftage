@@ -24,6 +24,7 @@ export default function ListingDetailScreen() {
   const { state } = useAuth();
   const actions = useListingActions();
   const [startingConversation, setStartingConversation] = useState(false);
+  const [startingStylist, setStartingStylist] = useState(false);
   const query = useQuery({
     queryFn: () => thriftageApiClient.getListing(listingId),
     queryKey: ['marketplace', 'listing', listingId],
@@ -165,6 +166,40 @@ export default function ListingDetailScreen() {
           {reporting ? (
             <ReportPanel listingId={listing.id} onClose={() => setReporting(false)} />
           ) : null}
+          {listing.status === 'ACTIVE' ? (
+            <Pressable
+              accessibilityLabel={`Build an outfit around ${listing.title}`}
+              disabled={startingStylist}
+              onPress={() => {
+                setStartingStylist(true);
+                void thriftageApiClient
+                  .createStylistConversation({ anchorListingId: listing.id })
+                  .then((conversation) =>
+                    router.push({
+                      pathname: '/stylist/[conversationId]',
+                      params: {
+                        anchorListingId: listing.id,
+                        conversationId: conversation.id,
+                        starter: `Build an outfit around ${listing.title}.`,
+                      },
+                    }),
+                  )
+                  .finally(() => setStartingStylist(false));
+              }}
+              style={styles.styleThisButton}
+            >
+              <MaterialIcons color={marketplaceColors.forest} name="auto-awesome" size={20} />
+              <View style={styles.styleThisCopy}>
+                <Text style={styles.styleThisTitle}>
+                  {startingStylist ? 'Opening Stylist…' : 'Style this piece'}
+                </Text>
+                <Text style={styles.styleThisText}>
+                  Build a complete look around it using eligible marketplace inventory.
+                </Text>
+              </View>
+              <MaterialIcons color={marketplaceColors.forest} name="arrow-forward" size={20} />
+            </Pressable>
+          ) : null}
           {!ownListing && listing.status === 'ACTIVE' ? (
             <View style={styles.commerceActions}>
               <Pressable
@@ -238,6 +273,20 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   messageButtonText: { color: marketplaceColors.forest, fontWeight: '900' },
+  styleThisButton: {
+    alignItems: 'center',
+    backgroundColor: '#E3EAE5',
+    borderColor: '#CBD9CF',
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 22,
+    padding: 14,
+  },
+  styleThisCopy: { flex: 1 },
+  styleThisText: { color: marketplaceColors.muted, fontSize: 10, lineHeight: 15, marginTop: 3 },
+  styleThisTitle: { color: marketplaceColors.forest, fontSize: 14, fontWeight: '900' },
   avatar: { borderRadius: 24, height: 48, width: 48 },
   avatarPlaceholder: {
     alignItems: 'center',

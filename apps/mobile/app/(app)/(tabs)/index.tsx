@@ -1,4 +1,5 @@
 import type { FeedMode, ListingDetail, ListingPage } from '@thriftage/shared';
+import { MaterialIcons } from '@expo/vector-icons';
 import {
   type InfiniteData,
   useInfiniteQuery,
@@ -84,6 +85,24 @@ export default function DiscoveryScreen() {
             <Text style={styles.brand}>THRIFTAGE</Text>
             <Text style={styles.heading}>Find your next favorite piece.</Text>
             <Text style={styles.subheading}>Curated resale, real wardrobes, better style.</Text>
+            <Pressable
+              accessibilityLabel="Open AI Fashion Stylist"
+              accessibilityRole="button"
+              onPress={() => router.push('/stylist')}
+              style={styles.stylistCard}
+            >
+              <View style={styles.stylistIcon}>
+                <MaterialIcons color={marketplaceColors.white} name="auto-awesome" size={24} />
+              </View>
+              <View style={styles.stylistCopy}>
+                <Text style={styles.stylistEyebrow}>AI FASHION STYLIST</Text>
+                <Text style={styles.stylistTitle}>Build a look from live Thriftage pieces</Text>
+                <Text style={styles.stylistBody}>
+                  Try an occasion, budget, color, or item you already love.
+                </Text>
+              </View>
+              <MaterialIcons color={marketplaceColors.forest} name="arrow-forward" size={21} />
+            </Pressable>
             <View style={styles.modeRow}>
               {modes.map((item) => (
                 <Pressable
@@ -195,6 +214,40 @@ const styles = StyleSheet.create({
   promptTitle: { color: marketplaceColors.forest, fontSize: 14, fontWeight: '900' },
   safeArea: { backgroundColor: marketplaceColors.background, flex: 1 },
   subheading: { color: marketplaceColors.muted, fontSize: 14, marginTop: 8 },
+  stylistBody: { color: marketplaceColors.muted, fontSize: 10, lineHeight: 15, marginTop: 3 },
+  stylistCard: {
+    alignItems: 'center',
+    backgroundColor: '#E3EAE5',
+    borderColor: '#CDD9D0',
+    borderRadius: 20,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 11,
+    marginTop: 18,
+    padding: 13,
+  },
+  stylistCopy: { flex: 1 },
+  stylistEyebrow: {
+    color: marketplaceColors.accent,
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 1.4,
+  },
+  stylistIcon: {
+    alignItems: 'center',
+    backgroundColor: marketplaceColors.forest,
+    borderRadius: 17,
+    height: 48,
+    justifyContent: 'center',
+    width: 48,
+  },
+  stylistTitle: {
+    color: marketplaceColors.forest,
+    fontSize: 13,
+    fontWeight: '900',
+    lineHeight: 17,
+    marginTop: 3,
+  },
   undo: {
     alignItems: 'center',
     backgroundColor: marketplaceColors.text,

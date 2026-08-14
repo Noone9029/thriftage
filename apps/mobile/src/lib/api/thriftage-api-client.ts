@@ -90,6 +90,26 @@ import {
   type StyleDefinition,
   type StyleProfile,
   type StyleProfileInput,
+  aiStylistAttributionInputSchema,
+  aiStylistConversationCreateInputSchema,
+  aiStylistConversationDetailSchema,
+  aiStylistConversationPageSchema,
+  aiStylistGenerationResultSchema,
+  aiStylistMessageInputSchema,
+  replaceSavedOutfitItemInputSchema,
+  savedOutfitPageSchema,
+  savedOutfitSchema,
+  saveOutfitInputSchema,
+  type AiStylistAttributionInput,
+  type AiStylistConversationCreateInput,
+  type AiStylistConversationDetail,
+  type AiStylistConversationPage,
+  type AiStylistGenerationResult,
+  type AiStylistMessageInput,
+  type ReplaceSavedOutfitItemInput,
+  type SavedOutfit,
+  type SavedOutfitPage,
+  type SaveOutfitInput,
 } from '@thriftage/shared';
 
 import { decodeApiError, MobileApiError } from './mobile-api-error';
@@ -104,6 +124,7 @@ interface RequestOptions {
   readonly authenticated?: boolean;
   readonly body?: unknown;
   readonly method?: 'DELETE' | 'GET' | 'PATCH' | 'POST' | 'PUT';
+  readonly signal?: AbortSignal;
 }
 
 const refreshableCodes = new Set(['AUTH_EXPIRED_TOKEN', 'AUTH_INVALID_TOKEN']);
@@ -266,6 +287,122 @@ export class ThriftageApiClient {
   public async recordRecommendationEvent(input: RecommendationEventInput): Promise<void> {
     await this.request('/me/personalization/events', {
       body: recommendationEventInputSchema.parse(input),
+      method: 'POST',
+    });
+  }
+
+  public async createStylistConversation(
+    input: AiStylistConversationCreateInput = {},
+  ): Promise<AiStylistConversationDetail> {
+    return aiStylistConversationDetailSchema.parse(
+      await this.request('/ai-stylist/conversations', {
+        body: aiStylistConversationCreateInputSchema.parse(input),
+        method: 'POST',
+      }),
+    );
+  }
+
+  public async getStylistConversations(
+    cursor?: string,
+    includeArchived = false,
+  ): Promise<AiStylistConversationPage> {
+    return aiStylistConversationPageSchema.parse(
+      await this.request(
+        `/ai-stylist/conversations${queryString({
+          cursor,
+          includeArchived: includeArchived ? 'true' : 'false',
+        })}`,
+      ),
+    );
+  }
+
+  public async getStylistConversation(id: string): Promise<AiStylistConversationDetail> {
+    return aiStylistConversationDetailSchema.parse(
+      await this.request(`/ai-stylist/conversations/${encodeURIComponent(id)}`),
+    );
+  }
+
+  public async setStylistConversationArchived(
+    id: string,
+    archived: boolean,
+  ): Promise<AiStylistConversationDetail> {
+    return aiStylistConversationDetailSchema.parse(
+      await this.request(`/ai-stylist/conversations/${encodeURIComponent(id)}/archive`, {
+        body: { archived },
+        method: 'PATCH',
+      }),
+    );
+  }
+
+  public async deleteStylistConversation(id: string): Promise<void> {
+    await this.request(`/ai-stylist/conversations/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+  }
+
+  public async sendStylistMessage(
+    conversationId: string,
+    input: AiStylistMessageInput,
+    signal?: AbortSignal,
+  ): Promise<AiStylistGenerationResult> {
+    return aiStylistGenerationResultSchema.parse(
+      await this.request(
+        `/ai-stylist/conversations/${encodeURIComponent(conversationId)}/messages`,
+        {
+          body: aiStylistMessageInputSchema.parse(input),
+          method: 'POST',
+          ...(signal === undefined ? {} : { signal }),
+        },
+      ),
+    );
+  }
+
+  public async saveStylistOutfit(input: SaveOutfitInput): Promise<SavedOutfit> {
+    return savedOutfitSchema.parse(
+      await this.request('/ai-stylist/saved-outfits', {
+        body: saveOutfitInputSchema.parse(input),
+        method: 'POST',
+      }),
+    );
+  }
+
+  public async getSavedStylistOutfits(cursor?: string): Promise<SavedOutfitPage> {
+    return savedOutfitPageSchema.parse(
+      await this.request(`/ai-stylist/saved-outfits${queryString({ cursor })}`),
+    );
+  }
+
+  public async getSavedStylistOutfit(id: string): Promise<SavedOutfit> {
+    return savedOutfitSchema.parse(
+      await this.request(`/ai-stylist/saved-outfits/${encodeURIComponent(id)}`),
+    );
+  }
+
+  public async deleteSavedStylistOutfit(id: string): Promise<void> {
+    await this.request(`/ai-stylist/saved-outfits/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+  }
+
+  public async replaceSavedStylistOutfitItem(
+    savedOutfitId: string,
+    itemId: string,
+    input: ReplaceSavedOutfitItemInput,
+  ): Promise<SavedOutfit> {
+    return savedOutfitSchema.parse(
+      await this.request(
+        `/ai-stylist/saved-outfits/${encodeURIComponent(savedOutfitId)}/items/${encodeURIComponent(itemId)}/replacement`,
+        {
+          body: replaceSavedOutfitItemInputSchema.parse(input),
+          method: 'POST',
+        },
+      ),
+    );
+  }
+
+  public async recordStylistAttribution(input: AiStylistAttributionInput): Promise<void> {
+    await this.request('/ai-stylist/attribution', {
+      body: aiStylistAttributionInputSchema.parse(input),
       method: 'POST',
     });
   }
@@ -591,6 +728,7 @@ export class ThriftageApiClient {
         : { body: multipart ? (options.body as FormData) : JSON.stringify(options.body) }),
       headers,
       method: options.method ?? 'GET',
+      ...(options.signal === undefined ? {} : { signal: options.signal }),
     });
     if (response.ok) {
       return response.status === 204 ? null : response.json();

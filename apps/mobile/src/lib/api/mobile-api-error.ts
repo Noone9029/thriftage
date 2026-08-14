@@ -1,9 +1,11 @@
 import {
+  aiStylistErrorCodeSchema,
   apiErrorCodeSchema,
   marketplaceErrorCodeSchema,
   phoneVerificationErrorCodeSchema,
   profileErrorCodeSchema,
   type AuthErrorCode,
+  type AiStylistErrorCode,
   type MarketplaceErrorCode,
   type PhoneVerificationErrorCode,
   type ProfileErrorCode,
@@ -11,6 +13,7 @@ import {
 import { z } from 'zod';
 
 export type MobileApiErrorCode =
+  | AiStylistErrorCode
   | AuthErrorCode
   | MarketplaceErrorCode
   | PhoneVerificationErrorCode
@@ -18,6 +21,7 @@ export type MobileApiErrorCode =
   | 'API_ERROR';
 
 const mobileApiErrorCodeSchema = z.union([
+  aiStylistErrorCodeSchema,
   apiErrorCodeSchema,
   marketplaceErrorCodeSchema,
   phoneVerificationErrorCodeSchema,
@@ -50,6 +54,10 @@ export async function decodeApiError(response: Response): Promise<MobileApiError
         userMessages[marketplaceCode.data] ?? 'Marketplace request failed.',
         response.status,
       );
+    }
+    const aiStylistCode = aiStylistErrorCodeSchema.safeParse(body.code);
+    if (aiStylistCode.success) {
+      return new MobileApiError(aiStylistCode.data, 'AI Stylist request failed.', response.status);
     }
     const parsedCode = mobileApiErrorCodeSchema.safeParse(body.code);
     if (parsedCode.success) {
