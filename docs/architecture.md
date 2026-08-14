@@ -18,3 +18,5 @@ Phase 1C2A adds server-controlled phone ownership verification and links the fir
 Phase 1B adds server token verification, application-user provisioning, and account-state enforcement. Profile onboarding is implemented as a privacy-safe one-to-one application profile.
 
 The marketplace foundation adds moderated listings and private media, PostgreSQL-native search, deterministic discovery feeds, social relationships, reports, and API-authorized administration. See [marketplace discovery and social](./architecture/marketplace-discovery.md). New capabilities should be added as bounded vertical slices without moving authoritative business rules into clients.
+
+The [AI Fashion Stylist](./architecture/ai-fashion-stylist.md) consumes the existing deterministic personalization and eligibility seams through read-only interfaces. The provider explains and selects only server-composed candidate IDs; PostgreSQL and marketplace domain services remain authoritative. See the [AI operations runbook](./operations/ai-stylist-runbook.md) for incident response and model-change discipline.

@@ -56,6 +56,10 @@ import {
   type RecommendationConfiguration,
   type RecommendationConfigurationInput,
   type StyleDefinition,
+  aiStylistAdminMetricsSchema,
+  aiStylistRuntimeConfigurationSchema,
+  type AiStylistAdminMetrics,
+  type AiStylistRuntimeConfiguration,
 } from '@thriftage/shared';
 
 export class AdminApiError extends Error {
@@ -81,6 +85,16 @@ export class AdminApi {
 
   public async verifyAccess(): Promise<void> {
     adminAccessSchema.parse(await this.request('/admin/access'));
+  }
+
+  public async getAiStylistMetrics(): Promise<AiStylistAdminMetrics> {
+    return aiStylistAdminMetricsSchema.parse(await this.request('/admin/ai-stylist/metrics'));
+  }
+
+  public async getAiStylistConfiguration(): Promise<AiStylistRuntimeConfiguration> {
+    return aiStylistRuntimeConfigurationSchema.parse(
+      await this.request('/admin/ai-stylist/configuration'),
+    );
   }
 
   public async getPersonalizationSummary(): Promise<PersonalizationAdminSummary> {

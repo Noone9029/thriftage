@@ -1,6 +1,6 @@
 # Thriftage
 
-Thriftage is a mobile-first peer-to-peer fashion marketplace. The repository contains identity and onboarding, moderated discovery, protected messaging and COD commerce, and a transaction-backed trust layer covering reviews, reputation, blocking, disputes, seller account review, policy acceptance, and auditable operations.
+Thriftage is a mobile-first peer-to-peer fashion marketplace. The repository contains identity and onboarding, moderated discovery, protected messaging and COD commerce, transaction-backed trust, deterministic style intelligence, and an inventory-grounded AI Fashion Stylist.
 
 ## Repository layout
 
@@ -52,27 +52,26 @@ npm.cmd install --global pnpm@11.16.0
    pnpm.cmd db:generate
    pnpm.cmd db:validate
    pnpm.cmd db:migrate:deploy
+   pnpm.cmd db:seed:categories
+   pnpm.cmd db:seed:styles
    ```
-
-pnpm.cmd db:seed:categories
-pnpm.cmd db:seed:styles
-
-````
 
 4. Start all applications, or run one workspace at a time:
 
-```powershell
-pnpm.cmd dev
-pnpm.cmd --filter @thriftage/api dev
-pnpm.cmd --filter @thriftage/admin dev
-pnpm.cmd --filter @thriftage/mobile dev
-````
+   ```powershell
+   pnpm.cmd dev
+   pnpm.cmd --filter @thriftage/api dev
+   pnpm.cmd --filter @thriftage/admin dev
+   pnpm.cmd --filter @thriftage/mobile dev
+   ```
 
 The API health check is available at `http://localhost:4000/api/v1/health`; the admin app uses port 3000, and Expo selects its available development port.
 
 Set the backend Supabase, Twilio Verify, storage, trust-policy, dispute, support, realtime, outbox, and Expo push variables from `apps/api/.env.example`. Routine token verification uses the publishable key; secure phone linking, controlled storage, and API-originated realtime use a backend-only Supabase secret key. Push and realtime remain disabled by default. Protected requests use `Authorization: Bearer <access-token>`; see the [identity and onboarding architecture](./docs/architecture/identity-onboarding.md), [marketplace discovery architecture](./docs/architecture/marketplace-discovery.md), and [trusted communication and commerce architecture](./docs/architecture/trusted-communication-commerce.md).
 
 Set `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_SUPABASE_URL`, and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in `apps/mobile/.env`. Configure `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in `apps/admin/.env.local`. Configure `thriftage://auth/callback` and `thriftage://auth/reset-password` as allowed redirects before testing confirmation or recovery links. No server secret belongs in an `EXPO_PUBLIC_*` or `NEXT_PUBLIC_*` variable.
+
+The AI Stylist is disabled by default. To enable it in a controlled backend environment, set `OPENAI_API_KEY` only in the API secret store and set `AI_STYLIST_ENABLED=true`. Model, reasoning, timeout, token, tool, rate, concurrency, option, price-estimation, and optional daily cost-ceiling settings are documented in `apps/api/.env.example`. Never place the OpenAI key in mobile, admin, `EXPO_PUBLIC_*`, or `NEXT_PUBLIC_*` configuration.
 
 ## Quality gates
 
@@ -88,7 +87,7 @@ pnpm.cmd test:db
 pnpm.cmd build
 ```
 
-`pnpm build` creates production artifacts for the API and shared packages, a Next.js admin build, and an Expo web export. Android and iOS release binaries require platform signing and release configuration and are intentionally outside Phase 0.
+`pnpm build` creates production artifacts for the API and shared packages, a Next.js admin build, and an Expo web export. Android and iOS release binaries require platform signing and release configuration.
 
 ## Identity and database architecture
 
@@ -131,6 +130,22 @@ Run `pnpm db:seed:styles` after migrations to idempotently seed the approved sty
 
 Authenticated `RECOMMENDED` discovery computes versioned 0–100 matches, truthful reasons, bounded behavior-aware ranking, diversity, deterministic exploration, and stable pagination. It never calls generative AI or labels rule-based ranking as machine learning. See the [style intelligence architecture](./docs/architecture/style-intelligence-personalized-discovery.md) and [privacy audit](./docs/architecture/personalization-privacy-audit.md).
 
+## AI Fashion Stylist
+
+Authenticated users can start private Stylist conversations, ask natural-language fashion questions, refine complete outfits, build around a listing, save outfits, and replace unavailable pieces. The backend composes bounded candidates from current eligible inventory, lets the configured provider select and explain only those candidates, and revalidates every listing, price, size claim, seller restriction, and block before responding. Provider failure falls back to deterministic Thriftage Style Intelligence.
+
+The OpenAI Responses integration uses strict structured output and read-only tools with `store: false`; application PostgreSQL owns conversation state. Mobile cancellation, generation idempotency, token/cost tracking, aggregate admin metrics, a kill switch, local evaluators, and optional explicit live-model comparison are included. Ordinary CI never calls OpenAI.
+
+Run the optional live eval only with an approved non-production project and explicit opt-in:
+
+```powershell
+$env:AI_STYLIST_LIVE_EVAL_ENABLED = 'true'
+$env:OPENAI_API_KEY = '<backend-only-eval-project-key>'
+pnpm.cmd ai:eval
+```
+
+See the [AI Stylist architecture](./docs/architecture/ai-fashion-stylist.md) and [operations runbook](./docs/operations/ai-stylist-runbook.md).
+
 ## Scope boundary
 
-Change-phone, identity merging, digital payments, courier integrations, automated refunds/chargebacks, KYC or seller identity documents, escrow, wallets/payouts, generative AI, vector search, and AI stylist features are not implemented. See [AGENTS.md](./AGENTS.md) for safety constraints and later phases.
+Change-phone, identity merging, digital payments, courier integrations, automated refunds/chargebacks, KYC or seller identity documents, escrow, wallets/payouts, vector search, virtual try-on, image-based body inference, autonomous AI commerce, fine-tuning, and a custom ML recommender are not implemented. See [AGENTS.md](./AGENTS.md) for safety constraints.

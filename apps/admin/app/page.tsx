@@ -11,6 +11,7 @@ import type {
   OrderDetail,
   OrderSummary,
   RecommendationConfigurationInput,
+  AiStylistAdminMetrics,
 } from '@thriftage/shared';
 import type { Session } from '@supabase/supabase-js';
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
@@ -20,7 +21,14 @@ import { getSupabaseBrowserClient } from '../lib/supabase';
 import { TrustOperationsWorkspace } from '../components/trust-operations-workspace';
 
 type Workspace =
-  'CATEGORIES' | 'LISTINGS' | 'REPORTS' | 'MESSAGES' | 'ORDERS' | 'TRUST' | 'PERSONALIZATION';
+  | 'CATEGORIES'
+  | 'LISTINGS'
+  | 'REPORTS'
+  | 'MESSAGES'
+  | 'ORDERS'
+  | 'TRUST'
+  | 'PERSONALIZATION'
+  | 'AI_STYLIST';
 type AccessState = 'CHECKING' | 'DENIED' | 'SIGNED_OUT' | 'AUTHORIZED';
 
 export default function AdminHome() {
@@ -115,6 +123,7 @@ export default function AdminHome() {
               'REPORTS',
               'TRUST',
               'PERSONALIZATION',
+              'AI_STYLIST',
               'CATEGORIES',
             ] as const
           ).map((item) => (
@@ -123,7 +132,7 @@ export default function AdminHome() {
               key={item}
               onClick={() => setWorkspace(item)}
             >
-              {item.charAt(0) + item.slice(1).toLowerCase()}
+              {item === 'AI_STYLIST' ? 'AI Stylist' : item.charAt(0) + item.slice(1).toLowerCase()}
             </button>
           ))}
         </nav>
@@ -135,9 +144,216 @@ export default function AdminHome() {
           {workspace === 'ORDERS' ? <OrderWorkspace api={api} /> : null}
           {workspace === 'TRUST' ? <TrustOperationsWorkspace api={api} /> : null}
           {workspace === 'PERSONALIZATION' ? <PersonalizationWorkspace api={api} /> : null}
+          {workspace === 'AI_STYLIST' ? <AiStylistWorkspace api={api} /> : null}
         </section>
       </div>
     </main>
+  );
+}
+
+function AiStylistWorkspace({ api }: { readonly api: ReturnType<typeof createAdminApi> }) {
+  const [metrics, setMetrics] = useState<AiStylistAdminMetrics | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      setMetrics(await api.getAiStylistMetrics());
+      setError(null);
+    } catch (caught: unknown) {
+      setError(caught instanceof Error ? caught.message : 'Could not load AI Stylist operations.');
+    } finally {
+      setLoading(false);
+    }
+  }, [api]);
+  useEffect(() => void load(), [load]);
+
+  return (
+    <WorkspaceCard
+      title="AI Stylist operations"
+      subtitle="Aggregate usage, cost, reliability, conversion, and active configuration. Private conversation transcripts are intentionally unavailable."
+    >
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-[#f8f5ee] p-4">
+        <div>
+          <p className="text-xs font-bold tracking-widest text-black/45">LAST 24 HOURS</p>
+          <p className="mt-1 text-sm text-black/60">
+            Operational aggregates only; no prompt or message bodies.
+          </p>
+        </div>
+        <button
+          className="rounded-xl bg-[#123f33] px-4 py-2 text-xs font-bold text-white"
+          onClick={() => void load()}
+        >
+          Refresh
+        </button>
+      </div>
+      {error !== null ? <ErrorBanner message={error} /> : null}
+      {loading ? <p className="text-sm text-black/50">Loading AI operations…</p> : null}
+      {metrics !== null ? (
+        <div className="space-y-6">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <AiMetric label="Generations" value={metrics.generations.toLocaleString()} />
+            <AiMetric label="Active users" value={metrics.activeUsers.toLocaleString()} />
+            <AiMetric
+              label="Average latency"
+              value={
+                metrics.averageLatencyMs === null
+                  ? '—'
+                  : `${Math.round(metrics.averageLatencyMs).toLocaleString()} ms`
+              }
+            />
+            <AiMetric
+              label="Latency p50 / p95"
+              value={`${metrics.latencyP50Ms === null ? '—' : `${Math.round(metrics.latencyP50Ms)} ms`} / ${metrics.latencyP95Ms === null ? '—' : `${Math.round(metrics.latencyP95Ms)} ms`}`}
+            />
+            <AiMetric
+              label="Estimated provider cost"
+              value={`$${(metrics.estimatedCostMicroUsd / 1_000_000).toFixed(4)}`}
+            />
+            <AiMetric label="Input tokens" value={metrics.inputTokens.toLocaleString()} />
+            <AiMetric
+              label="Cached input tokens"
+              value={metrics.cachedInputTokens.toLocaleString()}
+            />
+            <AiMetric label="Output tokens" value={metrics.outputTokens.toLocaleString()} />
+            <AiMetric label="Fallback rate" value={`${(metrics.fallbackRate * 100).toFixed(1)}%`} />
+            <AiMetric
+              label="Outfit save rate"
+              value={`${(metrics.outfitSaveRate * 100).toFixed(1)}%`}
+            />
+            <AiMetric
+              label="AI-to-listing CTR"
+              value={`${(metrics.listingClickThroughRate * 100).toFixed(1)}%`}
+            />
+            <AiMetric
+              label="Provider error rate"
+              value={`${(metrics.providerErrorRate * 100).toFixed(1)}%`}
+            />
+            <AiMetric label="Saved outfits" value={metrics.savedOutfits.toLocaleString()} />
+            <AiMetric
+              label="AI listing opens"
+              value={metricCount(metrics.attribution, 'OPEN').toLocaleString()}
+            />
+            <AiMetric
+              label="AI purchases"
+              value={metricCount(metrics.attribution, 'PURCHASE').toLocaleString()}
+            />
+          </div>
+          <section className="rounded-2xl border border-black/10 bg-white p-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold tracking-widest text-[#d66b45]">ACTIVE RUNTIME</p>
+                <h3 className="mt-2 text-lg font-bold">{metrics.configuration.model}</h3>
+                <p className="mt-1 text-sm text-black/55">
+                  Reasoning: {metrics.configuration.reasoningEffort} · Prompt:{' '}
+                  {metrics.configuration.promptVersion}
+                </p>
+              </div>
+              <span
+                className={`rounded-full px-3 py-2 text-xs font-bold ${metrics.configuration.enabled ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-800'}`}
+              >
+                {metrics.configuration.enabled ? 'ENABLED' : 'KILL SWITCH ACTIVE'}
+              </span>
+            </div>
+            <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-3">
+              <AiConfig label="Eval version" value={metrics.configuration.evalVersion} />
+              <AiConfig label="Tool schema" value={metrics.configuration.toolSchemaVersion} />
+              <AiConfig
+                label="Daily user limit"
+                value={metrics.configuration.dailyUserLimit.toLocaleString()}
+              />
+              <AiConfig
+                label="Requests / minute"
+                value={metrics.configuration.maxRequestsPerMinute.toLocaleString()}
+              />
+              <AiConfig
+                label="Session turn limit"
+                value={metrics.configuration.sessionTurnLimit.toLocaleString()}
+              />
+              <AiConfig
+                label="Max concurrent / user"
+                value={metrics.configuration.maxConcurrentGenerations.toLocaleString()}
+              />
+              <AiConfig
+                label="Max outfit options"
+                value={metrics.configuration.maxOutfitOptions.toLocaleString()}
+              />
+              <AiConfig
+                label="Timeout"
+                value={`${metrics.configuration.timeoutMs.toLocaleString()} ms`}
+              />
+              <AiConfig
+                label="Daily cost ceiling"
+                value={
+                  metrics.configuration.dailyBudgetMicroUsd === null
+                    ? 'Not configured'
+                    : `$${(metrics.configuration.dailyBudgetMicroUsd / 1_000_000).toFixed(2)}`
+                }
+              />
+            </dl>
+          </section>
+          <section className="grid gap-4 lg:grid-cols-2">
+            <AggregateTable title="Generation status" items={metrics.generationsByStatus} />
+            <AggregateTable title="Model distribution" items={metrics.generationsByModel} />
+          </section>
+          <p className="rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+            Runtime settings are environment-controlled for this release. Change the model, prompt,
+            limits, or kill switch through the audited deployment configuration and run the eval
+            suite before activation.
+          </p>
+        </div>
+      ) : null}
+    </WorkspaceCard>
+  );
+}
+
+function metricCount(
+  items: readonly { readonly count: number; readonly key: string }[],
+  key: string,
+): number {
+  return items.find((item) => item.key === key)?.count ?? 0;
+}
+
+function AiMetric({ label, value }: { readonly label: string; readonly value: string }) {
+  return (
+    <div className="rounded-2xl border border-black/10 bg-white p-4">
+      <p className="text-2xl font-bold text-[#123f33]">{value}</p>
+      <p className="mt-1 text-xs font-semibold text-black/50">{label}</p>
+    </div>
+  );
+}
+
+function AiConfig({ label, value }: { readonly label: string; readonly value: string }) {
+  return (
+    <div className="rounded-xl bg-[#f8f5ee] p-3">
+      <dt className="text-[10px] font-bold uppercase tracking-wider text-black/40">{label}</dt>
+      <dd className="mt-1 font-semibold text-black/70">{value}</dd>
+    </div>
+  );
+}
+
+function AggregateTable({
+  items,
+  title,
+}: {
+  readonly items: readonly { readonly count: number; readonly key: string }[];
+  readonly title: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-black/10 bg-white p-5">
+      <h3 className="font-bold">{title}</h3>
+      <div className="mt-3 divide-y divide-black/10">
+        {items.length === 0 ? (
+          <p className="py-3 text-sm text-black/45">No activity in this window.</p>
+        ) : null}
+        {items.map((item) => (
+          <div className="flex justify-between py-3 text-sm" key={item.key}>
+            <span className="text-black/60">{item.key.replaceAll('_', ' ')}</span>
+            <strong>{item.count.toLocaleString()}</strong>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
