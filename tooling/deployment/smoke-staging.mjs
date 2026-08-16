@@ -53,6 +53,12 @@ async function main() {
   const expectedRelease = required('EXPECTED_RELEASE_VERSION');
   assert(configuredUrl.protocol === 'https:', 'Staging smoke requires HTTPS.');
   assert(
+    ['/api/v1', '/api/v1/'].includes(configuredUrl.pathname) &&
+      configuredUrl.search === '' &&
+      configuredUrl.hash === '',
+    'STAGING_API_URL must be the exact /api/v1 base URL without query parameters or a fragment.',
+  );
+  assert(
     configuredUrl.hostname.toLowerCase() === expectedHost,
     'STAGING_API_URL does not match EXPECTED_STAGING_HOST.',
   );

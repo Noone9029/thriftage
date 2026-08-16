@@ -21,19 +21,17 @@ Supabase authenticates identities; NestJS is the authoritative data/API boundary
 
 Use synthetic staging users A and B and one controlled admin. Record request ID, expected status, actual status, and timestamp. Do not run against production. `pnpm security:authorization:staging` implements the guarded A/B/Admin checks against an exact HTTPS staging host. It requires synthetic fixture IDs and refuses production-looking hosts.
 
-| Check                                                                             | Expected                                       |
-| --------------------------------------------------------------------------------- | ---------------------------------------------- |
-| A reads B private account/profile edit endpoint                                   | 403/404, no private fields                     |
-| B updates A listing or media                                                      | 403/404, no mutation                           |
-| A reads B AI conversation or saved outfit                                         | 403/404                                        |
-| Stranger reads conversation/messages or subscribes to its Realtime topic          | denied                                         |
-| Stranger requests dispute evidence signed URL                                     | denied                                         |
-| USER invokes listing moderation, feedback moderation, user suspension, or metrics | 403 `ADMIN_PERMISSION_DENIED`                  |
-| Blocked pair starts/sends/realtime-subscribes                                     | denied per messaging policy                    |
-| Buyer retries same checkout idempotency key                                       | one order only                                 |
-| Two buyers concurrently purchase one listing                                      | one success; other stable unavailable response |
+| Check                                                                                       | Expected                                       |
+| ------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| B requests A's public profile                                                               | 200 with no private account/contact fields     |
+| B reads A's private order, draft listing, AI conversation, saved outfit, or dispute context | 403/404, no private fields or mutation         |
+| B invokes an admin trust/user endpoint                                                      | 403 `ADMIN_PERMISSION_DENIED`                  |
+| Stranger reads conversation/messages or subscribes to its Realtime topic                    | denied                                         |
+| Blocked pair starts/sends/realtime-subscribes                                               | denied per messaging policy                    |
+| Buyer retries same checkout idempotency key                                                 | one order only                                 |
+| Two buyers concurrently purchase one listing                                                | one success; other stable unavailable response |
 
-Automated repository integration tests cover ownership, guards, order concurrency, blocks, private evidence, and AI ownership without paid providers. The staging matrix proves deployed configuration. Dependency/static/secret scanning is not a professional third-party penetration test. A focused external assessment remains recommended before public launch.
+Automated repository integration tests cover ownership, guards, order concurrency, blocks, private evidence, and AI ownership without paid providers. The guarded staging matrix performs 15 deployed checks across identity, admin access, public-profile privacy, listing/order/AI ownership, conversations, disputes, and blocked messaging. Realtime topic denial and concurrency remain separate staging probes. Dependency/static/secret scanning is not a professional third-party penetration test. A focused external assessment remains recommended before public launch.
 
 ## Safe DAST cases
 

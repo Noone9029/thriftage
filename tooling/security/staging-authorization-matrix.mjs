@@ -12,6 +12,28 @@ function requiredUuid(name) {
   return value;
 }
 
+function requiredToken(name) {
+  const value = required(name);
+  if (value.length < 20) throw new Error(`${name} must contain a non-placeholder token.`);
+  return value;
+}
+
+const privateProfileKey =
+  /^(?:email|phone|authProviderUserId|auth_provider_user_id|password|token|address|deliveryAddress)$/i;
+
+function findPrivateProfileKeys(value, path = 'response') {
+  if (Array.isArray(value)) {
+    return value.flatMap((item, index) => findPrivateProfileKeys(item, `${path}[${index}]`));
+  }
+  if (value !== null && typeof value === 'object') {
+    return Object.entries(value).flatMap(([key, child]) => [
+      ...(privateProfileKey.test(key) ? [`${path}.${key}`] : []),
+      ...findPrivateProfileKeys(child, `${path}.${key}`),
+    ]);
+  }
+  return [];
+}
+
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
@@ -31,6 +53,13 @@ async function probe(baseUrl, check) {
       `${check.name} returned HTTP ${response.status}; expected ${check.expected.join(' or ')}.`,
     );
   }
+  if (check.assertNoPrivateKeys) {
+    const body = await response.json();
+    const privateKeys = findPrivateProfileKeys(body);
+    if (privateKeys.length > 0) {
+      throw new Error(`${check.name} exposed private profile fields: ${privateKeys.join(', ')}.`);
+    }
+  }
   console.log(`PASS ${check.name}: HTTP ${response.status}`);
 }
 
@@ -44,15 +73,24 @@ async function main() {
   const expectedHost = required('EXPECTED_STAGING_HOST').toLowerCase();
   assert(configuredUrl.protocol === 'https:', 'Authorization matrix requires HTTPS.');
   assert(
+    ['/api/v1', '/api/v1/'].includes(configuredUrl.pathname) &&
+      configuredUrl.search === '' &&
+      configuredUrl.hash === '',
+    'STAGING_API_URL must be the exact /api/v1 base URL without query parameters or a fragment.',
+  );
+  assert(
     configuredUrl.hostname.toLowerCase() === expectedHost,
     'STAGING_API_URL does not match EXPECTED_STAGING_HOST.',
   );
   assert(!/prod(?:uction)?/i.test(expectedHost), 'Refusing a production-looking host.');
 
   const baseUrl = configuredUrl.toString().replace(/\/$/, '');
-  const userA = required('USER_A_TOKEN');
-  const userB = required('USER_B_TOKEN');
-  const admin = required('ADMIN_TOKEN');
+  const userA = requiredToken('USER_A_TOKEN');
+  const userB = requiredToken('USER_B_TOKEN');
+  const admin = requiredToken('ADMIN_TOKEN');
+  const userAUserId = requiredUuid('USER_A_USER_ID');
+  const userAOrderId = requiredUuid('USER_A_ORDER_ID');
+  const userAUsername = required('USER_A_USERNAME');
   const listingId = requiredUuid('USER_A_DRAFT_LISTING_ID');
   const aiConversationId = requiredUuid('USER_A_AI_CONVERSATION_ID');
   const savedOutfitId = requiredUuid('USER_A_SAVED_OUTFIT_ID');
@@ -83,6 +121,19 @@ async function main() {
       expected: [403],
     },
     {
+      name: 'User B cannot inspect User A through the admin API',
+      path: `/admin/trust/users/${userAUserId}`,
+      token: userB,
+      expected: [403],
+    },
+    {
+      name: 'Public profile remains privacy safe',
+      path: `/profiles/${encodeURIComponent(userAUsername)}`,
+      token: userB,
+      expected: [200],
+      assertNoPrivateKeys: true,
+    },
+    {
       name: 'User B cannot read User A seller-private listing',
       path: `/seller/listings/${listingId}`,
       token: userB,
@@ -99,6 +150,12 @@ async function main() {
     {
       name: 'User B cannot read User A AI conversation',
       path: `/ai-stylist/conversations/${aiConversationId}`,
+      token: userB,
+      expected: [403, 404],
+    },
+    {
+      name: 'User B cannot read User A order',
+      path: `/orders/${userAOrderId}`,
       token: userB,
       expected: [403, 404],
     },
