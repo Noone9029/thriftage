@@ -29,6 +29,7 @@
     "security:secrets": "node tooling/security/secret-scan.mjs",
     "staging:smoke": "node tooling/deployment/smoke-staging.mjs",
     "storage:reconcile": "node tooling/storage/reconcile-media.mjs",
+    "supabase:verify-runtime-role:local": "node tooling/supabase/verify-runtime-role-local.mjs",
     "supabase:verify-security": "node tooling/supabase/verify-security.mjs",
     "db:generate": "pnpm --filter @thriftage/db generate",
     "db:format": "pnpm --filter @thriftage/db prisma:format",

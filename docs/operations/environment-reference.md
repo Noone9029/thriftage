@@ -12,7 +12,7 @@ Use independent secret stores for local, EAS `preview`, staging runtime, EAS `pr
 | `API_HOST`, `API_PORT` | runtime                | Nest listen address and port.                                          |
 | `CORS_ORIGINS`         | runtime/security       | Explicit comma-separated HTTPS admin origins non-local.                |
 | `LOG_FORMAT`           | runtime                | `json` is mandatory non-local.                                         |
-| `DATABASE_URL`         | backend secret/runtime | Least-privilege pooled runtime URL with TLS.                           |
+| `DATABASE_URL`         | backend secret/runtime | Pooled TLS URL for least-privilege login role `thriftage_api`.         |
 | `TEST_DATABASE_URL`    | test secret            | Disposable integration-test database only.                             |
 
 ## Mobile and EAS

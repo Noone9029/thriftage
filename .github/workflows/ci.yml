@@ -88,6 +88,9 @@ jobs:
       - name: Apply test database migrations
         run: pnpm db:migrate:deploy
 
+      - name: Verify least-privilege runtime database role
+        run: pnpm supabase:verify-runtime-role:local
+
       - name: Test database constraints
         run: pnpm test:db
 
