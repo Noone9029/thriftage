@@ -8,6 +8,8 @@ node_modules/
 !**/.env.*.example
 
 .expo/
+.vercel/
+supabase/.temp/
 .next/
 dist/
 coverage/

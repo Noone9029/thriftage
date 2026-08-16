@@ -2,17 +2,19 @@
 
 ## Outcome
 
-**CODE READY — EXTERNAL BETA BLOCKERS REMAIN.** Production was not accessed or changed. No staging URL, provider verification, native artifact, or physical-device result exists from this attempt.
+**STAGING FOUNDATION ACTIVE — DEPLOYED API AND EXTERNAL BETA BLOCKERS REMAIN.** Production was not accessed or changed. A dedicated Supabase staging project and Android emulator now exist, but there is no deployed HTTPS API, native preview artifact, or physical-device result.
 
-## Environment inventory
+## Activated infrastructure
 
-- No staging database, Supabase, Twilio, SMTP, OpenAI, Sentry, Expo, Apple, Google, or deployment-platform credentials were present in the process environment or repository-local environment files.
-- EAS CLI reported that the local session is not logged in.
-- Supabase CLI could not list projects because no access token was configured.
-- No Git remote or deployment-platform configuration identifies a staging host.
-- Docker CLI is installed, but its daemon is unavailable. Android SDK/ADB, Java, EAS, Supabase, k6, `psql`, and `pg_dump` are not installed as persistent local tools; pnpm can invoke temporary CLIs where authentication permits.
+- Created Supabase organization `Thriftage` (`jidpmtxebpwfbxjmyxzc`) and project `thriftage-staging` (`dstnxzljsbyusxoogkzr`) in Mumbai (`ap-south-1`).
+- Enabled database SSL enforcement, installed the Supabase root CA locally, and used `verify-full` for operator and runtime connections.
+- Applied all 10 Prisma migrations, both idempotent seeds, the server-only Data API boundary, Storage bucket policy, and private Realtime authorization policy.
+- Provisioned separate `thriftage_runtime` permission and `thriftage_api` login roles. Credentials and API keys are DPAPI-encrypted outside the repository under `%APPDATA%\Thriftage`.
+- Passed the remote security verifier without reading application rows.
+- Installed Android Studio, command-line tools, API 36/36.1 Google Play images, and a `medium_phone` AVD. WHPX acceleration is operational; Expo Go launched the mobile login shell against the local API and real staging Supabase project.
+- Created and configured the Vercel project `thriftage-admin`; public Supabase variables are set for Preview and Production. Deployment is intentionally withheld until a valid HTTPS API URL exists.
 
-These checks inspected credential presence and CLI session state only. No secret values were printed or persisted.
+No secret value was printed or committed. Supabase and Vercel CLI sessions remain in their native local credential stores.
 
 ## Repository blocker cleared
 
@@ -27,7 +29,8 @@ The boundary is idempotent, removes direct grants from the login, denies migrati
 - Confirmed migration status is current and schema diff is empty.
 - Passed the local runtime-role/ACL proof without reading application rows.
 - Expanded the guarded deployed authorization matrix to 15 checks, including public-profile privacy, cross-user order denial, and non-admin trust endpoint denial.
+- Exercised local API health/readiness against the staging database and rendered the mobile login route in the Android emulator.
 
-## External evidence still required
+## Remaining deployment decision
 
-Provide a dedicated staging Supabase project plus admin/runtime credentials, choose and authenticate a deployment platform, and provide an EAS account/project. Those three inputs unlock database/provider configuration, an HTTPS API/admin deployment, remote security and authorization checks, Android preview distribution, and subsequent physical-device testing. Other provider, legal, monitoring, content, Apple, and operational-owner gates remain as listed in [the go/no-go](./go-no-go.md).
+Vercel is suitable for the Next.js admin application. The NestJS API also owns continuous notification, order-finalization, and deletion workers, so deploying it as request-scoped Vercel functions would not preserve required worker behavior. Select and authenticate a persistent Node host for the API, then set `NEXT_PUBLIC_API_URL`, deploy the admin, configure Supabase redirect URLs, and run smoke/authorization/provider drills. EAS, physical-device, provider, legal, monitoring, content, Apple, and operational-owner gates remain as listed in [the go/no-go](./go-no-go.md).

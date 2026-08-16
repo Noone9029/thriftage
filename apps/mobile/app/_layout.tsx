@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
+import { mobileConfig } from '../src/config/mobile-config';
 import { queryClient } from '../src/lib/query-client';
 import { initializeMobileMonitoring, Sentry } from '../src/observability/sentry';
 import { AuthProvider, useAuth } from '../src/providers/auth-provider';
@@ -58,7 +59,7 @@ function RootLayout() {
   );
 }
 
-export default Sentry.wrap(RootLayout);
+export default mobileConfig.sentryDsn === undefined ? RootLayout : Sentry.wrap(RootLayout);
 
 const styles = StyleSheet.create({
   loading: {

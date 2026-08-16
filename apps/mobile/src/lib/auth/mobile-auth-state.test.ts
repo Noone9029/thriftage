@@ -25,7 +25,7 @@ describe('routeForAuthState', () => {
       '/(auth)/phone-verification',
     ],
     [{ account, session, status: 'PROFILE_ONBOARDING_REQUIRED' }, '/(auth)/profile-onboarding'],
-    [{ account, profile, session, status: 'AUTHENTICATED_ACTIVE' }, '/(app)'],
+    [{ account, profile, session, status: 'AUTHENTICATED_ACTIVE' }, '/'],
     [{ session, status: 'ACCOUNT_SUSPENDED' }, '/(blocked)'],
     [{ session, status: 'ACCOUNT_DEACTIVATED' }, '/(blocked)'],
     [{ session, status: 'PASSWORD_RECOVERY' }, '/(auth)/reset-password'],

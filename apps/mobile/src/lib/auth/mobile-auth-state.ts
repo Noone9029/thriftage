@@ -34,7 +34,7 @@ export type MobileAuthState =
   | { readonly session: Session; readonly status: 'PASSWORD_RECOVERY' };
 
 export type MobileAuthRoute =
-  | '/(app)'
+  | '/'
   | '/(auth)/complete-account'
   | '/(auth)/login'
   | '/(auth)/phone-login'
@@ -60,7 +60,7 @@ export function routeForAuthState(state: MobileAuthState): MobileAuthRoute {
     case 'PROFILE_ONBOARDING_REQUIRED':
       return '/(auth)/profile-onboarding';
     case 'AUTHENTICATED_ACTIVE':
-      return '/(app)';
+      return '/';
     case 'ACCOUNT_SUSPENDED':
     case 'ACCOUNT_DEACTIVATED':
       return '/(blocked)';

@@ -65,20 +65,31 @@ const styles = [
 
 async function main(): Promise<void> {
   const prisma = getPrismaClient();
-  await prisma.$transaction([
-    ...styles.map(([id, slug, displayName, description], sortOrder) =>
-      prisma.styleDefinition.upsert({
-        create: { description, displayName, id, slug, sortOrder },
-        update: { description, displayName, sortOrder },
-        where: { slug },
-      }),
-    ),
-    prisma.recommendationConfiguration.upsert({
-      create: { id: 'f1000000-0000-4000-8000-000000000001', isActive: true, version: 'rules-v1' },
-      update: {},
-      where: { version: 'rules-v1' },
-    }),
-  ]);
+  await prisma.$transaction(
+    async (transaction) => {
+      for (const [sortOrder, [id, slug, displayName, description]] of styles.entries()) {
+        await transaction.styleDefinition.upsert({
+          create: { description, displayName, id, slug, sortOrder },
+          update: { description, displayName, sortOrder },
+          where: { slug },
+        });
+      }
+
+      await transaction.recommendationConfiguration.upsert({
+        create: {
+          id: 'f1000000-0000-4000-8000-000000000001',
+          isActive: true,
+          version: 'rules-v1',
+        },
+        update: {},
+        where: { version: 'rules-v1' },
+      });
+    },
+    {
+      maxWait: 15_000,
+      timeout: 30_000,
+    },
+  );
 }
 
 void main().finally(async () => getPrismaClient().$disconnect());
