@@ -1,0 +1,33 @@
+# Closed Beta Runbook
+
+## Scope and cohort
+
+Begin with 20–30 invited testers: roughly one-third buyers, one-third sellers, and one-third mixed users. Include iOS/Android, smaller/typical/large screens, varied network quality, and varied style profiles. Use staging only. Increase the cohort after a 48-hour stable soak and explicit go/no-go review; do not open public registration.
+
+## Entry gates
+
+Use `docs/release/go-no-go.md` as the authority. Required gates include a deployed staging API/Supabase project; real Auth/Storage/Realtime/provider tests; native Android artifact and real-device critical path; iOS build/device result or recorded external Apple blocker; Sentry event/source-map proof; tested account deletion; legal/support beta-safe links; zero known P0/P1 issues; and an install path for every tester.
+
+## Content and seed policy
+
+Seed only synthetic users, categories, style taxonomy, engagement, and clearly labeled test listings. Initial visible inventory should come from team-owned/test pieces or approved pilot sellers. Every image must be owned, licensed, or explicitly permitted; record owner, source, permission, and takedown contact. Never scrape retailer catalogs or imply partnerships. Keep synthetic transactions isolated from tester orders and clearly labeled.
+
+## Tester flow
+
+1. Send the private TestFlight/Play testing link and beta expectations.
+2. Confirm build/environment in **Profile -> About & diagnostics**.
+3. Assign seller, buyer, mixed, safety, accessibility, and device-matrix journeys.
+4. Collect issues through **Profile -> Beta feedback**; never request passwords, OTPs, tokens, full messages, addresses, evidence, or AI conversations.
+5. Review the admin Beta status/Feedback/Trust queues daily and provider consoles for Sentry/Twilio.
+
+The acceptance journey is seller registration/verification/profile/style/listing/upload/submit -> admin approval -> buyer discovery/follow/save/message/AI Style This/COD order -> seller confirm/ship -> buyer delivery -> worker completion -> review. A separate synthetic fixture covers dispute open/resolve.
+
+## Metrics and gates
+
+Track signup/email/phone/style completion, listing submission/approval, feed/search/save/message, checkout/order completion/cancellation, disputes/reviews, AI usage/cost, worker failures, and crashes. Do not add private payloads. Gate target: no known P0/P1; critical journey passes; API error rate <1% under the agreed staging load; and, once traffic exists, >=99.5% crash-free sessions during the observation window.
+
+Severity: **P0** auth takeover, data corruption/loss, widespread private-data leak; **P1** checkout/critical path unavailable, cross-account access, repeated crash; **P2** feature failure with workaround; **P3** cosmetic/minor friction. Stop onboarding for P0/P1, activate relevant kill switches, preserve evidence safely, and follow incident response.
+
+## Exit and ownership
+
+Product owner owns cohort/invitations; engineering owns builds, flags, monitoring, and rollback; trust/safety owns reports/disputes; support owns tester communication; legal/client owns policies/retention/store declarations. End or expand the beta only after a documented review. This runbook never authorizes public launch.

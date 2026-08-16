@@ -89,6 +89,24 @@ pnpm.cmd build
 
 `pnpm build` creates production artifacts for the API and shared packages, a Next.js admin build, and an Expo web export. Android and iOS release binaries require platform signing and release configuration.
 
+## Closed-beta readiness
+
+The repository is prepared for isolated local, staging, and production configuration; it does not contain provider credentials or authorize public launch. Start with the [production architecture](./docs/architecture/production-architecture.md), [environment reference](./docs/operations/environment-reference.md), [deployment runbook](./docs/operations/deployment-runbook.md), and authoritative [go/no-go checklist](./docs/release/go-no-go.md).
+
+Release-specific checks include:
+
+```powershell
+pnpm.cmd security:secrets
+pnpm.cmd security:artifacts
+pnpm.cmd ci:migration-safety
+pnpm.cmd security:audit
+pnpm.cmd mobile:doctor
+pnpm.cmd staging:smoke
+pnpm.cmd security:authorization:staging
+```
+
+The two staging commands require an exact HTTPS staging host, explicit staging acknowledgement, and controlled synthetic credentials/fixtures. Their required inputs and the seller → admin → buyer acceptance record are documented in the [closed-beta acceptance guide](./docs/testing/closed-beta-acceptance.md). Final provider, native-build, physical-device, legal, support, monitoring, backup/restore, load, and store evidence remains a release gate rather than a repository assumption.
+
 ## Identity and database architecture
 
 Supabase Auth is the initial identity provider, but it does not own application data. Supabase verifies credentials and manages sessions; PostgreSQL owns the application `User`, one-to-one `Profile`, roles, and account state. Passwords and password hashes are never stored by Prisma. See [ADR 0001](./docs/architecture/adr/0001-authentication-provider.md).
