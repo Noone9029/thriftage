@@ -26,11 +26,8 @@ export class OrderFinalizationWorker implements OnModuleInit, OnModuleDestroy {
     this.running = true;
     try {
       await this.orders.finalizeDelivered();
-    } catch (error) {
-      this.logger.error(
-        'Order finalization polling failed.',
-        error instanceof Error ? error.stack : undefined,
-      );
+    } catch {
+      this.logger.error('Order finalization polling failed: code=ORDER_FINALIZATION_POLL_FAILED');
     } finally {
       this.running = false;
     }

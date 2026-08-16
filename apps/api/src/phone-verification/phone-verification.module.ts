@@ -47,6 +47,10 @@ import { createTwilioVerifyAdapter } from './twilio-verify.adapter';
               enumerable: true,
               get: () => loadApiConfig(process.env).phoneVerificationAttemptTtlSeconds,
             },
+            enabled: {
+              enumerable: true,
+              get: () => loadApiConfig(process.env).phoneAuthEnabled,
+            },
             maxChecks: {
               enumerable: true,
               get: () => loadApiConfig(process.env).phoneVerificationMaxChecks,

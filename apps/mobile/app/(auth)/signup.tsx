@@ -10,6 +10,7 @@ import { PasswordField } from '../../src/components/auth/password-field';
 import { PrimaryButton } from '../../src/components/auth/primary-button';
 import { getMobileAuthErrorMessage } from '../../src/lib/auth/auth-error-message';
 import { AsyncSubmissionGate } from '../../src/lib/forms/async-submission-gate';
+import { useRuntimeConfig } from '../../src/hooks/use-runtime-config';
 import { useAuth } from '../../src/providers/auth-provider';
 
 export default function SignupScreen() {
@@ -22,6 +23,39 @@ export default function SignupScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const submissionGate = useRef(new AsyncSubmissionGate()).current;
+  const runtime = useRuntimeConfig();
+
+  if (runtime.isLoading) {
+    return (
+      <AuthScreenContainer
+        description="Checking closed-beta registration availability."
+        title="Join Thriftage"
+      >
+        <Text style={styles.hint}>Checking availability…</Text>
+      </AuthScreenContainer>
+    );
+  }
+  if (runtime.data?.features.registration !== true) {
+    return (
+      <AuthScreenContainer
+        description="New account registration is currently paused for this closed beta."
+        footer={
+          <Link href="/login" style={styles.link}>
+            Return to sign in
+          </Link>
+        }
+        title="Registration paused"
+      >
+        <InlineError
+          message={
+            runtime.isError
+              ? 'Registration availability could not be verified. Try again later.'
+              : 'Existing testers can continue to sign in.'
+          }
+        />
+      </AuthScreenContainer>
+    );
+  }
 
   const submit = async () => {
     await submissionGate.run(async () => {

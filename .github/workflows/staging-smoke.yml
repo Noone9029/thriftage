@@ -1,0 +1,48 @@
+name: Staging Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      acknowledgement:
+        description: Type THRIFTAGE_STAGING_ONLY
+        required: true
+        type: string
+      api_url:
+        description: Staging API base ending in /api/v1
+        required: true
+        type: string
+      expected_host:
+        description: Exact staging API hostname
+        required: true
+        type: string
+      expected_release:
+        description: Expected deployed release SHA/version
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    environment: staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Verify deployed staging API
+        env:
+          ALLOW_STAGING_SMOKE: ${{ inputs.acknowledgement }}
+          EXPECTED_RELEASE_VERSION: ${{ inputs.expected_release }}
+          EXPECTED_STAGING_HOST: ${{ inputs.expected_host }}
+          STAGING_API_URL: ${{ inputs.api_url }}
+          STAGING_SMOKE_AUTH_TOKEN: ${{ secrets.STAGING_SMOKE_AUTH_TOKEN }}
+          TARGET_ENV: staging
+        run: node tooling/deployment/smoke-staging.mjs

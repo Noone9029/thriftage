@@ -56,7 +56,7 @@ export class ProfileImageService {
     try {
       await this.storage.remove(key);
     } catch {
-      this.logger.warn(`Profile image cleanup deferred: objectKey=${key}`);
+      this.logger.warn('Profile image cleanup deferred: code=PROFILE_IMAGE_CLEANUP_DEFERRED');
     }
   }
 }

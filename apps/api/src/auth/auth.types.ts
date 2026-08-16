@@ -4,6 +4,7 @@ export interface AuthenticatedIdentity {
   readonly assuranceLevel: 'aal1' | 'aal2' | null;
   readonly authProviderUserId: string;
   readonly email: string | null;
+  readonly issuedAt?: Date;
   readonly phone: string | null;
   readonly sessionId: string | null;
 }

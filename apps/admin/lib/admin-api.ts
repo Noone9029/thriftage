@@ -1,11 +1,17 @@
 import {
+  adminAiResponseFeedbackSchema,
+  adminAiResponseFeedbackPageSchema,
   adminAccessSchema,
+  adminBetaFeedbackSchema,
+  adminBetaFeedbackPageSchema,
   adminListingDetailSchema,
   adminListingQueueSchema,
   categorySchema,
   moderationReportPageSchema,
   moderationReportSchema,
   type AdminListingDetail,
+  type AdminAiResponseFeedback,
+  type AdminBetaFeedback,
   type AdminListingQueueItem,
   type Category,
   type CategoryCreateInput,
@@ -60,6 +66,11 @@ import {
   aiStylistRuntimeConfigurationSchema,
   type AiStylistAdminMetrics,
   type AiStylistRuntimeConfiguration,
+  feedbackModerationInputSchema,
+  type FeedbackModerationInput,
+  type FeedbackReviewStatus,
+  closedBetaOperationsSchema,
+  type ClosedBetaOperations,
 } from '@thriftage/shared';
 
 export class AdminApiError extends Error {
@@ -87,6 +98,10 @@ export class AdminApi {
     adminAccessSchema.parse(await this.request('/admin/access'));
   }
 
+  public async getClosedBetaOperations(): Promise<ClosedBetaOperations> {
+    return closedBetaOperationsSchema.parse(await this.request('/admin/closed-beta/snapshot'));
+  }
+
   public async getAiStylistMetrics(): Promise<AiStylistAdminMetrics> {
     return aiStylistAdminMetricsSchema.parse(await this.request('/admin/ai-stylist/metrics'));
   }
@@ -94,6 +109,46 @@ export class AdminApi {
   public async getAiStylistConfiguration(): Promise<AiStylistRuntimeConfiguration> {
     return aiStylistRuntimeConfigurationSchema.parse(
       await this.request('/admin/ai-stylist/configuration'),
+    );
+  }
+
+  public async listBetaFeedback(
+    status: FeedbackReviewStatus = 'OPEN',
+  ): Promise<readonly AdminBetaFeedback[]> {
+    return adminBetaFeedbackPageSchema.parse(
+      await this.request(`/admin/feedback/beta?status=${encodeURIComponent(status)}`),
+    ).items;
+  }
+
+  public async listAiResponseFeedback(
+    status: FeedbackReviewStatus = 'OPEN',
+  ): Promise<readonly AdminAiResponseFeedback[]> {
+    return adminAiResponseFeedbackPageSchema.parse(
+      await this.request(`/admin/feedback/ai?status=${encodeURIComponent(status)}`),
+    ).items;
+  }
+
+  public async moderateBetaFeedback(
+    id: string,
+    input: FeedbackModerationInput,
+  ): Promise<AdminBetaFeedback> {
+    return adminBetaFeedbackSchema.parse(
+      await this.request(`/admin/feedback/beta/${id}`, {
+        body: feedbackModerationInputSchema.parse(input),
+        method: 'PATCH',
+      }),
+    );
+  }
+
+  public async moderateAiResponseFeedback(
+    id: string,
+    input: FeedbackModerationInput,
+  ): Promise<AdminAiResponseFeedback> {
+    return adminAiResponseFeedbackSchema.parse(
+      await this.request(`/admin/feedback/ai/${id}`, {
+        body: feedbackModerationInputSchema.parse(input),
+        method: 'PATCH',
+      }),
     );
   }
 

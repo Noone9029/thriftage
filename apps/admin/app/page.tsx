@@ -19,8 +19,11 @@ import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react
 import { createAdminApi } from '../lib/admin-api';
 import { getSupabaseBrowserClient } from '../lib/supabase';
 import { TrustOperationsWorkspace } from '../components/trust-operations-workspace';
+import { FeedbackOperationsWorkspace } from '../components/feedback-operations-workspace';
+import { ClosedBetaOperationsWorkspace } from '../components/closed-beta-operations-workspace';
 
 type Workspace =
+  | 'BETA_STATUS'
   | 'CATEGORIES'
   | 'LISTINGS'
   | 'REPORTS'
@@ -28,13 +31,14 @@ type Workspace =
   | 'ORDERS'
   | 'TRUST'
   | 'PERSONALIZATION'
-  | 'AI_STYLIST';
+  | 'AI_STYLIST'
+  | 'FEEDBACK';
 type AccessState = 'CHECKING' | 'DENIED' | 'SIGNED_OUT' | 'AUTHORIZED';
 
 export default function AdminHome() {
   const [session, setSession] = useState<Session | null>(null);
   const [access, setAccess] = useState<AccessState>('CHECKING');
-  const [workspace, setWorkspace] = useState<Workspace>('LISTINGS');
+  const [workspace, setWorkspace] = useState<Workspace>('BETA_STATUS');
   const [error, setError] = useState<string | null>(null);
   const api = useMemo(
     () => (session === null ? null : createAdminApi(session.access_token)),
@@ -117,6 +121,7 @@ export default function AdminHome() {
         <nav className="space-y-2">
           {(
             [
+              'BETA_STATUS',
               'LISTINGS',
               'MESSAGES',
               'ORDERS',
@@ -124,6 +129,7 @@ export default function AdminHome() {
               'TRUST',
               'PERSONALIZATION',
               'AI_STYLIST',
+              'FEEDBACK',
               'CATEGORIES',
             ] as const
           ).map((item) => (
@@ -132,11 +138,16 @@ export default function AdminHome() {
               key={item}
               onClick={() => setWorkspace(item)}
             >
-              {item === 'AI_STYLIST' ? 'AI Stylist' : item.charAt(0) + item.slice(1).toLowerCase()}
+              {item === 'AI_STYLIST'
+                ? 'AI Stylist'
+                : item === 'BETA_STATUS'
+                  ? 'Beta status'
+                  : item.charAt(0) + item.slice(1).toLowerCase()}
             </button>
           ))}
         </nav>
         <section>
+          {workspace === 'BETA_STATUS' ? <ClosedBetaOperationsWorkspace api={api} /> : null}
           {workspace === 'LISTINGS' ? <ListingWorkspace api={api} /> : null}
           {workspace === 'REPORTS' ? <ReportWorkspace api={api} /> : null}
           {workspace === 'CATEGORIES' ? <CategoryWorkspace api={api} /> : null}
@@ -145,6 +156,7 @@ export default function AdminHome() {
           {workspace === 'TRUST' ? <TrustOperationsWorkspace api={api} /> : null}
           {workspace === 'PERSONALIZATION' ? <PersonalizationWorkspace api={api} /> : null}
           {workspace === 'AI_STYLIST' ? <AiStylistWorkspace api={api} /> : null}
+          {workspace === 'FEEDBACK' ? <FeedbackOperationsWorkspace api={api} /> : null}
         </section>
       </div>
     </main>

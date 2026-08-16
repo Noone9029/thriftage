@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 
-import type { PushProvider, PushReceipt, PushTicket } from './push-provider.interface';
+import {
+  PushProviderError,
+  type PushProvider,
+  type PushReceipt,
+  type PushTicket,
+} from './push-provider.interface';
 
 interface ExpoResponse<T> {
   readonly data: T;
@@ -33,14 +38,19 @@ export class ExpoPushAdapter implements PushProvider {
       headers: this.headers(),
       method: 'POST',
     });
-    if (!response.ok) throw new Error(`EXPO_HTTP_${response.status}`);
+    if (!response.ok) throw new PushProviderError('PUSH_PROVIDER_UNAVAILABLE');
     const payload = (await response.json()) as ExpoResponse<{
       readonly details?: { readonly error?: string };
       readonly id?: string;
       readonly status: string;
     }>;
-    if (payload.data.status !== 'ok' || payload.data.id === undefined)
-      throw new Error(payload.data.details?.error ?? 'EXPO_TICKET_ERROR');
+    if (payload.data.status !== 'ok' || payload.data.id === undefined) {
+      throw new PushProviderError(
+        payload.data.details?.error === 'DeviceNotRegistered'
+          ? 'PUSH_DEVICE_UNREGISTERED'
+          : 'PUSH_SEND_REJECTED',
+      );
+    }
     return { id: payload.data.id };
   }
   public async receipts(ticketIds: readonly string[]): Promise<ReadonlyMap<string, PushReceipt>> {
@@ -54,7 +64,7 @@ export class ExpoPushAdapter implements PushProvider {
       headers: this.headers(),
       method: 'POST',
     });
-    if (!response.ok) throw new Error(`EXPO_RECEIPT_HTTP_${response.status}`);
+    if (!response.ok) throw new PushProviderError('PUSH_RECEIPT_PROVIDER_UNAVAILABLE');
     const payload = (await response.json()) as ExpoResponse<
       Record<
         string,

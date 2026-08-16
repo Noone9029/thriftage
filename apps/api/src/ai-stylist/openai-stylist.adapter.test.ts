@@ -35,6 +35,7 @@ const outfit: ComposedOutfitCandidate = {
 function request(overrides: Partial<AiProviderRequest> = {}): AiProviderRequest {
   return {
     conversationSummary: { occasion: 'UNIVERSITY' },
+    generationId: 'generation-1',
     initialCandidates: [outfit],
     intent: {
       anchorListingId: null,

@@ -4,9 +4,11 @@ import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-na
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { marketplaceColors } from '../../src/components/marketplace/marketplace-theme';
+import { useRuntimeConfig } from '../../src/hooks/use-runtime-config';
 import { thriftageApiClient } from '../../src/lib/auth/auth-composition';
 
 export default function SafetyCenterScreen() {
+  const runtime = useRuntimeConfig();
   const status = useQuery({
     queryFn: () => thriftageApiClient.getSafetyStatus(),
     queryKey: ['safety-status'],
@@ -47,7 +49,9 @@ export default function SafetyCenterScreen() {
         <Link label="Marketplace policies" onPress={() => router.push('/policies')} />
         <Link label="Blocked users" onPress={() => router.push('/blocked-users')} />
         <Link label="Disputes" onPress={() => router.push('/disputes')} />
-        <Link label="Seller verification" onPress={() => router.push('/seller-verification')} />
+        {runtime.data?.features.sellerVerification === true ? (
+          <Link label="Seller verification" onPress={() => router.push('/seller-verification')} />
+        ) : null}
         {status.data?.supportUrl ? (
           <Link
             label="Contact support"

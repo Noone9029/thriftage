@@ -61,6 +61,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Scan tracked files for secrets
+        run: pnpm security:secrets
+
+      - name: Check migration safety
+        run: pnpm ci:migration-safety
+
+      - name: Audit critical dependency vulnerabilities
+        run: pnpm security:audit
+
       - name: Validate Prisma schema
         run: pnpm db:validate
 
@@ -84,3 +93,9 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Scan generated artifacts for secrets
+        run: pnpm security:artifacts
+
+      - name: Check Expo dependencies and configuration
+        run: pnpm mobile:doctor

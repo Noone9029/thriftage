@@ -104,6 +104,21 @@ export default function OwnProfileScreen() {
                 label="Personalization & privacy"
                 onPress={() => router.push('/personalization-settings')}
               />
+              <HubAction
+                icon="delete-outline"
+                label="Delete account"
+                onPress={() => router.push('/account-deletion')}
+              />
+              <HubAction
+                icon="feedback"
+                label="Beta feedback"
+                onPress={() => router.push('/beta-feedback')}
+              />
+              <HubAction
+                icon="info-outline"
+                label="About & diagnostics"
+                onPress={() => router.push('/about')}
+              />
             </View>
             <Text style={styles.section}>Active wardrobe</Text>
           </View>

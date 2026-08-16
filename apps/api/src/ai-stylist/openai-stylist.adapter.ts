@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import OpenAI from 'openai';
 import { zodTextFormat } from 'openai/helpers/zod';
 import type {
@@ -15,9 +16,11 @@ import {
   type AiStylistProvider,
   type ComposedOutfitCandidate,
 } from './ai-stylist.types';
+import { getRequestId } from '../observability/request-context';
 
 export class OpenAiStylistAdapter implements AiStylistProvider {
   private readonly client: OpenAI;
+  private readonly logger = new Logger(OpenAiStylistAdapter.name);
 
   public constructor(apiKey: string, client?: OpenAI) {
     this.client = client ?? new OpenAI({ apiKey, maxRetries: 1 });
@@ -47,6 +50,7 @@ export class OpenAiStylistAdapter implements AiStylistProvider {
     let calls = 0;
     try {
       while (true) {
+        const requestId = getRequestId();
         const response = await this.client.responses.parse(
           {
             input,
@@ -73,7 +77,22 @@ export class OpenAiStylistAdapter implements AiStylistProvider {
                   })),
                 }),
           },
-          { signal: AbortSignal.timeout(request.timeoutMs) },
+          {
+            ...(requestId === undefined ? {} : { headers: { 'X-Client-Request-Id': requestId } }),
+            signal: AbortSignal.timeout(request.timeoutMs),
+          },
+        );
+        this.logger.log(
+          JSON.stringify({
+            event: 'openai_request_completed',
+            generationId: request.generationId,
+            latencyMs: Date.now() - startedAt,
+            model: response.model,
+            providerRequestId:
+              (response as typeof response & { _request_id?: string })._request_id ?? null,
+            requestId: requestId ?? null,
+            status: 'succeeded',
+          }),
         );
         this.addUsage(usage, response.usage);
         const toolCalls = response.output.filter(
@@ -134,6 +153,16 @@ export class OpenAiStylistAdapter implements AiStylistProvider {
         toolCallCount: calls,
         usage: { ...usage },
       };
+      this.logger.warn(
+        JSON.stringify({
+          event: 'openai_request_failed',
+          generationId: request.generationId,
+          latencyMs: operations.latencyMs,
+          model: request.model,
+          requestId: getRequestId() ?? null,
+          status: 'failed',
+        }),
+      );
       if (error instanceof AiStylistDomainError)
         throw new AiStylistDomainError(error.code, operations);
       if (

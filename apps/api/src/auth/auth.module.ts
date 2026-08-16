@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { loadApiConfig } from '@thriftage/config/api';
 
 import { ApplicationUserResolver } from './application-user-resolver.service';
 import { AuthController } from './auth.controller';
@@ -32,7 +33,15 @@ import { SupabaseAuthAdapter } from './supabase-auth.adapter';
     LinkedUserGuard,
     OptionalAuthenticationGuard,
     RoleGuard,
-    ProvisionUserService,
+    {
+      provide: ProvisionUserService,
+      inject: [AUTHORITATIVE_AUTH_USER_PROVIDER],
+      useFactory: (authUserProvider: SupabaseAuthAdapter) =>
+        new ProvisionUserService(
+          authUserProvider,
+          () => loadApiConfig(process.env).registrationEnabled,
+        ),
+    },
   ],
 })
 export class AuthModule {}

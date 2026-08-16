@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import './instrument';
 
 import { ConsoleLogger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
@@ -7,6 +7,8 @@ import { API_SERVICE_NAME, API_VERSION_PREFIX } from '@thriftage/shared';
 import helmet from 'helmet';
 
 import { AppModule } from './app.module';
+import { ErrorCaptureInterceptor } from './observability/error-capture.interceptor';
+import { requestLoggingMiddleware } from './observability/request-logging.middleware';
 
 async function bootstrap(): Promise<void> {
   const config = loadApiConfig(process.env);
@@ -19,6 +21,7 @@ async function bootstrap(): Promise<void> {
   });
 
   app.useLogger(logger);
+  app.use(requestLoggingMiddleware);
   app.use(helmet());
   app.enableCors({
     credentials: true,
@@ -33,6 +36,7 @@ async function bootstrap(): Promise<void> {
       whitelist: true,
     }),
   );
+  app.useGlobalInterceptors(new ErrorCaptureInterceptor());
 
   await app.listen(config.port, config.host);
   logger.log(`API listening on ${await app.getUrl()}`);

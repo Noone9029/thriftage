@@ -10,6 +10,7 @@ import { PasswordField } from '../../src/components/auth/password-field';
 import { PrimaryButton } from '../../src/components/auth/primary-button';
 import { getMobileAuthErrorMessage } from '../../src/lib/auth/auth-error-message';
 import { AsyncSubmissionGate } from '../../src/lib/forms/async-submission-gate';
+import { useRuntimeConfig } from '../../src/hooks/use-runtime-config';
 import { useAuth } from '../../src/providers/auth-provider';
 
 export default function LoginScreen() {
@@ -21,6 +22,10 @@ export default function LoginScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const submissionGate = useRef(new AsyncSubmissionGate()).current;
+  const runtime = useRuntimeConfig();
+  const phoneAuthEnabled = runtime.data?.features.phoneAuth === true;
+  const registrationEnabled = runtime.data?.features.registration === true;
+  const methods: readonly ('email' | 'phone')[] = phoneAuthEnabled ? ['email', 'phone'] : ['email'];
 
   const submit = async () => {
     await submissionGate.run(async () => {
@@ -55,17 +60,23 @@ export default function LoginScreen() {
       description="Use your email and password or a verified phone number."
       footer={
         <Text style={styles.footerText}>
-          New to Thriftage?{' '}
-          <Link href="/signup" style={styles.link}>
-            Create an account
-          </Link>
+          {registrationEnabled ? (
+            <>
+              New to Thriftage?{' '}
+              <Link href="/signup" style={styles.link}>
+                Create an account
+              </Link>
+            </>
+          ) : (
+            'Closed-beta registration is currently paused.'
+          )}
         </Text>
       }
       title="Welcome back"
     >
       <InlineError message={error} />
       <View accessibilityRole="tablist" style={styles.tabs}>
-        {(['email', 'phone'] as const).map((value) => (
+        {methods.map((value) => (
           <Pressable
             accessibilityRole="tab"
             accessibilityState={{ selected: method === value }}
@@ -82,6 +93,11 @@ export default function LoginScreen() {
           </Pressable>
         ))}
       </View>
+      {runtime.isError ? (
+        <Text style={styles.phoneHint}>
+          Live feature availability could not be checked. Email sign-in remains available.
+        </Text>
+      ) : null}
       {method === 'email' ? (
         <>
           <FormField

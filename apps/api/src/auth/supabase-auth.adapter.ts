@@ -28,6 +28,7 @@ const verifiedClaimsSchema = z.object({
   aud: z.union([z.string(), z.array(z.string())]),
   email: z.string().optional(),
   exp: z.number().int(),
+  iat: z.number().int(),
   is_anonymous: z.boolean(),
   iss: z.string(),
   phone: z.string().optional(),
@@ -144,6 +145,7 @@ export class SupabaseAuthAdapter implements AuthTokenVerifier, AuthoritativeAuth
       assuranceLevel: claims.aal ?? null,
       authProviderUserId: subject,
       email: optionalNonblank(claims.email),
+      issuedAt: new Date(claims.iat * 1_000),
       phone: optionalNonblank(claims.phone),
       sessionId: optionalNonblank(claims.session_id),
     });

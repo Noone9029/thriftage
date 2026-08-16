@@ -5,9 +5,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MarketplaceState } from '../../src/components/marketplace/marketplace-state';
 import { marketplaceColors } from '../../src/components/marketplace/marketplace-theme';
+import { useRuntimeConfig } from '../../src/hooks/use-runtime-config';
 import { thriftageApiClient } from '../../src/lib/auth/auth-composition';
 
 export default function SellerVerificationScreen() {
+  const runtime = useRuntimeConfig();
   const cache = useQueryClient();
   const [statement, setStatement] = useState('');
   const query = useQuery({
@@ -18,6 +20,21 @@ export default function SellerVerificationScreen() {
     mutationFn: () => thriftageApiClient.applyForSellerVerification(statement.trim()),
     onSuccess: () => cache.invalidateQueries({ queryKey: ['seller-verification'] }),
   });
+  if (runtime.isLoading)
+    return (
+      <MarketplaceState
+        loading
+        title="Seller verification"
+        message="Checking feature availability."
+      />
+    );
+  if (runtime.data?.features.sellerVerification !== true)
+    return (
+      <MarketplaceState
+        title="Verification unavailable"
+        message="Seller verification is currently paused for this beta."
+      />
+    );
   if (query.isLoading)
     return (
       <MarketplaceState

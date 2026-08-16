@@ -1,5 +1,17 @@
 import { z } from 'zod';
 
+export const sellerVerificationErrorCodeValues = [
+  'VERIFICATION_ALREADY_ACTIVE',
+  'VERIFICATION_DISABLED',
+  'VERIFICATION_NOT_ELIGIBLE',
+  'VERIFICATION_NOT_FOUND',
+  'VERIFICATION_REAPPLY_LATER',
+  'VERIFICATION_SERVICE_ERROR',
+  'VERIFICATION_VALIDATION_FAILED',
+] as const;
+export const sellerVerificationErrorCodeSchema = z.enum(sellerVerificationErrorCodeValues);
+export type SellerVerificationErrorCode = z.infer<typeof sellerVerificationErrorCodeSchema>;
+
 export const sellerVerificationStatusValues = [
   'PENDING',
   'VERIFIED',

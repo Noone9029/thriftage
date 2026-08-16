@@ -36,7 +36,10 @@ function nonblank(value: string | null): string | null {
   return trimmed === undefined || trimmed === '' ? null : trimmed;
 }
 
-export function parseAuthCallbackUrl(input: string): AuthCallbackInstruction {
+export function parseAuthCallbackUrl(
+  input: string,
+  allowedScheme = 'thriftage',
+): AuthCallbackInstruction {
   let url: URL;
   try {
     url = new URL(input);
@@ -45,7 +48,7 @@ export function parseAuthCallbackUrl(input: string): AuthCallbackInstruction {
   }
 
   const isAllowedRoute =
-    url.protocol === 'thriftage:' &&
+    url.protocol === `${allowedScheme}:` &&
     url.hostname === 'auth' &&
     ['/callback', '/reset-password'].includes(url.pathname);
   if (!isAllowedRoute || url.username !== '' || url.password !== '') {

@@ -21,6 +21,10 @@ export interface PhoneVerificationErrorDefinition {
 }
 
 const errorDefinitions: Record<PhoneVerificationErrorCode, PhoneVerificationErrorDefinition> = {
+  PHONE_AUTH_DISABLED: {
+    message: 'Phone authentication is temporarily unavailable.',
+    status: HttpStatus.SERVICE_UNAVAILABLE,
+  },
   PHONE_ALREADY_IN_USE: {
     message: 'This phone number cannot be linked to this account.',
     status: HttpStatus.CONFLICT,

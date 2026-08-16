@@ -30,6 +30,7 @@ export const PHONE_VERIFICATION_POLICY = Symbol('PHONE_VERIFICATION_POLICY');
 
 export interface PhoneVerificationPolicy {
   readonly attemptTtlSeconds: number;
+  readonly enabled?: boolean;
   readonly maxChecks: number;
   readonly maxSends: number;
   readonly maxStarts: number;
@@ -72,6 +73,7 @@ export class PhoneLinkingService {
 
   public async start(user: User, input: PhoneVerificationStartInput) {
     try {
+      this.assertEnabled();
       const normalizedPhone = normalizePhoneNumber(
         phoneVerificationStartInputSchema.parse(input).phone,
       );
@@ -133,6 +135,7 @@ export class PhoneLinkingService {
 
   public async resend(user: User, attemptId: string): Promise<PhoneVerificationChallenge> {
     try {
+      this.assertEnabled();
       const now = this.now();
       const attempt = await this.repository.reserveResend({
         attemptId,
@@ -158,6 +161,7 @@ export class PhoneLinkingService {
 
   public async verify(user: User, input: PhoneVerificationVerifyInput): Promise<User> {
     try {
+      this.assertEnabled();
       const parsed = phoneVerificationVerifyInputSchema.parse(input);
       const now = this.now();
       let attempt = await this.repository.reserveCheck({
@@ -228,6 +232,15 @@ export class PhoneLinkingService {
       await this.repository.cancelCurrent(user.id, this.now());
     } catch (error: unknown) {
       throw toPhoneVerificationApiException(error);
+    }
+  }
+
+  private assertEnabled(): void {
+    if (this.policy.enabled === false) {
+      throw new PhoneVerificationDomainError(
+        'PHONE_AUTH_DISABLED',
+        'Phone authentication is disabled by runtime policy.',
+      );
     }
   }
 

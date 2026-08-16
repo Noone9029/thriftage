@@ -136,6 +136,43 @@ describe('ThriftageApiClient', () => {
     expect(new Headers(request.headers).has('Authorization')).toBe(false);
   });
 
+  it('validates public runtime flags without sending a bearer token', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({
+        environment: 'staging',
+        features: {
+          accountDeletion: true,
+          aiStylist: false,
+          phoneAuth: true,
+          pushNotifications: false,
+          registration: true,
+          sellerVerification: true,
+        },
+        links: {
+          accountDeletion: 'https://privacy.example.com/delete-account',
+          communityGuidelines: 'https://legal.example.com/community',
+          privacyPolicy: 'https://legal.example.com/privacy',
+          support: 'https://support.example.com',
+          termsOfUse: 'https://legal.example.com/terms',
+        },
+        releaseVersion: 'abc123',
+      }),
+    );
+    const client = new ThriftageApiClient(
+      'https://api.example.com/api/v1',
+      new TestSessionProvider(),
+      fetchMock as unknown as typeof fetch,
+    );
+
+    await expect(client.getRuntimeConfig()).resolves.toMatchObject({
+      environment: 'staging',
+      features: { aiStylist: false, registration: true },
+    });
+    expect(
+      new Headers((fetchMock.mock.calls[0]?.[1] as RequestInit).headers).has('Authorization'),
+    ).toBe(false);
+  });
+
   it('uses idempotent authenticated marketplace action endpoints', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ active: true, count: 1 }));
     const client = new ThriftageApiClient(

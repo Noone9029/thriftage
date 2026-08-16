@@ -260,6 +260,7 @@ export class AiStylistService {
       });
       session.addComposed(deterministic);
       const generationPlan = await this.planGeneration(
+        started.generationId,
         userId,
         input.body,
         conversation.context,
@@ -536,6 +537,7 @@ export class AiStylistService {
   }
 
   private async planGeneration(
+    generationId: string,
     userId: string,
     body: string,
     context: StylistContextSnapshot,
@@ -551,6 +553,7 @@ export class AiStylistService {
       const result: AiProviderResult = await this.provider.generate(
         {
           conversationSummary: { ...context },
+          generationId,
           initialCandidates: deterministic,
           intent,
           maxOutputTokens: config.aiStylistMaxOutputTokens,

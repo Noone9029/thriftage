@@ -15,6 +15,12 @@ describe('loadApiConfig', () => {
 
   it('returns safe local defaults', () => {
     expect(loadApiConfig(requiredAuthEnvironment)).toEqual({
+      accountDeletionBatchSize: 10,
+      accountDeletionEnabled: false,
+      accountDeletionMaxAttempts: 10,
+      accountDeletionPollIntervalMs: 5000,
+      accountDeletionReauthMaxAgeSeconds: 600,
+      accountDeletionStaleLockSeconds: 300,
       aiStylistCachedInputCostMicroUsdPerMillion: 200_000,
       aiStylistDailyUserLimit: 20,
       aiStylistEnabled: false,
@@ -32,6 +38,7 @@ describe('loadApiConfig', () => {
       aiStylistTimeoutMs: 20_000,
       conversationMaxStartsPerDay: 25,
       corsOrigins: [],
+      deploymentEnvironment: 'local',
       disputeEvidenceBucket: 'dispute-evidence',
       disputeEvidenceSignedUrlTtlSeconds: 600,
       disputeShippedMinAgeHours: 72,
@@ -53,12 +60,17 @@ describe('loadApiConfig', () => {
       phoneVerificationMaxStarts: 5,
       phoneVerificationResendCooldownSeconds: 60,
       phoneVerificationStartWindowSeconds: 3600,
+      phoneAuthEnabled: true,
       port: 4000,
       profileImageBucket: 'profile-images',
       pushReceiptDelaySeconds: 900,
       realtimeBroadcastEnabled: false,
+      registrationEnabled: true,
+      releaseVersion: 'development',
+      sellerVerificationEnabled: false,
       sellerVerificationMinCompletedSales: 0,
       sellerVerificationReapplyDays: 30,
+      sentryTracesSampleRate: 0,
       supabasePublishableKey: 'sb_publishable_test-placeholder',
       supabaseSecretKey: 'sb_secret_test-placeholder',
       supabaseUrl: 'https://project-ref.supabase.co',
@@ -76,14 +88,43 @@ describe('loadApiConfig', () => {
         API_PORT: '4100',
         CORS_ORIGINS: 'https://admin.example.com, https://app.example.com',
         LOG_FORMAT: 'json',
-        NODE_ENV: 'production',
       }),
     ).toMatchObject({
       corsOrigins: ['https://admin.example.com', 'https://app.example.com'],
       logFormat: 'json',
-      nodeEnv: 'production',
+      nodeEnv: 'development',
       port: 4100,
     });
+  });
+
+  it('requires explicit non-placeholder production configuration', () => {
+    const deployedEnvironment = {
+      ...requiredAuthEnvironment,
+      ACCOUNT_DELETION_URL: 'https://privacy.thriftage.test/delete-account',
+      COMMUNITY_GUIDELINES_URL: 'https://legal.thriftage.test/community',
+      CORS_ORIGINS: 'https://admin.thriftage.test',
+      DEPLOYMENT_ENV: 'staging',
+      LOG_FORMAT: 'json',
+      NODE_ENV: 'production',
+      PRIVACY_POLICY_URL: 'https://legal.thriftage.test/privacy',
+      RELEASE_VERSION: 'git-abc1234',
+      SENTRY_DSN: 'https://public-key@o1.ingest.sentry.io/1',
+      SUPPORT_URL: 'https://support.thriftage.test',
+      SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_stagingvalue',
+      SUPABASE_SECRET_KEY: 'sb_secret_stagingvalue',
+      TERMS_OF_USE_URL: 'https://legal.thriftage.test/terms',
+      TWILIO_API_KEY_SECRET: 'restricted-staging-key-value',
+    };
+
+    expect(loadApiConfig(deployedEnvironment)).toMatchObject({
+      deploymentEnvironment: 'staging',
+      nodeEnv: 'production',
+      releaseVersion: 'git-abc1234',
+    });
+    expect(() =>
+      loadApiConfig({ ...deployedEnvironment, SUPABASE_SECRET_KEY: 'sb_secret_placeholder' }),
+    ).toThrow();
+    expect(() => loadApiConfig({ ...requiredAuthEnvironment, NODE_ENV: 'production' })).toThrow();
   });
 
   it('validates backend-only AI controls without requiring a provider key while disabled', () => {

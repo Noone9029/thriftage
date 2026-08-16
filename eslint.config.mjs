@@ -18,6 +18,22 @@ export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
+    files: ['**/*.{js,mjs,cjs}'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
+  {
+    files: ['tooling/load/*.js'],
+    languageOptions: {
+      globals: {
+        __ENV: 'readonly',
+        __ITER: 'readonly',
+        __VU: 'readonly',
+      },
+    },
+  },
+  {
     files: ['**/*.{ts,tsx,mts}'],
     languageOptions: {
       globals: {

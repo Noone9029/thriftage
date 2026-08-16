@@ -39,6 +39,10 @@ const errorDefinitions: Record<
     message: 'Authentication is required.',
     status: HttpStatus.UNAUTHORIZED,
   },
+  AUTH_REGISTRATION_DISABLED: {
+    message: 'New account registration is temporarily unavailable.',
+    status: HttpStatus.SERVICE_UNAVAILABLE,
+  },
   AUTH_USER_NOT_PROVISIONED: {
     message: 'The authenticated account has not been provisioned.',
     status: HttpStatus.FORBIDDEN,

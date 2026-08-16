@@ -120,6 +120,28 @@ describe('PhoneLinkingService', () => {
     expect(JSON.stringify(result)).not.toContain(pendingAttempt.phone);
   });
 
+  it('fails closed before provider calls when phone authentication is disabled', async () => {
+    service = new PhoneLinkingService(
+      provider,
+      authAdmin,
+      repository,
+      { ...policy, enabled: false },
+      () => now,
+    );
+
+    await expect(service.start(user, { phone: pendingAttempt.phone })).rejects.toMatchObject({
+      code: 'PHONE_AUTH_DISABLED',
+    });
+    await expect(service.resend(user, pendingAttempt.id)).rejects.toMatchObject({
+      code: 'PHONE_AUTH_DISABLED',
+    });
+    await expect(
+      service.verify(user, { attemptId: pendingAttempt.id, code: '012345' }),
+    ).rejects.toMatchObject({ code: 'PHONE_AUTH_DISABLED' });
+    expect(provider.sendVerification).not.toHaveBeenCalled();
+    expect(provider.verifyCode).not.toHaveBeenCalled();
+  });
+
   it('returns idempotent success when the same phone is already verified', async () => {
     const result = await service.start(
       { ...user, phone: pendingAttempt.phone, phoneVerified: true },

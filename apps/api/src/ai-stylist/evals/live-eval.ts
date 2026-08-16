@@ -62,6 +62,7 @@ async function main(): Promise<void> {
         const result = await adapter.generate(
           {
             conversationSummary: {},
+            generationId: `live-eval-${evaluated + 1}`,
             initialCandidates: composed,
             intent: testCase.intent,
             maxOutputTokens: environment.AI_STYLIST_MAX_OUTPUT_TOKENS,

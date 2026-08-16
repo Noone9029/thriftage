@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const phoneVerificationErrorCodeValues = [
   'PHONE_INVALID',
+  'PHONE_AUTH_DISABLED',
   'PHONE_ALREADY_IN_USE',
   'PHONE_VERIFICATION_NOT_FOUND',
   'PHONE_VERIFICATION_EXPIRED',

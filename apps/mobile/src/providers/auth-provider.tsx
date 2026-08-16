@@ -1,4 +1,5 @@
 import type {
+  AccountDeletionStatus,
   MobileForgotPasswordInput,
   MobileLoginInput,
   MobilePhoneLoginStartInput,
@@ -22,6 +23,8 @@ import {
 } from 'react';
 import { AppState, Platform } from 'react-native';
 
+import { mobileConfig } from '../config/mobile-config';
+import { MobileApiError } from '../lib/api/mobile-api-error';
 import { mobileAuthController, thriftageApiClient } from '../lib/auth/auth-composition';
 import { deactivateCurrentPushDevice } from '../lib/notifications/push-registration';
 import { getMobileAuthErrorMessage } from '../lib/auth/auth-error-message';
@@ -53,6 +56,7 @@ interface AuthContextValue {
   readonly updateProfile: (input: ProfileUpdateInput) => Promise<void>;
   readonly uploadProfileImage: (image: FormData) => Promise<void>;
   readonly removeProfileImage: () => Promise<void>;
+  readonly requestAccountDeletion: (password: string) => Promise<AccountDeletionStatus>;
   readonly verifyPhoneLogin: (input: MobilePhoneLoginVerifyInput) => Promise<void>;
   readonly verifyRequiredPhone: (code: string) => Promise<void>;
   readonly abandonPhoneLogin: () => void;
@@ -64,7 +68,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 function isAuthCallback(url: string): boolean {
   try {
     const parsed = new URL(url);
-    return parsed.protocol === 'thriftage:' && parsed.hostname === 'auth';
+    return parsed.protocol === `${mobileConfig.appScheme}:` && parsed.hostname === 'auth';
   } catch {
     return false;
   }
@@ -84,7 +88,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
       if (!isAuthCallback(url)) return false;
       try {
         setDeepLinkError(null);
-        await mobileAuthController.handleCallback(parseAuthCallbackUrl(url));
+        await mobileAuthController.handleCallback(
+          parseAuthCallbackUrl(url, mobileConfig.appScheme),
+        );
         return true;
       } catch (error: unknown) {
         if (active) setDeepLinkError(getMobileAuthErrorMessage(error));
@@ -145,6 +151,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
       getUsernameAvailability: (username) => thriftageApiClient.getUsernameAvailability(username),
       requestPasswordReset: (input) => mobileAuthController.requestPasswordReset(input),
       removeProfileImage: () => mobileAuthController.removeProfileImage(),
+      requestAccountDeletion: async (password) => {
+        if (state.status !== 'AUTHENTICATED_ACTIVE') {
+          throw new Error('An active account is required to request deletion.');
+        }
+        if (state.account.email !== null) {
+          await mobileAuthGateway.signInWithPassword(state.account.email, password);
+        }
+        return thriftageApiClient.requestAccountDeletion();
+      },
       resendPhoneLogin: () => mobileAuthController.resendPhoneLogin(),
       resendRequiredPhone: () => mobileAuthController.resendRequiredPhone(),
       signIn: (input) => mobileAuthController.signIn(input),
@@ -152,8 +167,28 @@ export function AuthProvider({ children }: PropsWithChildren) {
         await deactivateCurrentPushDevice().catch(() => undefined);
         await mobileAuthController.signOut();
       },
-      signUp: (input) => mobileAuthController.signUp(input),
-      startPhoneLogin: (input) => mobileAuthController.startPhoneLogin(input),
+      signUp: async (input) => {
+        const runtime = await thriftageApiClient.getRuntimeConfig();
+        if (!runtime.features.registration) {
+          throw new MobileApiError(
+            'AUTH_REGISTRATION_DISABLED',
+            'New account registration is temporarily unavailable.',
+            503,
+          );
+        }
+        await mobileAuthController.signUp(input);
+      },
+      startPhoneLogin: async (input) => {
+        const runtime = await thriftageApiClient.getRuntimeConfig();
+        if (!runtime.features.phoneAuth) {
+          throw new MobileApiError(
+            'PHONE_AUTH_DISABLED',
+            'Phone authentication is temporarily unavailable.',
+            503,
+          );
+        }
+        await mobileAuthController.startPhoneLogin(input);
+      },
       startPhoneVerification: (phone) => mobileAuthController.startPhoneVerification(phone),
       state,
       updatePassword: (input) => mobileAuthController.updatePassword(input),

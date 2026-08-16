@@ -19,6 +19,41 @@ enum AccountStatus {
   DEACTIVATED
 }
 
+enum AccountDeletionStatus {
+  REQUESTED
+  PROCESSING
+  RETRY
+  COMPLETED
+  FAILED
+}
+
+enum FeedbackReviewStatus {
+  OPEN
+  UNDER_REVIEW
+  ACTIONED
+  DISMISSED
+}
+
+enum BetaFeedbackCategory {
+  BUG
+  USABILITY
+  PERFORMANCE
+  SAFETY
+  OTHER
+}
+
+enum FeedbackClientPlatform {
+  IOS
+  ANDROID
+  WEB
+}
+
+enum AiResponseFeedbackKind {
+  HELPFUL
+  NOT_HELPFUL
+  REPORT
+}
+
 enum PhoneVerificationAttemptStatus {
   PENDING
   PROVIDER_VERIFIED
@@ -533,10 +568,83 @@ model User {
   aiStylistGenerations        AiGeneration[]
   savedOutfits                SavedOutfit[]
   aiAttributionEvents         AiAttributionEvent[]
+  accountDeletionRequest      AccountDeletionRequest?
+  betaFeedbackSubmitted       BetaFeedback[]             @relation("BetaFeedbackSubmitter")
+  betaFeedbackReviewed        BetaFeedback[]             @relation("BetaFeedbackReviewer")
+  aiResponseFeedback          AiResponseFeedback[]       @relation("AiFeedbackSubmitter")
+  aiResponseFeedbackReviewed  AiResponseFeedback[]       @relation("AiFeedbackReviewer")
 
   @@index([accountStatus], map: "users_account_status_idx")
   @@index([createdAt], map: "users_created_at_idx")
   @@map("users")
+}
+
+model AccountDeletionRequest {
+  id                    String                @id @default(uuid()) @db.Uuid
+  userId                String                @unique(map: "account_deletion_requests_user_id_key") @map("user_id") @db.Uuid
+  authProviderUserId    String?               @map("auth_provider_user_id") @db.VarChar(255)
+  status                AccountDeletionStatus @default(REQUESTED)
+  attempts              Int                   @default(0)
+  nextAttemptAt         DateTime              @default(now()) @map("next_attempt_at") @db.Timestamptz(3)
+  lockedAt              DateTime?             @map("locked_at") @db.Timestamptz(3)
+  sessionRevokedAt      DateTime?             @map("session_revoked_at") @db.Timestamptz(3)
+  mediaDeletedAt        DateTime?             @map("media_deleted_at") @db.Timestamptz(3)
+  dataAnonymizedAt      DateTime?             @map("data_anonymized_at") @db.Timestamptz(3)
+  authIdentityDeletedAt DateTime?             @map("auth_identity_deleted_at") @db.Timestamptz(3)
+  completedAt           DateTime?             @map("completed_at") @db.Timestamptz(3)
+  lastErrorCode         String?               @map("last_error_code") @db.VarChar(64)
+  requestedAt           DateTime              @default(now()) @map("requested_at") @db.Timestamptz(3)
+  updatedAt             DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "account_deletion_requests_user_id_fkey")
+
+  @@index([status, nextAttemptAt, requestedAt], map: "account_deletion_requests_status_next_idx")
+  @@index([status, lockedAt], map: "account_deletion_requests_status_locked_idx")
+  @@map("account_deletion_requests")
+}
+
+model BetaFeedback {
+  id          String                 @id @default(uuid()) @db.Uuid
+  userId      String                 @map("user_id") @db.Uuid
+  category    BetaFeedbackCategory
+  description String                 @db.VarChar(2000)
+  route       String?                @db.VarChar(200)
+  appVersion  String                 @map("app_version") @db.VarChar(40)
+  buildNumber String                 @map("build_number") @db.VarChar(40)
+  platform    FeedbackClientPlatform
+  status      FeedbackReviewStatus   @default(OPEN)
+  reviewerId  String?                @map("reviewer_id") @db.Uuid
+  resolution  String?                @db.VarChar(1000)
+  reviewedAt  DateTime?              @map("reviewed_at") @db.Timestamptz(3)
+  createdAt   DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime               @updatedAt @map("updated_at") @db.Timestamptz(3)
+  user        User                   @relation("BetaFeedbackSubmitter", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "beta_feedback_user_id_fkey")
+  reviewer    User?                  @relation("BetaFeedbackReviewer", fields: [reviewerId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "beta_feedback_reviewer_id_fkey")
+
+  @@index([status, createdAt, id], map: "beta_feedback_status_created_idx")
+  @@index([userId, createdAt], map: "beta_feedback_user_created_idx")
+  @@map("beta_feedback")
+}
+
+model AiResponseFeedback {
+  id           String                 @id @default(uuid()) @db.Uuid
+  userId       String                 @map("user_id") @db.Uuid
+  generationId String                 @map("generation_id") @db.Uuid
+  kind         AiResponseFeedbackKind
+  reason       String?                @db.VarChar(1000)
+  status       FeedbackReviewStatus
+  reviewerId   String?                @map("reviewer_id") @db.Uuid
+  resolution   String?                @db.VarChar(1000)
+  reviewedAt   DateTime?              @map("reviewed_at") @db.Timestamptz(3)
+  createdAt    DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime               @updatedAt @map("updated_at") @db.Timestamptz(3)
+  user         User                   @relation("AiFeedbackSubmitter", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "ai_response_feedback_user_id_fkey")
+  generation   AiGeneration           @relation(fields: [generationId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "ai_response_feedback_generation_id_fkey")
+  reviewer     User?                  @relation("AiFeedbackReviewer", fields: [reviewerId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "ai_response_feedback_reviewer_id_fkey")
+
+  @@unique([userId, generationId], map: "ai_response_feedback_user_generation_key")
+  @@index([status, createdAt, id], map: "ai_response_feedback_status_created_idx")
+  @@index([generationId], map: "ai_response_feedback_generation_idx")
+  @@map("ai_response_feedback")
 }
 
 model PhoneVerificationAttempt {
@@ -1582,6 +1690,7 @@ model AiGeneration {
   user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "ai_generations_user_id_fkey")
   savedOutfits          SavedOutfit[]
   attributionEvents     AiAttributionEvent[]
+  feedback              AiResponseFeedback[]
 
   @@unique([userId, clientRequestId], map: "ai_generations_user_request_key")
   @@index([conversationId, startedAt, id], map: "ai_generations_conversation_started_idx")

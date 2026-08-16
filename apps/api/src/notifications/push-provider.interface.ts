@@ -1,5 +1,18 @@
 export const PUSH_PROVIDER = Symbol('PUSH_PROVIDER');
 
+export type PushProviderErrorCode =
+  | 'PUSH_DEVICE_UNREGISTERED'
+  | 'PUSH_PROVIDER_UNAVAILABLE'
+  | 'PUSH_RECEIPT_PROVIDER_UNAVAILABLE'
+  | 'PUSH_SEND_REJECTED';
+
+export class PushProviderError extends Error {
+  public constructor(public readonly code: PushProviderErrorCode) {
+    super(code);
+    this.name = 'PushProviderError';
+  }
+}
+
 export interface PushTicket {
   readonly id: string;
 }

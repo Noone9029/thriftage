@@ -94,6 +94,7 @@ export interface AiProviderToolDefinition {
 
 export interface AiProviderRequest {
   readonly conversationSummary: Readonly<Record<string, unknown>>;
+  readonly generationId: string;
   readonly initialCandidates: readonly ComposedOutfitCandidate[];
   readonly intent: StylistIntent;
   readonly maxOutputTokens: number;

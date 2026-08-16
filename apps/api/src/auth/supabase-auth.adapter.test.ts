@@ -12,6 +12,7 @@ function claims(overrides: Record<string, unknown> = {}): Record<string, unknown
     aud: 'authenticated',
     email: 'User@Example.com',
     exp: futureExpiration(),
+    iat: Math.floor(Date.now() / 1_000),
     is_anonymous: false,
     iss: expectedIssuer,
     phone: '+923001234567',
@@ -41,6 +42,7 @@ describe('SupabaseAuthAdapter', () => {
       assuranceLevel: 'aal1',
       authProviderUserId: 'provider-user-id',
       email: 'User@Example.com',
+      issuedAt: expect.any(Date),
       phone: '+923001234567',
       sessionId: 'session-id',
     });

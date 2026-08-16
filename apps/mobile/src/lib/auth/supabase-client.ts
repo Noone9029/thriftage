@@ -8,8 +8,8 @@ import type { MobileAuthGateway } from './mobile-auth.gateway';
 import { authStorage } from './storage/auth-storage';
 import { createPhoneSignInRequest } from './supabase-phone-sign-in';
 
-export const EMAIL_CONFIRMATION_REDIRECT_URL = 'thriftage://auth/callback';
-export const PASSWORD_RECOVERY_REDIRECT_URL = 'thriftage://auth/reset-password';
+export const EMAIL_CONFIRMATION_REDIRECT_URL = `${mobileConfig.appScheme}://auth/callback`;
+export const PASSWORD_RECOVERY_REDIRECT_URL = `${mobileConfig.appScheme}://auth/reset-password`;
 
 export const supabaseClient = createClient(
   mobileConfig.supabaseUrl,

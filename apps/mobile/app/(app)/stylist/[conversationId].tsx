@@ -1,5 +1,10 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import type { AiStylistMessage, AiStylistOutfit, ListingDetail } from '@thriftage/shared';
+import type {
+  AiResponseFeedbackInput,
+  AiStylistMessage,
+  AiStylistOutfit,
+  ListingDetail,
+} from '@thriftage/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Crypto from 'expo-crypto';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -385,6 +390,106 @@ function StylistMessageView({
           saving={saving}
         />
       ))}
+      {payload === null || payload === undefined ? null : (
+        <AiFeedbackControls generationId={payload.generationId} />
+      )}
+    </View>
+  );
+}
+
+function AiFeedbackControls({ generationId }: { readonly generationId: string }) {
+  const [reporting, setReporting] = useState(false);
+  const [reason, setReason] = useState('');
+  const feedback = useMutation({
+    mutationFn: (input: AiResponseFeedbackInput) =>
+      thriftageApiClient.submitAiResponseFeedback(generationId, input),
+    onSuccess: (_result, input) => {
+      if (input.kind === 'REPORT') {
+        setReason('');
+        setReporting(false);
+      }
+    },
+  });
+  const submit = (kind: 'HELPFUL' | 'NOT_HELPFUL') => {
+    setReporting(false);
+    feedback.mutate({ kind });
+  };
+
+  return (
+    <View style={styles.feedbackCard}>
+      <Text style={styles.feedbackTitle}>Was this response useful?</Text>
+      <View style={styles.feedbackActions}>
+        <Pressable
+          accessibilityLabel="Mark Stylist response helpful"
+          disabled={feedback.isPending}
+          onPress={() => submit('HELPFUL')}
+          style={styles.feedbackButton}
+        >
+          <MaterialIcons color={marketplaceColors.forest} name="thumb-up-off-alt" size={16} />
+          <Text style={styles.feedbackButtonText}>Helpful</Text>
+        </Pressable>
+        <Pressable
+          accessibilityLabel="Mark Stylist response not helpful"
+          disabled={feedback.isPending}
+          onPress={() => submit('NOT_HELPFUL')}
+          style={styles.feedbackButton}
+        >
+          <MaterialIcons color={marketplaceColors.forest} name="thumb-down-off-alt" size={16} />
+          <Text style={styles.feedbackButtonText}>Not helpful</Text>
+        </Pressable>
+        <Pressable
+          accessibilityLabel="Report Stylist response"
+          disabled={feedback.isPending}
+          onPress={() => setReporting((current) => !current)}
+          style={styles.feedbackButton}
+        >
+          <MaterialIcons color={marketplaceColors.danger} name="flag" size={16} />
+          <Text style={styles.reportButtonText}>Report</Text>
+        </Pressable>
+      </View>
+      {reporting ? (
+        <View style={styles.reportForm}>
+          <Text style={styles.reportHelp}>
+            Explain the safety or quality concern. Do not include passwords, contact details,
+            addresses, or private conversation text.
+          </Text>
+          <TextInput
+            accessibilityLabel="Reason for reporting Stylist response"
+            maxLength={1000}
+            multiline
+            onChangeText={setReason}
+            placeholder="What should our safety team review?"
+            placeholderTextColor={marketplaceColors.muted}
+            style={styles.reportInput}
+            value={reason}
+          />
+          <Pressable
+            accessibilityLabel="Submit Stylist response report"
+            disabled={reason.trim().length < 3 || feedback.isPending}
+            onPress={() => feedback.mutate({ kind: 'REPORT', reason })}
+            style={[
+              styles.reportSubmit,
+              (reason.trim().length < 3 || feedback.isPending) && styles.sendDisabled,
+            ]}
+          >
+            <Text style={styles.reportSubmitText}>
+              {feedback.isPending ? 'Submitting…' : 'Submit report'}
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+      {feedback.isSuccess ? (
+        <Text accessibilityRole="alert" style={styles.feedbackSuccess}>
+          {feedback.data.kind === 'REPORT'
+            ? 'Reported for review. Thank you.'
+            : 'Feedback saved. Thank you.'}
+        </Text>
+      ) : null}
+      {feedback.isError ? (
+        <Text accessibilityRole="alert" style={styles.feedbackError}>
+          Feedback could not be saved. Try again.
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -406,6 +511,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 11,
   },
+  feedbackActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  feedbackButton: {
+    alignItems: 'center',
+    borderColor: marketplaceColors.border,
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 5,
+    minHeight: 40,
+    paddingHorizontal: 11,
+  },
+  feedbackButtonText: { color: marketplaceColors.forest, fontSize: 12, fontWeight: '800' },
+  feedbackCard: { gap: 10, marginTop: 2 },
+  feedbackError: { color: marketplaceColors.danger, fontSize: 12 },
+  feedbackSuccess: { color: marketplaceColors.success, fontSize: 12, fontWeight: '700' },
+  feedbackTitle: { color: marketplaceColors.muted, fontSize: 12, fontWeight: '700' },
   cancelButton: {
     borderColor: marketplaceColors.border,
     borderRadius: 10,
@@ -528,6 +649,28 @@ const styles = StyleSheet.create({
     width: 46,
   },
   sendDisabled: { opacity: 0.45 },
+  reportButtonText: { color: marketplaceColors.danger, fontSize: 12, fontWeight: '800' },
+  reportForm: { gap: 9 },
+  reportHelp: { color: marketplaceColors.muted, fontSize: 12, lineHeight: 18 },
+  reportInput: {
+    borderColor: marketplaceColors.border,
+    borderRadius: 12,
+    borderWidth: 1,
+    color: marketplaceColors.text,
+    minHeight: 88,
+    padding: 11,
+    textAlignVertical: 'top',
+  },
+  reportSubmit: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: marketplaceColors.danger,
+    borderRadius: 10,
+    minHeight: 40,
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+  },
+  reportSubmitText: { color: marketplaceColors.white, fontSize: 12, fontWeight: '900' },
   starter: {
     backgroundColor: marketplaceColors.paper,
     borderColor: marketplaceColors.border,

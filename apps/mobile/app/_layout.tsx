@@ -4,7 +4,10 @@ import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { queryClient } from '../src/lib/query-client';
+import { initializeMobileMonitoring, Sentry } from '../src/observability/sentry';
 import { AuthProvider, useAuth } from '../src/providers/auth-provider';
+
+initializeMobileMonitoring();
 
 function RootNavigator() {
   const { state } = useAuth();
@@ -44,7 +47,7 @@ function RootNavigator() {
   );
 }
 
-export default function RootLayout() {
+function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
@@ -54,6 +57,8 @@ export default function RootLayout() {
     </QueryClientProvider>
   );
 }
+
+export default Sentry.wrap(RootLayout);
 
 const styles = StyleSheet.create({
   loading: {

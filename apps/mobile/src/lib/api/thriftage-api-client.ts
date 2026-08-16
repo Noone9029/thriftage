@@ -1,4 +1,9 @@
 import {
+  accountDeletionStatusSchema,
+  aiResponseFeedbackInputSchema,
+  aiResponseFeedbackSchema,
+  betaFeedbackInputSchema,
+  betaFeedbackSchema,
   categoryTreeNodeSchema,
   listingDetailSchema,
   listingPageSchema,
@@ -6,11 +11,17 @@ import {
   phoneVerificationChallengeSchema,
   privateUserAccountSchema,
   privateUserProfileSchema,
+  publicRuntimeConfigSchema,
   publicUserProfileSchema,
   sellerProfileWithListingsSchema,
   socialActionResultSchema,
   usernameAvailabilitySchema,
   type CategoryTreeNode,
+  type AccountDeletionStatus,
+  type AiResponseFeedback,
+  type AiResponseFeedbackInput,
+  type BetaFeedback,
+  type BetaFeedbackInput,
   type FeedMode,
   type ListingDetail,
   type ListingDraftInput,
@@ -24,6 +35,7 @@ import {
   type PrivateUserProfile,
   type ProfileCreateInput,
   type ProfileUpdateInput,
+  type PublicRuntimeConfig,
   type PublicUserProfile,
   type SellerProfileWithListings,
   type SocialActionResult,
@@ -157,6 +169,46 @@ export class ThriftageApiClient {
 
   public async getHealth(): Promise<unknown> {
     return this.request('/health', { authenticated: false });
+  }
+
+  public async getRuntimeConfig(): Promise<PublicRuntimeConfig> {
+    return publicRuntimeConfigSchema.parse(
+      await this.request('/runtime-config', { authenticated: false }),
+    );
+  }
+
+  public async requestAccountDeletion(): Promise<AccountDeletionStatus> {
+    return accountDeletionStatusSchema.parse(
+      await this.request('/privacy/account-deletion', {
+        body: { confirmation: 'DELETE' },
+        method: 'POST',
+      }),
+    );
+  }
+
+  public async getAccountDeletionStatus(): Promise<AccountDeletionStatus> {
+    return accountDeletionStatusSchema.parse(await this.request('/privacy/account-deletion'));
+  }
+
+  public async submitBetaFeedback(input: BetaFeedbackInput): Promise<BetaFeedback> {
+    return betaFeedbackSchema.parse(
+      await this.request('/feedback', {
+        body: betaFeedbackInputSchema.parse(input),
+        method: 'POST',
+      }),
+    );
+  }
+
+  public async submitAiResponseFeedback(
+    generationId: string,
+    input: AiResponseFeedbackInput,
+  ): Promise<AiResponseFeedback> {
+    return aiResponseFeedbackSchema.parse(
+      await this.request(`/feedback/ai-stylist/generations/${encodeURIComponent(generationId)}`, {
+        body: aiResponseFeedbackInputSchema.parse(input),
+        method: 'POST',
+      }),
+    );
   }
 
   public async getCurrentPhoneVerification(): Promise<PhoneVerificationChallenge | null> {

@@ -20,9 +20,12 @@ import { SellerVerificationModule } from './seller-verification/seller-verificat
 import { DisputesModule } from './disputes/disputes.module';
 import { PersonalizationModule } from './personalization/personalization.module';
 import { AiStylistModule } from './ai-stylist/ai-stylist.module';
+import { AccountDeletionModule } from './account-deletion/account-deletion.module';
+import { FeedbackModule } from './feedback/feedback.module';
 
 @Module({
   imports: [
+    AccountDeletionModule,
     AiStylistModule,
     AdminModule,
     AuthModule,
@@ -30,6 +33,7 @@ import { AiStylistModule } from './ai-stylist/ai-stylist.module';
     CommunicationModule,
     CommerceModule,
     DiscoveryModule,
+    FeedbackModule,
     HealthModule,
     ListingsModule,
     MarketplaceEventsModule,

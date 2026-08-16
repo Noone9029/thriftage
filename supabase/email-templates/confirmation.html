@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <body style="margin: 0; background: #f3efe5; color: #17231e; font-family: Arial, sans-serif">
+    <main style="max-width: 560px; margin: 0 auto; padding: 40px 24px">
+      <p style="color: #d66b45; font-size: 12px; font-weight: 700; letter-spacing: 2px">
+        THRIFTAGE
+      </p>
+      <section style="background: #fffdf8; border-radius: 18px; padding: 32px">
+        <h1 style="font-size: 26px; margin: 0 0 16px">Confirm your email</h1>
+        <p style="font-size: 16px; line-height: 1.6">
+          Confirm this address to continue setting up your Thriftage marketplace account.
+        </p>
+        <p style="margin: 28px 0">
+          <a
+            href="{{ .ConfirmationURL }}"
+            style="
+              background: #123f33;
+              border-radius: 10px;
+              color: #fff;
+              display: inline-block;
+              font-weight: 700;
+              padding: 14px 20px;
+              text-decoration: none;
+            "
+            >Confirm email</a
+          >
+        </p>
+        <p style="color: #625e56; font-size: 14px; line-height: 1.5">
+          This security link is single-use and expires. If you did not request a Thriftage account,
+          ignore this email. Need help? Visit {{ .SiteURL }}/support.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

@@ -59,6 +59,7 @@ export class ProvisionUserService {
   public constructor(
     @Inject(AUTHORITATIVE_AUTH_USER_PROVIDER)
     private readonly authUserProvider: AuthoritativeAuthUserProvider,
+    private readonly registrationIsEnabled: () => boolean = () => true,
   ) {}
 
   public async provision(
@@ -86,9 +87,17 @@ export class ProvisionUserService {
     const prisma = getPrismaClient();
 
     return serializeProvisioning(parsedSubject.data, async () => {
+      const existing = await prisma.user.findUnique({
+        where: { authProviderUserId: parsedSubject.data },
+      });
+      if (existing !== null) return existing;
+      if (!this.registrationIsEnabled()) {
+        throw new AuthApiException('AUTH_REGISTRATION_DISABLED');
+      }
+
       try {
-        return await prisma.user.upsert({
-          create: {
+        return await prisma.user.create({
+          data: {
             authProviderUserId: parsedSubject.data,
             email,
             emailVerified: authoritativeUser.emailVerified,
@@ -96,8 +105,6 @@ export class ProvisionUserService {
             phone,
             phoneVerified: authoritativeUser.phoneVerified,
           },
-          update: {},
-          where: { authProviderUserId: parsedSubject.data },
         });
       } catch (error: unknown) {
         if (!isUniqueConstraintError(error)) throw error;
@@ -107,9 +114,7 @@ export class ProvisionUserService {
         });
         if (sameIdentity !== null) return sameIdentity;
 
-        this.logger.warn(
-          `Provisioning identity collision: authProviderUserId=${parsedSubject.data}`,
-        );
+        this.logger.warn('Provisioning identity collision: code=AUTH_IDENTITY_CONFLICT');
         throw new AuthApiException('AUTH_IDENTITY_CONFLICT');
       }
     });

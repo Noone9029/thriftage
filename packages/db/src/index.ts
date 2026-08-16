@@ -1,6 +1,11 @@
 export { createPrismaClient, getPrismaClient } from './client';
 export {
   AccountStatus,
+  AccountDeletionStatus,
+  FeedbackReviewStatus,
+  BetaFeedbackCategory,
+  FeedbackClientPlatform,
+  AiResponseFeedbackKind,
   CurrencyCode,
   ListingCondition,
   ListingStatus,
@@ -60,6 +65,9 @@ export {
 } from './generated/client/client';
 export type {
   Address,
+  AccountDeletionRequest,
+  BetaFeedback,
+  AiResponseFeedback,
   Category,
   Conversation,
   Follow,

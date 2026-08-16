@@ -14,6 +14,7 @@ import {
 } from '../../../src/components/marketplace/marketplace-theme';
 import { ReportPanel } from '../../../src/components/marketplace/report-panel';
 import { useListingActions } from '../../../src/hooks/use-listing-actions';
+import { useRuntimeConfig } from '../../../src/hooks/use-runtime-config';
 import { thriftageApiClient } from '../../../src/lib/auth/auth-composition';
 import { useAuth } from '../../../src/providers/auth-provider';
 
@@ -23,6 +24,7 @@ export default function ListingDetailScreen() {
   const [reporting, setReporting] = useState(false);
   const { state } = useAuth();
   const actions = useListingActions();
+  const runtime = useRuntimeConfig();
   const [startingConversation, setStartingConversation] = useState(false);
   const [startingStylist, setStartingStylist] = useState(false);
   const query = useQuery({
@@ -166,7 +168,7 @@ export default function ListingDetailScreen() {
           {reporting ? (
             <ReportPanel listingId={listing.id} onClose={() => setReporting(false)} />
           ) : null}
-          {listing.status === 'ACTIVE' ? (
+          {listing.status === 'ACTIVE' && runtime.data?.features.aiStylist === true ? (
             <Pressable
               accessibilityLabel={`Build an outfit around ${listing.title}`}
               disabled={startingStylist}

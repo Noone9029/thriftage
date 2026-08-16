@@ -14,6 +14,7 @@
     "@nestjs/common": "11.1.28",
     "@nestjs/core": "11.1.28",
     "@nestjs/platform-express": "11.1.28",
+    "@sentry/node": "^10.70.0",
     "@supabase/supabase-js": "2.112.2",
     "@thriftage/config": "workspace:*",
     "@thriftage/db": "workspace:*",

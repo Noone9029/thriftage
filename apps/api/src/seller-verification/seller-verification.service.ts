@@ -13,7 +13,7 @@ import {
   MARKETPLACE_EVENT_PUBLISHER,
   type MarketplaceEventPublisher,
 } from '../common/marketplace-event-publisher';
-import { mapSellerVerificationError } from './seller-verification.errors';
+import { mapSellerVerificationError, SellerVerificationError } from './seller-verification.errors';
 import {
   SellerVerificationRepository,
   type SellerVerificationRecord,
@@ -65,6 +65,9 @@ export class SellerVerificationService {
   }
   async apply(userId: string, input: SellerVerificationApplyInput) {
     try {
+      if (!loadApiConfig(process.env).sellerVerificationEnabled) {
+        throw new SellerVerificationError('VERIFICATION_DISABLED');
+      }
       const p = sellerVerificationApplyInputSchema.parse(input);
       const v = await this.repo.apply(
         userId,

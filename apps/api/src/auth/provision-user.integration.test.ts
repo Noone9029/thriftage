@@ -92,6 +92,20 @@ describe.sequential('ProvisionUserService database invariants', () => {
     await expect(prisma.profile.count()).resolves.toBe(0);
   });
 
+  it('blocks new application accounts when registration is disabled', async () => {
+    const subject = randomUUID();
+    const context = identityContext(subject);
+    provider.user = authoritativeUser(subject);
+    const disabledService = new ProvisionUserService(provider, () => false);
+
+    await expect(
+      disabledService.provision(context, { fullName: 'Closed Beta User' }),
+    ).rejects.toMatchObject({ code: 'AUTH_REGISTRATION_DISABLED' });
+    await expect(
+      prisma.user.findUnique({ where: { authProviderUserId: subject } }),
+    ).resolves.toBeNull();
+  });
+
   it('returns the existing user without overwriting application state', async () => {
     const subject = randomUUID();
     const context = identityContext(subject);

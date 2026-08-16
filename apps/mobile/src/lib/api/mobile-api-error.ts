@@ -1,31 +1,43 @@
 import {
+  accountDeletionErrorCodeSchema,
   aiStylistErrorCodeSchema,
   apiErrorCodeSchema,
+  feedbackErrorCodeSchema,
   marketplaceErrorCodeSchema,
   phoneVerificationErrorCodeSchema,
   profileErrorCodeSchema,
+  sellerVerificationErrorCodeSchema,
   type AuthErrorCode,
+  type AccountDeletionErrorCode,
   type AiStylistErrorCode,
+  type FeedbackErrorCode,
   type MarketplaceErrorCode,
   type PhoneVerificationErrorCode,
   type ProfileErrorCode,
+  type SellerVerificationErrorCode,
 } from '@thriftage/shared';
 import { z } from 'zod';
 
 export type MobileApiErrorCode =
+  | AccountDeletionErrorCode
   | AiStylistErrorCode
   | AuthErrorCode
+  | FeedbackErrorCode
   | MarketplaceErrorCode
   | PhoneVerificationErrorCode
   | ProfileErrorCode
+  | SellerVerificationErrorCode
   | 'API_ERROR';
 
 const mobileApiErrorCodeSchema = z.union([
+  accountDeletionErrorCodeSchema,
   aiStylistErrorCodeSchema,
   apiErrorCodeSchema,
+  feedbackErrorCodeSchema,
   marketplaceErrorCodeSchema,
   phoneVerificationErrorCodeSchema,
   profileErrorCodeSchema,
+  sellerVerificationErrorCodeSchema,
 ]);
 
 export class MobileApiError extends Error {
@@ -68,6 +80,15 @@ export async function decodeApiError(response: Response): Promise<MobileApiError
 }
 
 const userMessages: Partial<Record<MobileApiErrorCode, string>> = {
+  ACCOUNT_DELETION_ACTIVE_COMMERCE:
+    'Complete or cancel active purchases and sales before deleting your account.',
+  ACCOUNT_DELETION_ACTIVE_DISPUTE: 'Resolve active disputes before deleting your account.',
+  ACCOUNT_DELETION_ADMIN_UNSUPPORTED:
+    'Administrator accounts require an audited role handoff before deletion.',
+  ACCOUNT_DELETION_DISABLED: 'Account deletion is temporarily unavailable.',
+  ACCOUNT_DELETION_NOT_FOUND: 'No deletion request was found for this account.',
+  ACCOUNT_DELETION_REAUTH_REQUIRED: 'Sign in again before confirming account deletion.',
+  ACCOUNT_DELETION_SERVICE_ERROR: 'Account deletion is temporarily unavailable.',
   ACCOUNT_DEACTIVATED: 'This Thriftage account is deactivated. You can still sign out.',
   ACCOUNT_SUSPENDED: 'This Thriftage account is suspended. You can still sign out.',
   ADMIN_PERMISSION_DENIED: 'This action requires an administrator account.',
@@ -77,6 +98,12 @@ const userMessages: Partial<Record<MobileApiErrorCode, string>> = {
   CATEGORY_SLUG_UNAVAILABLE: 'That category name is already in use.',
   CATEGORY_UNAVAILABLE: 'Choose an active marketplace category.',
   DUPLICATE_REPORT: 'You already have an open report for this item or user.',
+  FEEDBACK_GENERATION_NOT_FOUND: 'That Stylist response is no longer available.',
+  FEEDBACK_NOT_FOUND: 'That feedback could not be found.',
+  FEEDBACK_RATE_LIMITED: 'You have reached today’s feedback limit. Try again later.',
+  FEEDBACK_SERVICE_ERROR: 'Feedback is temporarily unavailable.',
+  FEEDBACK_TRANSITION_INVALID: 'That feedback can no longer be changed.',
+  FEEDBACK_VALIDATION_FAILED: 'Check the feedback information and try again.',
   IMAGE_INVALID: 'Choose a valid JPEG, PNG, or WebP photo.',
   IMAGE_LIMIT_REACHED: 'A listing may contain at most 10 photos.',
   IMAGE_NOT_FOUND: 'That listing photo is no longer available.',
@@ -97,8 +124,10 @@ const userMessages: Partial<Record<MobileApiErrorCode, string>> = {
   AUTH_IDENTITY_CONFLICT: 'This email or phone is already linked to another Thriftage account.',
   AUTH_INVALID_TOKEN: 'Your session is no longer valid. Please sign in again.',
   AUTH_REQUIRED: 'Please sign in to continue.',
+  AUTH_REGISTRATION_DISABLED: 'New account registration is temporarily unavailable.',
   AUTH_USER_NOT_PROVISIONED: 'Complete your account to continue.',
   PHONE_ALREADY_IN_USE: 'That phone number is already linked to another account.',
+  PHONE_AUTH_DISABLED: 'Phone authentication is temporarily unavailable. Use email sign-in.',
   PHONE_IDENTITY_CONFLICT: 'That phone conflicts with the existing account identity.',
   PHONE_INVALID: 'Enter a valid phone number with country code.',
   PHONE_VERIFICATION_CODE_INVALID: 'That verification code is incorrect.',
@@ -114,6 +143,13 @@ const userMessages: Partial<Record<MobileApiErrorCode, string>> = {
   PROFILE_SERVICE_ERROR: 'Profiles are temporarily unavailable.',
   PROFILE_VALIDATION_FAILED: 'Check your profile information and try again.',
   USERNAME_UNAVAILABLE: 'That username is already taken.',
+  VERIFICATION_DISABLED: 'Seller verification is temporarily unavailable.',
+  VERIFICATION_NOT_ELIGIBLE: 'Complete the seller requirements before applying.',
+  VERIFICATION_NOT_FOUND: 'That seller verification request was not found.',
+  VERIFICATION_ALREADY_ACTIVE: 'A seller verification review is already active.',
+  VERIFICATION_REAPPLY_LATER: 'Wait until the stated date before applying again.',
+  VERIFICATION_SERVICE_ERROR: 'Seller verification is temporarily unavailable.',
+  VERIFICATION_VALIDATION_FAILED: 'Check the verification statement and try again.',
   VALIDATION_FAILED: 'Check the information you entered.',
 };
 

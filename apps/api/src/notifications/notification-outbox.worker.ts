@@ -7,7 +7,16 @@ import {
 } from '@nestjs/common';
 
 import { NotificationRepository } from './notification.repository';
-import { PUSH_PROVIDER, type PushProvider } from './push-provider.interface';
+import { PUSH_PROVIDER, PushProviderError, type PushProvider } from './push-provider.interface';
+
+function operationalPushErrorCode(error: unknown): string {
+  return error instanceof PushProviderError ? error.code : 'OUTBOX_PROCESSING_FAILED';
+}
+
+function receiptErrorCode(errorCode: string | undefined): string | null {
+  if (errorCode === undefined) return null;
+  return errorCode === 'DeviceNotRegistered' ? 'PUSH_DEVICE_UNREGISTERED' : 'PUSH_RECEIPT_REJECTED';
+}
 
 @Injectable()
 export class NotificationOutboxWorker implements OnModuleInit, OnModuleDestroy {
@@ -36,11 +45,8 @@ export class NotificationOutboxWorker implements OnModuleInit, OnModuleDestroy {
     try {
       const rows = await this.repository.claimOutbox(Number(process.env.OUTBOX_BATCH_SIZE ?? 25));
       for (const row of rows) await this.process(row);
-    } catch (error) {
-      this.logger.error(
-        'Notification outbox polling failed.',
-        error instanceof Error ? error.stack : undefined,
-      );
+    } catch {
+      this.logger.error('Notification outbox polling failed: code=OUTBOX_POLL_FAILED');
     } finally {
       this.running = false;
     }
@@ -96,15 +102,27 @@ export class NotificationOutboxWorker implements OnModuleInit, OnModuleDestroy {
             where: { id: delivery.id },
           });
         } catch (error) {
-          await this.repository.db.pushDelivery.update({
-            data: {
-              attempts: { increment: 1 },
-              lastErrorCode:
-                error instanceof Error ? error.message.slice(0, 64) : 'PUSH_SEND_FAILED',
-              status: 'RETRY',
-            },
-            where: { id: delivery.id },
-          });
+          const code = operationalPushErrorCode(error);
+          const unregistered = code === 'PUSH_DEVICE_UNREGISTERED';
+          await this.repository.db.$transaction([
+            this.repository.db.pushDelivery.update({
+              data: {
+                attempts: { increment: 1 },
+                lastErrorCode: code,
+                status: unregistered ? 'DEVICE_UNREGISTERED' : 'RETRY',
+              },
+              where: { id: delivery.id },
+            }),
+            ...(unregistered
+              ? [
+                  this.repository.db.pushDevice.update({
+                    data: { active: false },
+                    where: { id: device.id },
+                  }),
+                ]
+              : []),
+          ]);
+          if (unregistered) continue;
           throw error;
         }
       }
@@ -120,7 +138,7 @@ export class NotificationOutboxWorker implements OnModuleInit, OnModuleDestroy {
           availableAt: new Date(
             Date.now() + Math.min(300_000, 2 ** Math.min(row.attempts, 8) * 1_000),
           ),
-          lastErrorCode: error instanceof Error ? error.message.slice(0, 64) : 'OUTBOX_FAILED',
+          lastErrorCode: operationalPushErrorCode(error),
           lockedAt: null,
           status: exhausted ? 'FAILED' : 'PENDING',
         },
@@ -152,7 +170,7 @@ export class NotificationOutboxWorker implements OnModuleInit, OnModuleDestroy {
         await this.repository.db.$transaction([
           this.repository.db.pushDelivery.update({
             data: {
-              lastErrorCode: receipt.errorCode ?? null,
+              lastErrorCode: receiptErrorCode(receipt.errorCode),
               nextReceiptAt: null,
               status:
                 receipt.status === 'ok'
@@ -173,10 +191,9 @@ export class NotificationOutboxWorker implements OnModuleInit, OnModuleDestroy {
             : []),
         ]);
       }
-    } catch (error) {
+    } catch {
       this.logger.warn(
-        'Expo receipt check failed; accepted tickets remain retryable.',
-        error instanceof Error ? error.message : undefined,
+        'Expo receipt check failed; accepted tickets remain retryable: code=PUSH_RECEIPT_CHECK_FAILED',
       );
     }
   }

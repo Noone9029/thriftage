@@ -15,6 +15,7 @@ import { ListingCard } from '../../../src/components/marketplace/listing-card';
 import { MarketplaceState } from '../../../src/components/marketplace/marketplace-state';
 import { marketplaceColors } from '../../../src/components/marketplace/marketplace-theme';
 import { useListingActions } from '../../../src/hooks/use-listing-actions';
+import { useRuntimeConfig } from '../../../src/hooks/use-runtime-config';
 import { thriftageApiClient } from '../../../src/lib/auth/auth-composition';
 import { useState } from 'react';
 
@@ -29,6 +30,7 @@ export default function DiscoveryScreen() {
   const [hiddenListing, setHiddenListing] = useState<ListingDetail | null>(null);
   const queryClient = useQueryClient();
   const actions = useListingActions();
+  const runtime = useRuntimeConfig();
   const styleProfile = useQuery({
     queryFn: () => thriftageApiClient.getStyleProfile(),
     queryKey: ['personalization', 'profile'],
@@ -85,24 +87,26 @@ export default function DiscoveryScreen() {
             <Text style={styles.brand}>THRIFTAGE</Text>
             <Text style={styles.heading}>Find your next favorite piece.</Text>
             <Text style={styles.subheading}>Curated resale, real wardrobes, better style.</Text>
-            <Pressable
-              accessibilityLabel="Open AI Fashion Stylist"
-              accessibilityRole="button"
-              onPress={() => router.push('/stylist')}
-              style={styles.stylistCard}
-            >
-              <View style={styles.stylistIcon}>
-                <MaterialIcons color={marketplaceColors.white} name="auto-awesome" size={24} />
-              </View>
-              <View style={styles.stylistCopy}>
-                <Text style={styles.stylistEyebrow}>AI FASHION STYLIST</Text>
-                <Text style={styles.stylistTitle}>Build a look from live Thriftage pieces</Text>
-                <Text style={styles.stylistBody}>
-                  Try an occasion, budget, color, or item you already love.
-                </Text>
-              </View>
-              <MaterialIcons color={marketplaceColors.forest} name="arrow-forward" size={21} />
-            </Pressable>
+            {runtime.data?.features.aiStylist === true ? (
+              <Pressable
+                accessibilityLabel="Open AI Fashion Stylist"
+                accessibilityRole="button"
+                onPress={() => router.push('/stylist')}
+                style={styles.stylistCard}
+              >
+                <View style={styles.stylistIcon}>
+                  <MaterialIcons color={marketplaceColors.white} name="auto-awesome" size={24} />
+                </View>
+                <View style={styles.stylistCopy}>
+                  <Text style={styles.stylistEyebrow}>AI FASHION STYLIST</Text>
+                  <Text style={styles.stylistTitle}>Build a look from live Thriftage pieces</Text>
+                  <Text style={styles.stylistBody}>
+                    Try an occasion, budget, color, or item you already love.
+                  </Text>
+                </View>
+                <MaterialIcons color={marketplaceColors.forest} name="arrow-forward" size={21} />
+              </Pressable>
+            ) : null}
             <View style={styles.modeRow}>
               {modes.map((item) => (
                 <Pressable
