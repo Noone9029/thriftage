@@ -3,6 +3,7 @@ import './instrument';
 import { ConsoleLogger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { loadApiConfig } from '@thriftage/config/api';
+import { getPrismaClient } from '@thriftage/db';
 import { API_SERVICE_NAME, API_VERSION_PREFIX } from '@thriftage/shared';
 import helmet from 'helmet';
 
@@ -38,6 +39,10 @@ async function bootstrap(): Promise<void> {
   );
   app.useGlobalInterceptors(new ErrorCaptureInterceptor());
 
+  // Establish the remote pool before Nest starts worker lifecycle hooks. A cold
+  // TLS connection can otherwise consume Prisma's short transaction wait and
+  // make the first outbox/finalization poll fail during every deployment.
+  await getPrismaClient().$queryRaw`SELECT 1`;
   await app.listen(config.port, config.host);
   logger.log(`API listening on ${await app.getUrl()}`);
 }

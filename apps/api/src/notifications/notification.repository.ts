@@ -60,21 +60,25 @@ export class NotificationRepository {
   }
 
   public async claimOutbox(limit: number) {
-    return this.client.$transaction(async (transaction) => {
-      const rows = await transaction.$queryRaw<readonly { id: string }[]>(Prisma.sql`
+    const rows = await this.client.$queryRaw<readonly { id: string }[]>(Prisma.sql`
+      WITH claimed AS (
         SELECT id FROM notification_outbox
         WHERE status IN ('PENDING'::"NotificationOutboxStatus", 'PROCESSING'::"NotificationOutboxStatus")
           AND available_at <= now() AND (locked_at IS NULL OR locked_at < now() - interval '5 minutes')
         ORDER BY created_at ASC FOR UPDATE SKIP LOCKED LIMIT ${limit}
-      `);
-      const ids = rows.map(({ id }) => id);
-      if (ids.length === 0) return [];
-      await transaction.notificationOutbox.updateMany({
-        data: { attempts: { increment: 1 }, lockedAt: new Date(), status: 'PROCESSING' },
-        where: { id: { in: ids } },
-      });
-      return transaction.notificationOutbox.findMany({ where: { id: { in: ids } } });
-    });
+      )
+      UPDATE notification_outbox AS outbox
+      SET attempts = outbox.attempts + 1,
+          locked_at = now(),
+          status = 'PROCESSING'::"NotificationOutboxStatus",
+          updated_at = now()
+      FROM claimed
+      WHERE outbox.id = claimed.id
+      RETURNING outbox.id
+    `);
+    const ids = rows.map(({ id }) => id);
+    if (ids.length === 0) return [];
+    return this.client.notificationOutbox.findMany({ where: { id: { in: ids } } });
   }
 
   public async materialize(outbox: {
