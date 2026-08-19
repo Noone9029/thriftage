@@ -97,6 +97,16 @@ describe('loadApiConfig', () => {
     });
   });
 
+  it('uses the hosting platform port when provided', () => {
+    expect(
+      loadApiConfig({
+        ...requiredAuthEnvironment,
+        API_PORT: '4100',
+        PORT: '8080',
+      }),
+    ).toMatchObject({ port: 8080 });
+  });
+
   it('requires explicit non-placeholder production configuration', () => {
     const deployedEnvironment = {
       ...requiredAuthEnvironment,
@@ -125,6 +135,42 @@ describe('loadApiConfig', () => {
       loadApiConfig({ ...deployedEnvironment, SUPABASE_SECRET_KEY: 'sb_secret_placeholder' }),
     ).toThrow();
     expect(() => loadApiConfig({ ...requiredAuthEnvironment, NODE_ENV: 'production' })).toThrow();
+  });
+
+  it('allows unavailable staging providers to remain disabled without fake credentials', () => {
+    const stagingEnvironment = {
+      CORS_ORIGINS: 'https://admin-staging.thriftage.test',
+      DEPLOYMENT_ENV: 'staging',
+      LOG_FORMAT: 'json',
+      NODE_ENV: 'production',
+      PHONE_AUTH_ENABLED: 'false',
+      RELEASE_VERSION: 'git-abc1234',
+      SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_stagingvalue',
+      SUPABASE_SECRET_KEY: 'sb_secret_stagingvalue',
+      SUPABASE_URL: 'https://staging-project.supabase.co',
+    };
+
+    expect(loadApiConfig(stagingEnvironment)).toMatchObject({
+      deploymentEnvironment: 'staging',
+      phoneAuthEnabled: false,
+    });
+    expect(loadApiConfig(stagingEnvironment)).not.toHaveProperty('sentryDsn');
+    expect(loadApiConfig(stagingEnvironment)).not.toHaveProperty('twilioApiKeySecret');
+    expect(() =>
+      loadApiConfig({ ...stagingEnvironment, SUPPORT_URL: 'http://support.thriftage.test' }),
+    ).toThrow();
+    expect(() => loadApiConfig({ ...stagingEnvironment, DEPLOYMENT_ENV: 'production' })).toThrow();
+  });
+
+  it('requires Twilio credentials only while phone authentication is enabled', () => {
+    expect(() =>
+      loadApiConfig({
+        PHONE_AUTH_ENABLED: 'true',
+        SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test-placeholder',
+        SUPABASE_SECRET_KEY: 'sb_secret_test-placeholder',
+        SUPABASE_URL: 'https://project-ref.supabase.co',
+      }),
+    ).toThrow();
   });
 
   it('validates backend-only AI controls without requiring a provider key while disabled', () => {

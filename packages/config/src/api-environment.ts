@@ -58,6 +58,7 @@ const apiEnvironmentSchema = z
     AI_STYLIST_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120_000).default(20_000),
     API_HOST: z.string().min(1).default('0.0.0.0'),
     API_PORT: z.coerce.number().int().min(1).max(65_535).default(4000),
+    PORT: z.coerce.number().int().min(1).max(65_535).optional(),
     CONVERSATION_MAX_STARTS_PER_DAY: z.coerce.number().int().min(1).max(100).default(25),
     CORS_ORIGINS: z.string().optional(),
     DEPLOYMENT_ENV: deploymentEnvironmentSchema.default('local'),
@@ -132,20 +133,40 @@ const apiEnvironmentSchema = z
     TWILIO_ACCOUNT_SID: z
       .string()
       .trim()
-      .regex(/^AC[A-Za-z0-9]{32}$/),
-    TWILIO_API_KEY_SECRET: z.string().trim().min(16),
+      .regex(/^AC[A-Za-z0-9]{32}$/)
+      .optional(),
+    TWILIO_API_KEY_SECRET: z.string().trim().min(16).optional(),
     TWILIO_API_KEY_SID: z
       .string()
       .trim()
-      .regex(/^SK[A-Za-z0-9]{32}$/),
+      .regex(/^SK[A-Za-z0-9]{32}$/)
+      .optional(),
     TWILIO_VERIFY_SERVICE_SID: z
       .string()
       .trim()
-      .regex(/^VA[A-Za-z0-9]{32}$/),
+      .regex(/^VA[A-Za-z0-9]{32}$/)
+      .optional(),
     TERMS_OF_USE_URL: z.string().trim().url().optional(),
     ACCOUNT_DELETION_URL: z.string().trim().url().optional(),
   })
   .superRefine((environment, context) => {
+    if (environment.PHONE_AUTH_ENABLED === 'true') {
+      for (const name of [
+        'TWILIO_ACCOUNT_SID',
+        'TWILIO_API_KEY_SID',
+        'TWILIO_API_KEY_SECRET',
+        'TWILIO_VERIFY_SERVICE_SID',
+      ] as const) {
+        if (environment[name] === undefined) {
+          context.addIssue({
+            code: 'custom',
+            message: `${name} is required when phone authentication is enabled.`,
+            path: [name],
+          });
+        }
+      }
+    }
+
     if (environment.DEPLOYMENT_ENV === 'local') {
       if (environment.NODE_ENV === 'production') {
         context.addIssue({
@@ -157,11 +178,15 @@ const apiEnvironmentSchema = z
       return;
     }
 
-    const requireSecureUrl = (name: keyof typeof environment, value: string | undefined): void => {
-      if (value === undefined || !isSecureRemoteUrl(value)) {
+    const validateSecureUrl = (
+      name: keyof typeof environment,
+      value: string | undefined,
+      required: boolean,
+    ): void => {
+      if ((required && value === undefined) || (value !== undefined && !isSecureRemoteUrl(value))) {
         context.addIssue({
           code: 'custom',
-          message: `${String(name)} must be a non-placeholder HTTPS URL outside local environments.`,
+          message: `${String(name)} must be a non-placeholder HTTPS URL${required ? '' : ' when configured'}.`,
           path: [name],
         });
       }
@@ -192,13 +217,14 @@ const apiEnvironmentSchema = z
       });
     }
 
-    requireSecureUrl('SUPABASE_URL', environment.SUPABASE_URL);
-    requireSecureUrl('SUPPORT_URL', environment.SUPPORT_URL);
-    requireSecureUrl('PRIVACY_POLICY_URL', environment.PRIVACY_POLICY_URL);
-    requireSecureUrl('TERMS_OF_USE_URL', environment.TERMS_OF_USE_URL);
-    requireSecureUrl('COMMUNITY_GUIDELINES_URL', environment.COMMUNITY_GUIDELINES_URL);
-    requireSecureUrl('ACCOUNT_DELETION_URL', environment.ACCOUNT_DELETION_URL);
-    requireSecureUrl('SENTRY_DSN', environment.SENTRY_DSN);
+    const production = environment.DEPLOYMENT_ENV === 'production';
+    validateSecureUrl('SUPABASE_URL', environment.SUPABASE_URL, true);
+    validateSecureUrl('SUPPORT_URL', environment.SUPPORT_URL, production);
+    validateSecureUrl('PRIVACY_POLICY_URL', environment.PRIVACY_POLICY_URL, production);
+    validateSecureUrl('TERMS_OF_USE_URL', environment.TERMS_OF_USE_URL, production);
+    validateSecureUrl('COMMUNITY_GUIDELINES_URL', environment.COMMUNITY_GUIDELINES_URL, production);
+    validateSecureUrl('ACCOUNT_DELETION_URL', environment.ACCOUNT_DELETION_URL, production);
+    validateSecureUrl('SENTRY_DSN', environment.SENTRY_DSN, production);
 
     const origins = parseCommaSeparatedList(environment.CORS_ORIGINS);
     if (origins.length === 0 || origins.some((origin) => !isSecureRemoteUrl(origin))) {
@@ -209,11 +235,7 @@ const apiEnvironmentSchema = z
       });
     }
 
-    for (const name of [
-      'SUPABASE_PUBLISHABLE_KEY',
-      'SUPABASE_SECRET_KEY',
-      'TWILIO_API_KEY_SECRET',
-    ] as const) {
+    for (const name of ['SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_SECRET_KEY'] as const) {
       if (isPlaceholderValue(environment[name])) {
         context.addIssue({
           code: 'custom',
@@ -221,6 +243,17 @@ const apiEnvironmentSchema = z
           path: [name],
         });
       }
+    }
+
+    if (
+      environment.TWILIO_API_KEY_SECRET !== undefined &&
+      isPlaceholderValue(environment.TWILIO_API_KEY_SECRET)
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'TWILIO_API_KEY_SECRET must not contain a development placeholder.',
+        path: ['TWILIO_API_KEY_SECRET'],
+      });
     }
 
     if (environment.AI_STYLIST_ENABLED === 'true') {
@@ -323,10 +356,10 @@ export interface ApiConfig {
   readonly supabasePublishableKey: string;
   readonly supabaseSecretKey: string;
   readonly supabaseUrl: string;
-  readonly twilioAccountSid: string;
-  readonly twilioApiKeySecret: string;
-  readonly twilioApiKeySid: string;
-  readonly twilioVerifyServiceSid: string;
+  readonly twilioAccountSid?: string;
+  readonly twilioApiKeySecret?: string;
+  readonly twilioApiKeySid?: string;
+  readonly twilioVerifyServiceSid?: string;
   readonly termsOfUseUrl?: string;
   readonly communityGuidelinesUrl?: string;
   readonly accountDeletionUrl?: string;
@@ -393,7 +426,7 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
     phoneVerificationResendCooldownSeconds: parsed.PHONE_VERIFICATION_RESEND_COOLDOWN_SECONDS,
     phoneVerificationStartWindowSeconds: parsed.PHONE_VERIFICATION_START_WINDOW_SECONDS,
     phoneAuthEnabled: parsed.PHONE_AUTH_ENABLED === 'true',
-    port: parsed.API_PORT,
+    port: parsed.PORT ?? parsed.API_PORT,
     ...(parsed.PRIVACY_POLICY_URL === undefined
       ? {}
       : { privacyPolicyUrl: parsed.PRIVACY_POLICY_URL.replace(/\/$/, '') }),
@@ -411,10 +444,18 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
     supabasePublishableKey: parsed.SUPABASE_PUBLISHABLE_KEY,
     supabaseSecretKey: parsed.SUPABASE_SECRET_KEY,
     supabaseUrl: parsed.SUPABASE_URL.replace(/\/$/, ''),
-    twilioAccountSid: parsed.TWILIO_ACCOUNT_SID,
-    twilioApiKeySecret: parsed.TWILIO_API_KEY_SECRET,
-    twilioApiKeySid: parsed.TWILIO_API_KEY_SID,
-    twilioVerifyServiceSid: parsed.TWILIO_VERIFY_SERVICE_SID,
+    ...(parsed.TWILIO_ACCOUNT_SID === undefined
+      ? {}
+      : { twilioAccountSid: parsed.TWILIO_ACCOUNT_SID }),
+    ...(parsed.TWILIO_API_KEY_SECRET === undefined
+      ? {}
+      : { twilioApiKeySecret: parsed.TWILIO_API_KEY_SECRET }),
+    ...(parsed.TWILIO_API_KEY_SID === undefined
+      ? {}
+      : { twilioApiKeySid: parsed.TWILIO_API_KEY_SID }),
+    ...(parsed.TWILIO_VERIFY_SERVICE_SID === undefined
+      ? {}
+      : { twilioVerifyServiceSid: parsed.TWILIO_VERIFY_SERVICE_SID }),
     ...(parsed.TERMS_OF_USE_URL === undefined
       ? {}
       : { termsOfUseUrl: parsed.TERMS_OF_USE_URL.replace(/\/$/, '') }),

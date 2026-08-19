@@ -40,10 +40,21 @@ export class TwilioVerifyAdapter implements PhoneVerificationProvider {
   private getClient(): TwilioVerifyClient {
     if (this.configuredClient !== undefined) return this.configuredClient;
     const config = loadApiConfig(process.env);
-    const client = twilio(config.twilioApiKeySid, config.twilioApiKeySecret, {
-      accountSid: config.twilioAccountSid,
+    const { twilioAccountSid, twilioApiKeySecret, twilioApiKeySid, twilioVerifyServiceSid } =
+      config;
+    if (
+      !config.phoneAuthEnabled ||
+      twilioAccountSid === undefined ||
+      twilioApiKeySecret === undefined ||
+      twilioApiKeySid === undefined ||
+      twilioVerifyServiceSid === undefined
+    ) {
+      throw new PhoneVerificationProviderError('PROVIDER_ERROR');
+    }
+    const client = twilio(twilioApiKeySid, twilioApiKeySecret, {
+      accountSid: twilioAccountSid,
     });
-    const service = client.verify.v2.services(config.twilioVerifyServiceSid);
+    const service = client.verify.v2.services(twilioVerifyServiceSid);
     return {
       checkVerification: async (phone, code) =>
         service.verificationChecks.create({ code, to: phone }),

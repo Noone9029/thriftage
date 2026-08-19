@@ -36,15 +36,15 @@ All values below are build-time and public in the app bundle; none may contain a
 
 ## Supabase, Twilio, and providers
 
-| Variable                                                                                         | Classification          | Purpose                                                                           |
-| ------------------------------------------------------------------------------------------------ | ----------------------- | --------------------------------------------------------------------------------- |
-| `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`                                                       | provider/runtime        | Backend Auth validation and public-key metadata.                                  |
-| `SUPABASE_SECRET_KEY`                                                                            | backend secret          | Server-only Auth admin, Storage, and Realtime REST operations.                    |
-| `SUPABASE_MIGRATION_DATABASE_URL`                                                                | operator secret         | Admin/migration connection used only by security verification and deployment.     |
-| `TWILIO_ACCOUNT_SID`, `TWILIO_API_KEY_SID`, `TWILIO_API_KEY_SECRET`, `TWILIO_VERIFY_SERVICE_SID` | backend provider secret | Restricted Verify API authentication and service.                                 |
-| `OPENAI_API_KEY`                                                                                 | backend provider secret | Separate project key per environment. Required only when AI is enabled non-local. |
-| `EXPO_PUSH_ACCESS_TOKEN`                                                                         | backend provider secret | Required when push sending is enabled.                                            |
-| `SENTRY_DSN`, `SENTRY_TRACES_SAMPLE_RATE`                                                        | runtime/observability   | Server event destination and sample rate.                                         |
+| Variable                                                                                         | Classification          | Purpose                                                                                |
+| ------------------------------------------------------------------------------------------------ | ----------------------- | -------------------------------------------------------------------------------------- |
+| `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`                                                       | provider/runtime        | Backend Auth validation and public-key metadata.                                       |
+| `SUPABASE_SECRET_KEY`                                                                            | backend secret          | Server-only Auth admin, Storage, and Realtime REST operations.                         |
+| `SUPABASE_MIGRATION_DATABASE_URL`                                                                | operator secret         | Admin/migration connection used only by security verification and deployment.          |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_API_KEY_SID`, `TWILIO_API_KEY_SECRET`, `TWILIO_VERIFY_SERVICE_SID` | backend provider secret | Required only when `PHONE_AUTH_ENABLED=true`; omit them when the provider is disabled. |
+| `OPENAI_API_KEY`                                                                                 | backend provider secret | Separate project key per environment. Required only when AI is enabled non-local.      |
+| `EXPO_PUSH_ACCESS_TOKEN`                                                                         | backend provider secret | Required when push sending is enabled.                                                 |
+| `SENTRY_DSN`, `SENTRY_TRACES_SAMPLE_RATE`                                                        | runtime/observability   | Server event destination and sample rate.                                              |
 
 ## Feature and operational controls
 
@@ -56,4 +56,4 @@ Abuse/worker settings: `PHONE_VERIFICATION_*`, `CONVERSATION_MAX_STARTS_PER_DAY`
 
 Storage/trust settings: `PROFILE_IMAGE_BUCKET`, `LISTING_IMAGE_BUCKET`, `LISTING_IMAGE_SIGNED_URL_TTL_SECONDS`, `DISPUTE_EVIDENCE_BUCKET`, `DISPUTE_EVIDENCE_SIGNED_URL_TTL_SECONDS`, `DISPUTE_EVIDENCE_RETENTION_DAYS`, `DISPUTE_WINDOW_HOURS`, `DISPUTE_SHIPPED_MIN_AGE_HOURS`, `SELLER_VERIFICATION_MIN_COMPLETED_SALES`, and `SELLER_VERIFICATION_REAPPLY_DAYS`. Retention remains unset until legal approval.
 
-Backend public-resource variables are `SUPPORT_URL`, `PRIVACY_POLICY_URL`, `TERMS_OF_USE_URL`, `COMMUNITY_GUIDELINES_URL`, and `ACCOUNT_DELETION_URL`. SMTP host/user/password, sender identity, domain, and Auth templates are configured in Supabase—not consumed by application code.
+Backend public-resource variables are `SUPPORT_URL`, `PRIVACY_POLICY_URL`, `TERMS_OF_USE_URL`, `COMMUNITY_GUIDELINES_URL`, and `ACCOUNT_DELETION_URL`. Staging may omit unavailable public resources and Sentry while retaining explicit blockers; production requires all of them. Any configured URL must be non-placeholder HTTPS. SMTP host/user/password, sender identity, domain, and Auth templates are configured in Supabase—not consumed by application code.

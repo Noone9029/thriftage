@@ -1,0 +1,16 @@
+.git
+.github
+.vercel
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+**/.expo
+**/.next
+**/coverage
+**/dist
+**/node_modules
+packages/db/src/generated
+docs
+*.log
+*.tsbuildinfo
