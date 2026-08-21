@@ -26,6 +26,7 @@
       "distribution": "internal",
       "environment": "preview",
       "env": {
+        "EXPO_PROJECT_ID": "8b3c5e61-0f52-4646-a29a-bf5b3dd86d91",
         "THRIFTAGE_APP_VARIANT": "preview"
       }
     },
