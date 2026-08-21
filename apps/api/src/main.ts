@@ -42,7 +42,9 @@ async function bootstrap(): Promise<void> {
   // Establish the remote pool before Nest starts worker lifecycle hooks. A cold
   // TLS connection can otherwise consume Prisma's short transaction wait and
   // make the first outbox/finalization poll fail during every deployment.
-  await getPrismaClient().$queryRaw`SELECT 1`;
+  await getPrismaClient(process.env.DATABASE_URL, {
+    max: config.databasePoolMax,
+  }).$queryRaw`SELECT 1`;
   await app.listen(config.port, config.host);
   logger.log(`API listening on ${await app.getUrl()}`);
 }

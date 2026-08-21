@@ -61,6 +61,7 @@ const apiEnvironmentSchema = z
     PORT: z.coerce.number().int().min(1).max(65_535).optional(),
     CONVERSATION_MAX_STARTS_PER_DAY: z.coerce.number().int().min(1).max(100).default(25),
     CORS_ORIGINS: z.string().optional(),
+    DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(100).default(10),
     DEPLOYMENT_ENV: deploymentEnvironmentSchema.default('local'),
     DISPUTE_EVIDENCE_BUCKET: z
       .string()
@@ -314,6 +315,7 @@ export interface ApiConfig {
   readonly aiStylistTimeoutMs: number;
   readonly conversationMaxStartsPerDay: number;
   readonly corsOrigins: readonly string[];
+  readonly databasePoolMax: number;
   readonly deploymentEnvironment: DeploymentEnvironment;
   readonly disputeEvidenceBucket: string;
   readonly disputeEvidenceRetentionDays?: number;
@@ -396,6 +398,7 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
     aiStylistTimeoutMs: parsed.AI_STYLIST_TIMEOUT_MS,
     conversationMaxStartsPerDay: parsed.CONVERSATION_MAX_STARTS_PER_DAY,
     corsOrigins: parseCommaSeparatedList(parsed.CORS_ORIGINS),
+    databasePoolMax: parsed.DATABASE_POOL_MAX,
     deploymentEnvironment: parsed.DEPLOYMENT_ENV,
     disputeEvidenceBucket: parsed.DISPUTE_EVIDENCE_BUCKET,
     ...(parsed.DISPUTE_EVIDENCE_RETENTION_DAYS === undefined

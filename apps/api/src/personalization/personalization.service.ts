@@ -27,6 +27,8 @@ const profileInclude = {
   styles: { include: { styleDefinition: true }, orderBy: { strength: 'desc' as const } },
 } as const;
 
+const behaviorHistoryLimit = 500;
+
 @Injectable()
 export class PersonalizationService {
   public constructor(private readonly injectedPrisma?: PrismaClient) {}
@@ -265,7 +267,7 @@ export class PersonalizationService {
     const excludedSellerIds = blocks.map((block) =>
       block.blockerId === userId ? block.blockedUserId : block.blockerId,
     );
-    const candidates = await this.prisma.listing.findMany({
+    const candidatesPromise = this.prisma.listing.findMany({
       include: {
         _count: { select: { likes: true, saves: true } },
         seller: {
@@ -305,35 +307,50 @@ export class PersonalizationService {
     const resetAt = profileRow?.behavioralResetAt ?? new Date(0);
     const ninetyDaysAgo = new Date(asOf.getTime() - 90 * 86_400_000);
     const since = resetAt > ninetyDaysAgo ? resetAt : ninetyDaysAgo;
-    const [follows, events, likes, saves, purchases, messages] = await Promise.all([
-      this.prisma.follow.findMany({
-        select: { followedId: true },
-        where: { createdAt: { gt: since, lte: asOf }, followerId: userId },
-      }),
-      this.prisma.recommendationEvent.findMany({
-        include: { listing: { include: { styles: true } } },
-        where: { occurredAt: { gt: since, lte: asOf }, userId },
-      }),
-      this.prisma.listingLike.findMany({
-        include: { listing: { include: { styles: true } } },
-        where: { createdAt: { gt: since, lte: asOf }, userId },
-      }),
-      this.prisma.savedListing.findMany({
-        include: { listing: { include: { styles: true } } },
-        where: { createdAt: { gt: since, lte: asOf }, userId },
-      }),
-      this.prisma.order.findMany({
-        include: { listing: { include: { styles: true } } },
-        where: {
-          buyerId: userId,
-          createdAt: { gt: since, lte: asOf },
-          status: { in: ['DELIVERED', 'COMPLETED'] },
-        },
-      }),
-      this.prisma.message.findMany({
-        include: { conversation: { include: { listing: { include: { styles: true } } } } },
-        where: { createdAt: { gt: since, lte: asOf }, senderId: userId },
-      }),
+    const [candidates, [follows, events, likes, saves, purchases, messages]] = await Promise.all([
+      candidatesPromise,
+      Promise.all([
+        this.prisma.follow.findMany({
+          orderBy: [{ createdAt: 'desc' }, { followedId: 'desc' }],
+          select: { followedId: true },
+          take: behaviorHistoryLimit,
+          where: { createdAt: { gt: since, lte: asOf }, followerId: userId },
+        }),
+        this.prisma.recommendationEvent.findMany({
+          include: { listing: { include: { styles: true } } },
+          orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }],
+          take: behaviorHistoryLimit,
+          where: { occurredAt: { gt: since, lte: asOf }, userId },
+        }),
+        this.prisma.listingLike.findMany({
+          include: { listing: { include: { styles: true } } },
+          orderBy: [{ createdAt: 'desc' }, { listingId: 'desc' }],
+          take: behaviorHistoryLimit,
+          where: { createdAt: { gt: since, lte: asOf }, userId },
+        }),
+        this.prisma.savedListing.findMany({
+          include: { listing: { include: { styles: true } } },
+          orderBy: [{ createdAt: 'desc' }, { listingId: 'desc' }],
+          take: behaviorHistoryLimit,
+          where: { createdAt: { gt: since, lte: asOf }, userId },
+        }),
+        this.prisma.order.findMany({
+          include: { listing: { include: { styles: true } } },
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          take: behaviorHistoryLimit,
+          where: {
+            buyerId: userId,
+            createdAt: { gt: since, lte: asOf },
+            status: { in: ['DELIVERED', 'COMPLETED'] },
+          },
+        }),
+        this.prisma.message.findMany({
+          include: { conversation: { include: { listing: { include: { styles: true } } } } },
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          take: behaviorHistoryLimit,
+          where: { createdAt: { gt: since, lte: asOf }, senderId: userId },
+        }),
+      ]),
     ]);
     const styleAffinity = new Map<string, number>();
     const addAffinity = (

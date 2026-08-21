@@ -28,6 +28,7 @@ Current staging runtime flags disable registration, phone auth, seller verificat
 | `CORS_ORIGINS`         | runtime/security       | Explicit comma-separated HTTPS admin origins non-local.                |
 | `LOG_FORMAT`           | runtime                | `json` is mandatory non-local.                                         |
 | `DATABASE_URL`         | backend secret/runtime | Pooled TLS URL for least-privilege login role `thriftage_api`.         |
+| `DATABASE_POOL_MAX`    | runtime/performance    | Prisma client cap; must not exceed the provider pool's client limit.   |
 | `TEST_DATABASE_URL`    | test secret            | Disposable integration-test database only.                             |
 
 ## Mobile and EAS

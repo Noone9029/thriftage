@@ -1,4 +1,4 @@
-export { createPrismaClient, getPrismaClient } from './client';
+export { createPrismaClient, getPrismaClient, type PrismaClientPoolOptions } from './client';
 export {
   AccountStatus,
   AccountDeletionStatus,

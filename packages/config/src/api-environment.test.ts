@@ -38,6 +38,7 @@ describe('loadApiConfig', () => {
       aiStylistTimeoutMs: 20_000,
       conversationMaxStartsPerDay: 25,
       corsOrigins: [],
+      databasePoolMax: 10,
       deploymentEnvironment: 'local',
       disputeEvidenceBucket: 'dispute-evidence',
       disputeEvidenceSignedUrlTtlSeconds: 600,
@@ -87,10 +88,12 @@ describe('loadApiConfig', () => {
         ...requiredAuthEnvironment,
         API_PORT: '4100',
         CORS_ORIGINS: 'https://admin.example.com, https://app.example.com',
+        DATABASE_POOL_MAX: '15',
         LOG_FORMAT: 'json',
       }),
     ).toMatchObject({
       corsOrigins: ['https://admin.example.com', 'https://app.example.com'],
+      databasePoolMax: 15,
       logFormat: 'json',
       nodeEnv: 'development',
       port: 4100,
@@ -198,6 +201,11 @@ describe('loadApiConfig', () => {
 
   it('rejects invalid ports', () => {
     expect(() => loadApiConfig({ ...requiredAuthEnvironment, API_PORT: '70000' })).toThrow();
+  });
+
+  it('rejects unsafe database pool sizes', () => {
+    expect(() => loadApiConfig({ ...requiredAuthEnvironment, DATABASE_POOL_MAX: '0' })).toThrow();
+    expect(() => loadApiConfig({ ...requiredAuthEnvironment, DATABASE_POOL_MAX: '101' })).toThrow();
   });
 
   it('requires project auth configuration and rejects secret keys', () => {
