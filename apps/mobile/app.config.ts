@@ -20,7 +20,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const production = variant === 'production';
   const preview = variant === 'preview';
   const appScheme = process.env.EXPO_PUBLIC_APP_SCHEME?.trim() || 'thriftage';
-  const projectId = process.env.EXPO_PROJECT_ID?.trim();
+  const projectId = process.env.EXPO_PROJECT_ID?.trim() || '8b3c5e61-0f52-4646-a29a-bf5b3dd86d91';
   const version = process.env.THRIFTAGE_APP_VERSION?.trim() || '0.1.0';
   const bundleIdentifier =
     process.env.IOS_BUNDLE_IDENTIFIER?.trim() ||
@@ -52,7 +52,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     extra: {
       appVariant: variant,
       brandingStatus: 'engineering-placeholder',
-      ...(projectId === undefined || projectId === '' ? {} : { eas: { projectId } }),
+      eas: { projectId },
     },
     icon: './assets/engineering-placeholder-icon.png',
     ios: {
@@ -100,9 +100,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     updates: {
       checkAutomatically: 'ON_LOAD',
       fallbackToCacheTimeout: 0,
-      ...(projectId === undefined || projectId === ''
-        ? {}
-        : { url: `https://u.expo.dev/${projectId}` }),
+      url: `https://u.expo.dev/${projectId}`,
     },
     userInterfaceStyle: 'light',
     version,
