@@ -238,6 +238,7 @@ export class ListingRepository {
   public findOwned(userId: string, listingId: string): Promise<ListingRecord | null> {
     return this.client.listing.findFirst({
       ...listingArgs,
+      relationLoadStrategy: 'join',
       where: { id: listingId, sellerId: userId },
     });
   }
@@ -245,6 +246,7 @@ export class ListingRepository {
   public findPublic(listingId: string): Promise<ListingRecord | null> {
     return this.client.listing.findFirst({
       ...listingArgs,
+      relationLoadStrategy: 'join',
       where: {
         id: listingId,
         status: { in: ['ACTIVE', 'RESERVED', 'SOLD'] },
@@ -302,6 +304,7 @@ export class ListingRepository {
     const rows = await this.client.listing.findMany({
       ...listingArgs,
       orderBy: this.searchOrderBy(query.sort),
+      relationLoadStrategy: 'join',
       take: query.limit + 1,
       where,
     });
@@ -328,6 +331,7 @@ export class ListingRepository {
     if (ids.length === 0) return [];
     const records = await this.client.listing.findMany({
       ...listingArgs,
+      relationLoadStrategy: 'join',
       where: { id: { in: [...ids] } },
     });
     const byId = new Map(records.map((record) => [record.id, record]));
@@ -569,6 +573,7 @@ export class ListingRepository {
     const rows = await this.client.listing.findMany({
       ...listingArgs,
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      relationLoadStrategy: 'join',
       take: limit + 1,
       where: {
         sellerId,

@@ -1,7 +1,9 @@
 generator client {
-  provider     = "prisma-client"
-  output       = "../src/generated/client"
-  moduleFormat = "cjs"
+  provider        = "prisma-client"
+  output          = "../src/generated/client"
+  moduleFormat    = "cjs"
+  // Read-heavy API queries opt in to joins to avoid one cross-region round trip per relation.
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {

@@ -243,7 +243,11 @@ export class PersonalizationService {
 
   public async rankForYou(userId: string, asOf: Date) {
     const [profileRow, configuration, blocks] = await Promise.all([
-      this.prisma.userStyleProfile.findUnique({ include: profileInclude, where: { userId } }),
+      this.prisma.userStyleProfile.findUnique({
+        include: profileInclude,
+        relationLoadStrategy: 'join',
+        where: { userId },
+      }),
       this.prisma.recommendationConfiguration.findFirst({ where: { isActive: true } }),
       this.prisma.userBlock.findMany({
         select: { blockedUserId: true, blockerId: true },
@@ -282,6 +286,7 @@ export class PersonalizationService {
         },
       },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      relationLoadStrategy: 'join',
       take: config.candidateLimit,
       where: {
         recommendationFeedback: { none: { hiddenAt: { not: null }, userId } },
@@ -319,24 +324,28 @@ export class PersonalizationService {
         this.prisma.recommendationEvent.findMany({
           include: { listing: { include: { styles: true } } },
           orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }],
+          relationLoadStrategy: 'join',
           take: behaviorHistoryLimit,
           where: { occurredAt: { gt: since, lte: asOf }, userId },
         }),
         this.prisma.listingLike.findMany({
           include: { listing: { include: { styles: true } } },
           orderBy: [{ createdAt: 'desc' }, { listingId: 'desc' }],
+          relationLoadStrategy: 'join',
           take: behaviorHistoryLimit,
           where: { createdAt: { gt: since, lte: asOf }, userId },
         }),
         this.prisma.savedListing.findMany({
           include: { listing: { include: { styles: true } } },
           orderBy: [{ createdAt: 'desc' }, { listingId: 'desc' }],
+          relationLoadStrategy: 'join',
           take: behaviorHistoryLimit,
           where: { createdAt: { gt: since, lte: asOf }, userId },
         }),
         this.prisma.order.findMany({
           include: { listing: { include: { styles: true } } },
           orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          relationLoadStrategy: 'join',
           take: behaviorHistoryLimit,
           where: {
             buyerId: userId,
@@ -347,6 +356,7 @@ export class PersonalizationService {
         this.prisma.message.findMany({
           include: { conversation: { include: { listing: { include: { styles: true } } } } },
           orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          relationLoadStrategy: 'join',
           take: behaviorHistoryLimit,
           where: { createdAt: { gt: since, lte: asOf }, senderId: userId },
         }),

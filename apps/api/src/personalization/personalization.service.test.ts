@@ -11,9 +11,11 @@ describe('PersonalizationService recommendation history', () => {
     const findSaves = vi.fn().mockResolvedValue([]);
     const findOrders = vi.fn().mockResolvedValue([]);
     const findMessages = vi.fn().mockResolvedValue([]);
+    const findCandidates = vi.fn().mockResolvedValue([]);
+    const findProfile = vi.fn().mockResolvedValue(null);
     const prisma = {
       follow: { findMany: findFollows },
-      listing: { findMany: vi.fn().mockResolvedValue([]) },
+      listing: { findMany: findCandidates },
       listingLike: { findMany: findLikes },
       message: { findMany: findMessages },
       order: { findMany: findOrders },
@@ -21,7 +23,7 @@ describe('PersonalizationService recommendation history', () => {
       recommendationEvent: { findMany: findEvents },
       savedListing: { findMany: findSaves },
       userBlock: { findMany: vi.fn().mockResolvedValue([]) },
-      userStyleProfile: { findUnique: vi.fn().mockResolvedValue(null) },
+      userStyleProfile: { findUnique: findProfile },
     } as unknown as PrismaClient;
 
     const result = await new PersonalizationService(prisma).rankForYou(
@@ -30,6 +32,12 @@ describe('PersonalizationService recommendation history', () => {
     );
 
     expect(result.ranked).toEqual([]);
+    expect(findProfile).toHaveBeenCalledWith(
+      expect.objectContaining({ relationLoadStrategy: 'join' }),
+    );
+    expect(findCandidates).toHaveBeenCalledWith(
+      expect.objectContaining({ relationLoadStrategy: 'join' }),
+    );
     expect(findFollows).toHaveBeenCalledWith(
       expect.objectContaining({
         orderBy: [{ createdAt: 'desc' }, { followedId: 'desc' }],
@@ -39,6 +47,7 @@ describe('PersonalizationService recommendation history', () => {
     expect(findEvents).toHaveBeenCalledWith(
       expect.objectContaining({
         orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }],
+        relationLoadStrategy: 'join',
         take: 500,
       }),
     );
@@ -46,6 +55,7 @@ describe('PersonalizationService recommendation history', () => {
       expect(query).toHaveBeenCalledWith(
         expect.objectContaining({
           orderBy: [{ createdAt: 'desc' }, { listingId: 'desc' }],
+          relationLoadStrategy: 'join',
           take: 500,
         }),
       );
@@ -54,6 +64,7 @@ describe('PersonalizationService recommendation history', () => {
       expect(query).toHaveBeenCalledWith(
         expect.objectContaining({
           orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          relationLoadStrategy: 'join',
           take: 500,
         }),
       );
