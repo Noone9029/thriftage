@@ -13,16 +13,16 @@ describe('PersonalizationService recommendation history', () => {
     const findMessages = vi.fn().mockResolvedValue([]);
     const findCandidates = vi.fn().mockResolvedValue([]);
     const findProfile = vi.fn().mockResolvedValue(null);
+    const findConfiguration = vi.fn().mockResolvedValue(null);
     const prisma = {
       follow: { findMany: findFollows },
       listing: { findMany: findCandidates },
       listingLike: { findMany: findLikes },
       message: { findMany: findMessages },
       order: { findMany: findOrders },
-      recommendationConfiguration: { findFirst: vi.fn().mockResolvedValue(null) },
+      recommendationConfiguration: { findFirst: findConfiguration },
       recommendationEvent: { findMany: findEvents },
       savedListing: { findMany: findSaves },
-      userBlock: { findMany: vi.fn().mockResolvedValue([]) },
       userStyleProfile: { findUnique: findProfile },
     } as unknown as PrismaClient;
 
@@ -36,11 +36,20 @@ describe('PersonalizationService recommendation history', () => {
       expect.objectContaining({ relationLoadStrategy: 'join' }),
     );
     expect(findCandidates).toHaveBeenCalledWith(
-      expect.objectContaining({ relationLoadStrategy: 'join' }),
+      expect.objectContaining({
+        relationLoadStrategy: 'join',
+        where: expect.objectContaining({
+          seller: expect.objectContaining({
+            blocksCreated: { none: { blockedUserId: '00000000-0000-4000-8000-000000000001' } },
+            blocksReceived: { none: { blockerId: '00000000-0000-4000-8000-000000000001' } },
+          }),
+        }),
+      }),
     );
     expect(findFollows).toHaveBeenCalledWith(
       expect.objectContaining({
         orderBy: [{ createdAt: 'desc' }, { followedId: 'desc' }],
+        select: { createdAt: true, followedId: true },
         take: 500,
       }),
     );
@@ -69,5 +78,28 @@ describe('PersonalizationService recommendation history', () => {
         }),
       );
     }
+  });
+
+  it('reuses active configuration within one service instance', async () => {
+    const findConfiguration = vi.fn().mockResolvedValue(null);
+    const empty = vi.fn().mockResolvedValue([]);
+    const prisma = {
+      follow: { findMany: empty },
+      listing: { findMany: empty },
+      listingLike: { findMany: empty },
+      message: { findMany: empty },
+      order: { findMany: empty },
+      recommendationConfiguration: { findFirst: findConfiguration },
+      recommendationEvent: { findMany: empty },
+      savedListing: { findMany: empty },
+      userStyleProfile: { findUnique: vi.fn().mockResolvedValue(null) },
+    } as unknown as PrismaClient;
+    const service = new PersonalizationService(prisma);
+    const asOf = new Date('2026-08-21T00:00:00.000Z');
+
+    await service.rankForYou('00000000-0000-4000-8000-000000000001', asOf);
+    await service.rankForYou('00000000-0000-4000-8000-000000000001', asOf);
+
+    expect(findConfiguration).toHaveBeenCalledTimes(1);
   });
 });

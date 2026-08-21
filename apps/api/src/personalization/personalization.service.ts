@@ -1,5 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { getPrismaClient, type PrismaClient } from '@thriftage/db';
+import {
+  getPrismaClient,
+  type PrismaClient,
+  type RecommendationConfiguration,
+} from '@thriftage/db';
 import {
   privacyStatusSchema,
   recommendationFeedbackSchema,
@@ -28,9 +32,41 @@ const profileInclude = {
 } as const;
 
 const behaviorHistoryLimit = 500;
+const behaviorHistoryWindowMs = 90 * 86_400_000;
+// Ranking configuration changes are rare; activation invalidates this instance immediately.
+const activeConfigurationCacheTtlMs = 30_000;
+const defaultRecommendationConfiguration = {
+  behaviorWeight: 15,
+  candidateLimit: 200,
+  engagementWeight: 7,
+  explorationWeight: 5,
+  explorationPercent: 10,
+  freshnessWeight: 12,
+  maxPerSeller: 2,
+  maxPerStyle: 4,
+  personalWeight: 45,
+  sellerWeight: 8,
+  trustWeight: 8,
+  version: 'rules-v1',
+} as const;
 
 @Injectable()
 export class PersonalizationService {
+  private activeConfigurationCache:
+    | {
+        readonly expiresAt: number;
+        readonly generation: number;
+        readonly value: RecommendationConfiguration | null;
+      }
+    | undefined;
+  private activeConfigurationGeneration = 0;
+  private activeConfigurationLoading:
+    | {
+        readonly generation: number;
+        readonly promise: Promise<RecommendationConfiguration | null>;
+      }
+    | undefined;
+
   public constructor(private readonly injectedPrisma?: PrismaClient) {}
 
   private get prisma(): PrismaClient {
@@ -242,126 +278,118 @@ export class PersonalizationService {
   }
 
   public async rankForYou(userId: string, asOf: Date) {
-    const [profileRow, configuration, blocks] = await Promise.all([
+    const configuration = await this.activeRecommendationConfiguration();
+    const config = configuration ?? defaultRecommendationConfiguration;
+    const ninetyDaysAgo = new Date(asOf.getTime() - behaviorHistoryWindowMs);
+    // Read the bounded history in parallel with the profile, then apply its reset boundary below.
+    // Newest-first limits preserve the same post-reset records without a profile-dependent DB round.
+    const [
+      profileRow,
+      candidates,
+      followsWindow,
+      eventsWindow,
+      likesWindow,
+      savesWindow,
+      purchasesWindow,
+      messagesWindow,
+    ] = await Promise.all([
       this.prisma.userStyleProfile.findUnique({
         include: profileInclude,
         relationLoadStrategy: 'join',
         where: { userId },
       }),
-      this.prisma.recommendationConfiguration.findFirst({ where: { isActive: true } }),
-      this.prisma.userBlock.findMany({
-        select: { blockedUserId: true, blockerId: true },
-        where: { OR: [{ blockerId: userId }, { blockedUserId: userId }] },
-      }),
-    ]);
-    const config = configuration ?? {
-      behaviorWeight: 15,
-      candidateLimit: 200,
-      engagementWeight: 7,
-      explorationWeight: 5,
-      explorationPercent: 10,
-      freshnessWeight: 12,
-      maxPerSeller: 2,
-      maxPerStyle: 4,
-      personalWeight: 45,
-      sellerWeight: 8,
-      trustWeight: 8,
-      version: 'rules-v1',
-    };
-    const excludedSellerIds = blocks.map((block) =>
-      block.blockerId === userId ? block.blockedUserId : block.blockerId,
-    );
-    const candidatesPromise = this.prisma.listing.findMany({
-      include: {
-        _count: { select: { likes: true, saves: true } },
-        seller: {
-          include: {
-            profile: true,
-            sellerVerifications: { select: { status: true }, where: { status: 'VERIFIED' } },
-          },
-        },
-        styles: {
-          include: { styleDefinition: true },
-          orderBy: { styleDefinition: { sortOrder: 'asc' } },
-        },
-      },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      relationLoadStrategy: 'join',
-      take: config.candidateLimit,
-      where: {
-        recommendationFeedback: { none: { hiddenAt: { not: null }, userId } },
-        seller: {
-          accountStatus: 'ACTIVE',
-          deletedAt: null,
-          restrictions: {
-            none: {
-              OR: [{ expiresAt: null }, { expiresAt: { gt: asOf } }],
-              revokedAt: null,
-              scope: 'SELLING',
-              startsAt: { lte: asOf },
+      this.prisma.listing.findMany({
+        include: {
+          _count: { select: { likes: true, saves: true } },
+          seller: {
+            include: {
+              profile: true,
+              sellerVerifications: { select: { status: true }, where: { status: 'VERIFIED' } },
             },
           },
-        },
-        sellerId: {
-          not: userId,
-          ...(excludedSellerIds.length === 0 ? {} : { notIn: excludedSellerIds }),
-        },
-        status: 'ACTIVE',
-      },
-    });
-    const resetAt = profileRow?.behavioralResetAt ?? new Date(0);
-    const ninetyDaysAgo = new Date(asOf.getTime() - 90 * 86_400_000);
-    const since = resetAt > ninetyDaysAgo ? resetAt : ninetyDaysAgo;
-    const [candidates, [follows, events, likes, saves, purchases, messages]] = await Promise.all([
-      candidatesPromise,
-      Promise.all([
-        this.prisma.follow.findMany({
-          orderBy: [{ createdAt: 'desc' }, { followedId: 'desc' }],
-          select: { followedId: true },
-          take: behaviorHistoryLimit,
-          where: { createdAt: { gt: since, lte: asOf }, followerId: userId },
-        }),
-        this.prisma.recommendationEvent.findMany({
-          include: { listing: { include: { styles: true } } },
-          orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }],
-          relationLoadStrategy: 'join',
-          take: behaviorHistoryLimit,
-          where: { occurredAt: { gt: since, lte: asOf }, userId },
-        }),
-        this.prisma.listingLike.findMany({
-          include: { listing: { include: { styles: true } } },
-          orderBy: [{ createdAt: 'desc' }, { listingId: 'desc' }],
-          relationLoadStrategy: 'join',
-          take: behaviorHistoryLimit,
-          where: { createdAt: { gt: since, lte: asOf }, userId },
-        }),
-        this.prisma.savedListing.findMany({
-          include: { listing: { include: { styles: true } } },
-          orderBy: [{ createdAt: 'desc' }, { listingId: 'desc' }],
-          relationLoadStrategy: 'join',
-          take: behaviorHistoryLimit,
-          where: { createdAt: { gt: since, lte: asOf }, userId },
-        }),
-        this.prisma.order.findMany({
-          include: { listing: { include: { styles: true } } },
-          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-          relationLoadStrategy: 'join',
-          take: behaviorHistoryLimit,
-          where: {
-            buyerId: userId,
-            createdAt: { gt: since, lte: asOf },
-            status: { in: ['DELIVERED', 'COMPLETED'] },
+          styles: {
+            include: { styleDefinition: true },
+            orderBy: { styleDefinition: { sortOrder: 'asc' } },
           },
-        }),
-        this.prisma.message.findMany({
-          include: { conversation: { include: { listing: { include: { styles: true } } } } },
-          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-          relationLoadStrategy: 'join',
-          take: behaviorHistoryLimit,
-          where: { createdAt: { gt: since, lte: asOf }, senderId: userId },
-        }),
-      ]),
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        relationLoadStrategy: 'join',
+        take: config.candidateLimit,
+        where: {
+          recommendationFeedback: { none: { hiddenAt: { not: null }, userId } },
+          seller: {
+            accountStatus: 'ACTIVE',
+            blocksCreated: { none: { blockedUserId: userId } },
+            blocksReceived: { none: { blockerId: userId } },
+            deletedAt: null,
+            restrictions: {
+              none: {
+                OR: [{ expiresAt: null }, { expiresAt: { gt: asOf } }],
+                revokedAt: null,
+                scope: 'SELLING',
+                startsAt: { lte: asOf },
+              },
+            },
+          },
+          sellerId: { not: userId },
+          status: 'ACTIVE',
+        },
+      }),
+      this.prisma.follow.findMany({
+        orderBy: [{ createdAt: 'desc' }, { followedId: 'desc' }],
+        select: { createdAt: true, followedId: true },
+        take: behaviorHistoryLimit,
+        where: { createdAt: { gt: ninetyDaysAgo, lte: asOf }, followerId: userId },
+      }),
+      this.prisma.recommendationEvent.findMany({
+        include: { listing: { include: { styles: true } } },
+        orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }],
+        relationLoadStrategy: 'join',
+        take: behaviorHistoryLimit,
+        where: { occurredAt: { gt: ninetyDaysAgo, lte: asOf }, userId },
+      }),
+      this.prisma.listingLike.findMany({
+        include: { listing: { include: { styles: true } } },
+        orderBy: [{ createdAt: 'desc' }, { listingId: 'desc' }],
+        relationLoadStrategy: 'join',
+        take: behaviorHistoryLimit,
+        where: { createdAt: { gt: ninetyDaysAgo, lte: asOf }, userId },
+      }),
+      this.prisma.savedListing.findMany({
+        include: { listing: { include: { styles: true } } },
+        orderBy: [{ createdAt: 'desc' }, { listingId: 'desc' }],
+        relationLoadStrategy: 'join',
+        take: behaviorHistoryLimit,
+        where: { createdAt: { gt: ninetyDaysAgo, lte: asOf }, userId },
+      }),
+      this.prisma.order.findMany({
+        include: { listing: { include: { styles: true } } },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        relationLoadStrategy: 'join',
+        take: behaviorHistoryLimit,
+        where: {
+          buyerId: userId,
+          createdAt: { gt: ninetyDaysAgo, lte: asOf },
+          status: { in: ['DELIVERED', 'COMPLETED'] },
+        },
+      }),
+      this.prisma.message.findMany({
+        include: { conversation: { include: { listing: { include: { styles: true } } } } },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        relationLoadStrategy: 'join',
+        take: behaviorHistoryLimit,
+        where: { createdAt: { gt: ninetyDaysAgo, lte: asOf }, senderId: userId },
+      }),
     ]);
+    const resetAt = profileRow?.behavioralResetAt ?? new Date(0);
+    const since = resetAt > ninetyDaysAgo ? resetAt : ninetyDaysAgo;
+    const afterReset = (occurredAt: Date): boolean => occurredAt.getTime() > since.getTime();
+    const follows = followsWindow.filter(({ createdAt }) => afterReset(createdAt));
+    const events = eventsWindow.filter(({ occurredAt }) => afterReset(occurredAt));
+    const likes = likesWindow.filter(({ createdAt }) => afterReset(createdAt));
+    const saves = savesWindow.filter(({ createdAt }) => afterReset(createdAt));
+    const purchases = purchasesWindow.filter(({ createdAt }) => afterReset(createdAt));
+    const messages = messagesWindow.filter(({ createdAt }) => afterReset(createdAt));
     const styleAffinity = new Map<string, number>();
     const addAffinity = (
       styles: readonly { styleDefinitionId: string }[],
@@ -587,7 +615,7 @@ export class PersonalizationService {
   }
 
   public async activateConfiguration(actorId: string, input: RecommendationConfigurationInput) {
-    return this.prisma.$transaction(async (tx) => {
+    const configuration = await this.prisma.$transaction(async (tx) => {
       await tx.recommendationConfiguration.updateMany({
         data: { isActive: false },
         where: { isActive: true },
@@ -604,6 +632,10 @@ export class PersonalizationService {
       });
       return configuration;
     });
+    this.activeConfigurationGeneration += 1;
+    this.activeConfigurationCache = undefined;
+    this.activeConfigurationLoading = undefined;
+    return configuration;
   }
 
   public async updateDefinition(
@@ -632,6 +664,37 @@ export class PersonalizationService {
       });
     } catch {
       throw new NotFoundException({ code: 'STYLE_DEFINITION_NOT_FOUND' });
+    }
+  }
+
+  private async activeRecommendationConfiguration(): Promise<RecommendationConfiguration | null> {
+    const generation = this.activeConfigurationGeneration;
+    const cached = this.activeConfigurationCache;
+    if (cached !== undefined && cached.generation === generation && cached.expiresAt > Date.now()) {
+      return cached.value;
+    }
+    const existingLoad = this.activeConfigurationLoading;
+    const promise =
+      existingLoad !== undefined && existingLoad.generation === generation
+        ? existingLoad.promise
+        : this.prisma.recommendationConfiguration.findFirst({ where: { isActive: true } });
+    if (existingLoad === undefined || existingLoad.generation !== generation) {
+      this.activeConfigurationLoading = { generation, promise };
+    }
+    try {
+      const value = await promise;
+      if (this.activeConfigurationGeneration === generation) {
+        this.activeConfigurationCache = {
+          expiresAt: Date.now() + activeConfigurationCacheTtlMs,
+          generation,
+          value,
+        };
+      }
+      return value;
+    } finally {
+      if (this.activeConfigurationLoading?.promise === promise) {
+        this.activeConfigurationLoading = undefined;
+      }
     }
   }
 
