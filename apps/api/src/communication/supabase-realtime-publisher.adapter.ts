@@ -10,12 +10,11 @@ export class SupabaseRealtimePublisherAdapter implements RealtimePublisher {
     const config = loadApiConfig(process.env);
     if (!config.realtimeBroadcastEnabled) return;
     const response = await fetch(
-      `${config.supabaseUrl}/realtime/v1/api/broadcast/conversation:${event.conversationId}/messages/message-created?private=true`,
+      `${config.supabaseUrl}/realtime/v1/api/broadcast/conversation:${event.conversationId}/events/message-created?private=true`,
       {
         body: JSON.stringify(event),
         headers: {
           apikey: config.supabaseSecretKey,
-          Authorization: `Bearer ${config.supabaseSecretKey}`,
           'Content-Type': 'application/json',
         },
         method: 'POST',
