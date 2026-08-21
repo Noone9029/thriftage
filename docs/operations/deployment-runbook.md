@@ -7,7 +7,7 @@ This repository does not authorize public launch. Staging deployment and closed/
 ### Current verified staging inventory
 
 - API: `https://api-staging-4101.up.railway.app/api/v1` on Railway project `thriftage-staging`, environment `staging`, service `api`.
-- API release: `b19ce9bad821a0787348f2ffb2dbc4d2dfdd38fd` on Railway Singapore; `/health` and `/readiness` return 200 and identify `staging`.
+- API release: `dd28395f6c815c37d8dbde125dd450f64adf5e45` on Railway Singapore; `/health` and `/readiness` return 200 and identify `staging`.
 - Admin: `https://thriftage-admin-6hwrrcub6-ahmad-khalid-s-projects.vercel.app` in the existing Vercel project `thriftage-admin`.
 - Database/Auth/Storage/Realtime: existing Supabase staging project `dstnxzljsbyusxoogkzr` in `ap-south-1`.
 - Mobile: Expo project `@noone9029s-team/thriftage` (`8b3c5e61-0f52-4646-a29a-bf5b3dd86d91`); Android internal build `dc462b59-c9f5-4088-a38f-1a4612596e94` from mobile release `aa036173e30db306e7770394688ff0b01c6cb1a5`.

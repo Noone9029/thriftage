@@ -2,7 +2,7 @@
 
 ## Current activation status
 
-Core staging is online: the Railway API, Vercel admin preview, Supabase Auth/Postgres/Storage/Realtime, strict CORS, deployed authorization matrix, and Android emulator login/profile/feed flow are verified. EAS Android build `dc462b59-c9f5-4088-a38f-1a4612596e94` is an installable internal preview; the exact APK passed an authenticated staging smoke on `emulator-5554`. **Do not invite testers yet.** The 30-VU read gate has 0% HTTP failures but fails every route's latency targets. A physical-device result and durable tester install path are also still missing, and legal links, Sentry, provider drills, approved content, and named operational owners remain blocked. Emulator and Expo Go checks remain engineering evidence only; only the installed preview-package result counts as artifact evidence.
+Core staging is online: the Railway API, Vercel admin preview, Supabase Auth/Postgres/Storage/Realtime, strict CORS, deployed authorization matrix, and Android emulator login/profile/feed flow are verified. EAS Android build `dc462b59-c9f5-4088-a38f-1a4612596e94` is an installable internal preview; the exact APK passed an authenticated staging smoke on `emulator-5554`. **Do not invite testers yet.** The 30-VU read gate has 0% HTTP failures and passes p99, but still misses the strict p50 target and overall/personalized p95 targets. A physical-device result and durable tester install path are also still missing, and legal links, Sentry, remaining provider drills, approved content, and named operational owners remain blocked. Emulator and Expo Go checks remain engineering evidence only; only the installed preview-package result counts as artifact evidence.
 
 Synthetic staging fixtures are labeled `STAGING AUTH FIXTURE` or otherwise clearly test-scoped. The demo and A/B/Admin identities are staging-only. Store credentials only in the approved local/provider secret stores; never copy passwords or tokens into tickets, screenshots, documentation, source, or tester messages.
 
@@ -13,6 +13,8 @@ Begin with 20–30 invited testers: roughly one-third buyers, one-third sellers,
 ## Entry gates
 
 Use `docs/release/go-no-go.md` as the authority. Required gates include a deployed staging API/Supabase project; real Auth/Storage/Realtime/provider tests; native Android artifact and real-device critical path; iOS build/device result or recorded external Apple blocker; Sentry event/source-map proof; tested account deletion; legal/support beta-safe links; zero known P0/P1 issues; and an install path for every tester.
+
+On 2026-08-21, release `dd28395f6c815c37d8dbde125dd450f64adf5e45` completed a real account-deletion drill with one purpose-created disposable staging identity. The first worker attempt deleted the Supabase Auth identity, profile and listing Storage objects, and application profile/listing-image rows; anonymized the retained account/listing records; left no failed or incomplete deletion request; and preserved the existing demo identity/profile. `ACCOUNT_DELETION_ENABLED` was returned to `false` after the drill. Do not reuse the disposable identity or repeat this destructive proof against a real tester.
 
 ## Content and seed policy
 
