@@ -36,3 +36,11 @@ The guarded read test targeted API release `b19ce9bad821a0787348f2ffb2dbc4d2dfdd
 | Search            | 495 ms | 571 ms | 621 ms |
 
 Result: **FAIL**. All 4,722 checks passed and 0 of 4,723 HTTP requests failed. Feed and search now pass p95/p99, and all routes pass p99, but every route still misses p50; overall p95 misses by 36 ms and personalized-feed p95 misses by 63 ms. Joining nested Prisma relations reduced overall p95 from 2.86 s to 636 ms and p99 from 3.05 s to 687 ms without changing the scenario or thresholds. A separate sequential probe measured health p50 at 286 ms from the same operator host, so a Pakistan-region generator is required to separate application latency from the long-distance network floor. The gate remains failed until the original targets pass; Sentry and representative beta-scale catalog evidence also remain unavailable.
+
+### Follow-up optimization evidence
+
+Release `c5e2f889c9363c5a9541e49fbf2ffff0b205a7b6` caches the active recommendation configuration, reads independent personalization history concurrently, performs block exclusion in the candidate query, coalesces short-lived display reputation reads, and selects only scoring fields from recommendation candidates. Unit and isolated PostgreSQL integration tests protect bidirectional block exclusion, learned-signal reset semantics, and reputation-cache behavior.
+
+After two warm-ups, a bounded authenticated sequential probe made 10 recommendation-feed requests from the same operator workstation. All returned HTTP 200. Client timing was p50 `579.93 ms` and p95 `648.78 ms`; correlated Railway request logs measured API timing at p50 `261.27 ms` and p95 `266.79 ms`. The approximately `319 ms` p50 gap is transit and edge overhead from the New York operator path to Railway Singapore. The narrowed candidate projection did not materially improve the small staging fixture, so no further speculative cache or infrastructure was added.
+
+This probe is diagnostic evidence, not a substitute for the guarded 30-VU scenario. The gate remains **FAIL** until the original thresholds pass from an approved Pakistan-region generator with representative beta-scale inventory and monitoring evidence.
