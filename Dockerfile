@@ -9,7 +9,7 @@ RUN corepack enable
 
 COPY . .
 
-RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+RUN --mount=type=cache,id=s/1375c4c5-c918-4625-adfc-f35b39b44bde-/pnpm/store,target=/pnpm/store \
     pnpm install --frozen-lockfile \
     && pnpm db:generate \
     && pnpm --filter @thriftage/api... build \
