@@ -1,5 +1,11 @@
 # Closed Beta Runbook
 
+## Current activation status
+
+Core staging is online: the Railway API, Vercel admin preview, Supabase Auth/Postgres/Storage/Realtime, strict CORS, deployed authorization matrix, and Android emulator login/profile/feed flow are verified. **Do not invite testers yet.** There is no installable Android preview artifact or physical-device result, EAS is not authenticated/configured with the existing project identity, and legal links, Sentry, provider drills, approved content, and named operational owners remain blocked. The emulator and Expo Go are engineering smoke evidence only.
+
+Synthetic staging fixtures are labeled `STAGING AUTH FIXTURE` or otherwise clearly test-scoped. The demo and A/B/Admin identities are staging-only. Store credentials only in the approved local/provider secret stores; never copy passwords or tokens into tickets, screenshots, documentation, source, or tester messages.
+
 ## Scope and cohort
 
 Begin with 20–30 invited testers: roughly one-third buyers, one-third sellers, and one-third mixed users. Include iOS/Android, smaller/typical/large screens, varied network quality, and varied style profiles. Use staging only. Increase the cohort after a 48-hour stable soak and explicit go/no-go review; do not open public registration.

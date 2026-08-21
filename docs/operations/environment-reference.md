@@ -2,6 +2,19 @@
 
 Use independent secret stores for local, EAS `preview`, staging runtime, EAS `production`, and production runtime. Validate a completed file with `pnpm config:validate:api -- <file>` or `pnpm config:validate:mobile -- <file>`. Example files deliberately contain blockers and must not pass unchanged.
 
+## Current staging inventory
+
+| Component               | Verified staging value                                                          |
+| ----------------------- | ------------------------------------------------------------------------------- |
+| API base                | `https://api-staging-4101.up.railway.app/api/v1`                                |
+| API environment/release | `staging` / `4360df98c16a9fe45eca027610d5683b57140d86`                          |
+| Admin preview           | `https://thriftage-admin-6hwrrcub6-ahmad-khalid-s-projects.vercel.app`          |
+| Supabase project        | `dstnxzljsbyusxoogkzr` (`ap-south-1`, staging only)                             |
+| Allowed browser origin  | Exact admin preview URL above                                                   |
+| Mobile preview target   | Public staging API and staging Supabase; never localhost/LAN for an EAS preview |
+
+Current staging runtime flags disable registration, phone auth, seller verification, account deletion, AI Stylist, and push notifications. Realtime broadcast is server-side operational even though it is not a public client feature flag. Legal/support links and Sentry remain intentionally unconfigured blockers. The Vercel preview artifact and a running Expo Go development bundle can carry component-specific source identifiers that differ from the current API release; verify each component independently in diagnostics.
+
 ## Identity and runtime
 
 | Variable               | Classification         | Requirement                                                            |
