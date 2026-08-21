@@ -62,6 +62,33 @@ describe('loadMobileConfig', () => {
     ).toThrow();
   });
 
+  it('allows unavailable legal, support, and monitoring providers to remain blocked in staging', () => {
+    expect(
+      loadMobileConfig({
+        apiUrl: 'https://api-staging.thriftage.test/api/v1',
+        deploymentEnvironment: 'staging',
+        releaseVersion: 'staging-sha',
+        supabasePublishableKey: 'sb_publishable_stagingvalue',
+        supabaseUrl: 'https://staging-ref.supabase.co',
+      }),
+    ).toMatchObject({
+      deploymentEnvironment: 'staging',
+      releaseVersion: 'staging-sha',
+    });
+  });
+
+  it('requires legal, support, and monitoring URLs in production', () => {
+    expect(() =>
+      loadMobileConfig({
+        apiUrl: 'https://api.thriftage.test/api/v1',
+        deploymentEnvironment: 'production',
+        releaseVersion: 'production-sha',
+        supabasePublishableKey: 'sb_publishable_productionvalue',
+        supabaseUrl: 'https://production-ref.supabase.co',
+      }),
+    ).toThrow();
+  });
+
   it('rejects Supabase secret keys', () => {
     expect(() =>
       loadMobileConfig({ ...validEnvironment, supabasePublishableKey: 'sb_secret_forbidden' }),

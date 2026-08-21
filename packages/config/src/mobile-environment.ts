@@ -33,20 +33,36 @@ const mobileEnvironmentSchema = z
   .superRefine((environment, context) => {
     if (environment.deploymentEnvironment === 'local') return;
 
+    const production = environment.deploymentEnvironment === 'production';
+
+    for (const [name, value] of [
+      ['apiUrl', environment.apiUrl],
+      ['supabaseUrl', environment.supabaseUrl],
+    ] as const) {
+      if (!isSecureRemoteUrl(value)) {
+        context.addIssue({
+          code: 'custom',
+          message: `${name} must be a non-placeholder HTTPS URL outside local development.`,
+          path: [name],
+        });
+      }
+    }
+
     for (const [name, value] of [
       ['accountDeletionUrl', environment.accountDeletionUrl],
-      ['apiUrl', environment.apiUrl],
       ['communityGuidelinesUrl', environment.communityGuidelinesUrl],
       ['privacyPolicyUrl', environment.privacyPolicyUrl],
       ['sentryDsn', environment.sentryDsn],
       ['supportUrl', environment.supportUrl],
-      ['supabaseUrl', environment.supabaseUrl],
       ['termsOfUseUrl', environment.termsOfUseUrl],
     ] as const) {
-      if (value === undefined || !isSecureRemoteUrl(value)) {
+      if (
+        (production && value === undefined) ||
+        (value !== undefined && !isSecureRemoteUrl(value))
+      ) {
         context.addIssue({
           code: 'custom',
-          message: `${name} must be a non-placeholder HTTPS URL outside local development.`,
+          message: `${name} must be a non-placeholder HTTPS URL${production ? '' : ' when configured'}.`,
           path: [name],
         });
       }
