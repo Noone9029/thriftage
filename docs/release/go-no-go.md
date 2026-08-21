@@ -2,9 +2,9 @@
 
 This is the authoritative release gate. `PASS` requires verified evidence; `FAIL` means a required artifact or behavior is defective; `BLOCKED` means required external access, configuration, or evidence is unavailable; `NOT APPLICABLE` requires a written reason. Any P0/P1, Security/Data `FAIL`, or required platform `BLOCKED` means **NO-GO**.
 
-Current decision: **NO-GO — core staging is online and verified; native build/device, legal, monitoring, backup/restore, and beta-operations evidence remain blocked.**
+Current decision: **NO-GO — core staging and the Android preview artifact are verified; physical-device, legal, monitoring, backup/restore, and beta-operations evidence remain blocked.**
 
-Evidence snapshot (2026-08-20): Railway staging API `https://api-staging-4101.up.railway.app/api/v1` is healthy and ready at release `4360df98c16a9fe45eca027610d5683b57140d86`; the Vercel admin preview is online at `https://thriftage-admin-6hwrrcub6-ahmad-khalid-s-projects.vercel.app`; Supabase project `dstnxzljsbyusxoogkzr` is `ACTIVE_HEALTHY`; public smoke, the 15-check A/B/Admin authorization matrix, real Auth/Storage/Realtime drills, CORS, admin API checks, worker-log inspection, and Android emulator login/profile/feed checks pass. Repository gates are rerun before closing this snapshot. No public production deployment is authorized.
+Evidence snapshot (2026-08-21): Railway staging API `https://api-staging-4101.up.railway.app/api/v1` is healthy and ready at release `4360df98c16a9fe45eca027610d5683b57140d86`; the Vercel admin preview is online at `https://thriftage-admin-6hwrrcub6-ahmad-khalid-s-projects.vercel.app`; Supabase project `dstnxzljsbyusxoogkzr` is `ACTIVE_HEALTHY`; public smoke, the 15-check A/B/Admin authorization matrix, real Auth/Storage/Realtime drills, CORS, admin API checks, worker-log inspection, and Android emulator login/profile/feed checks pass. EAS build `dc462b59-c9f5-4088-a38f-1a4612596e94` produced the internal Android preview from mobile release `aa036173e30db306e7770394688ff0b01c6cb1a5`; the exact APK was installed and its authenticated staging flow and diagnostics were exercised on `emulator-5554`. Repository gates are rerun before closing this snapshot. No public production deployment is authorized.
 
 | Category     | Gate                                                                                | Status         | Evidence / owner action                                                                          |
 | ------------ | ----------------------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------ |
@@ -24,7 +24,7 @@ Evidence snapshot (2026-08-20): Railway staging API `https://api-staging-4101.up
 | Mobile       | Preview configuration cannot target production and diagnostics identify environment | PASS           | Strict staging config, EAS profiles, and About & diagnostics                                     |
 | Mobile       | Icon, adaptive icon, splash, and display name explicitly configured                 | PASS           | Engineering placeholder is explicit; final brand assets remain a store-submission task           |
 | Mobile       | Expo Go emulator uses public staging API and real Supabase                          | PASS           | Demo login -> authenticated Discover -> profile -> marketplace feed passes on `emulator-5554`    |
-| Mobile       | Installable Android preview artifact produced                                       | BLOCKED        | Expo account authentication and existing EAS project ID are unavailable                          |
+| Mobile       | Installable Android preview artifact produced                                       | PASS           | EAS build `dc462b59-c9f5-4088-a38f-1a4612596e94`; exact APK installed and exercised on emulator  |
 | Mobile       | Android critical path passes on a physical device                                   | BLOCKED        | No physical Android device is connected; emulator evidence is not substituted                    |
 | Mobile       | iOS TestFlight/archive and real-device critical path                                | BLOCKED        | Apple Developer/App Store Connect/macOS/device required                                          |
 | Mobile       | Small/typical/large screen, accessibility, keyboard/back/deep-link QA               | BLOCKED        | Full native device-matrix evidence required                                                      |
@@ -47,6 +47,6 @@ Evidence snapshot (2026-08-20): Railway staging API `https://api-staging-4101.up
 | Monitoring   | Sentry projects, alerts, source maps, deliberate staging event verified             | BLOCKED        | Sentry project/access required                                                                   |
 | Monitoring   | Twilio spend/fraud and worker/API alert routes tested                               | BLOCKED        | Provider/alerting access and recipients required                                                 |
 
-Totals: **17 PASS / 20 BLOCKED / 0 FAIL / 1 NOT APPLICABLE** (38 gates).
+Totals: **18 PASS / 19 BLOCKED / 0 FAIL / 1 NOT APPLICABLE** (38 gates).
 
 Decision owner must sign and date the release evidence outside source control. This file does not authorize invited onboarding, public launch, or production deployment.

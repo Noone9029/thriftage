@@ -2,7 +2,7 @@
 
 ## Current activation status
 
-Core staging is online: the Railway API, Vercel admin preview, Supabase Auth/Postgres/Storage/Realtime, strict CORS, deployed authorization matrix, and Android emulator login/profile/feed flow are verified. **Do not invite testers yet.** There is no installable Android preview artifact or physical-device result, EAS is not authenticated/configured with the existing project identity, and legal links, Sentry, provider drills, approved content, and named operational owners remain blocked. The emulator and Expo Go are engineering smoke evidence only.
+Core staging is online: the Railway API, Vercel admin preview, Supabase Auth/Postgres/Storage/Realtime, strict CORS, deployed authorization matrix, and Android emulator login/profile/feed flow are verified. EAS Android build `dc462b59-c9f5-4088-a38f-1a4612596e94` is an installable internal preview; the exact APK passed an authenticated staging smoke on `emulator-5554`. **Do not invite testers yet.** A physical-device result and durable tester install path are still missing, and legal links, Sentry, provider drills, approved content, and named operational owners remain blocked. Emulator and Expo Go checks remain engineering evidence only; only the installed preview-package result counts as artifact evidence.
 
 Synthetic staging fixtures are labeled `STAGING AUTH FIXTURE` or otherwise clearly test-scoped. The demo and A/B/Admin identities are staging-only. Store credentials only in the approved local/provider secret stores; never copy passwords or tokens into tickets, screenshots, documentation, source, or tester messages.
 

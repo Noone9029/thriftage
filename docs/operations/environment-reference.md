@@ -4,16 +4,18 @@ Use independent secret stores for local, EAS `preview`, staging runtime, EAS `pr
 
 ## Current staging inventory
 
-| Component               | Verified staging value                                                          |
-| ----------------------- | ------------------------------------------------------------------------------- |
-| API base                | `https://api-staging-4101.up.railway.app/api/v1`                                |
-| API environment/release | `staging` / `4360df98c16a9fe45eca027610d5683b57140d86`                          |
-| Admin preview           | `https://thriftage-admin-6hwrrcub6-ahmad-khalid-s-projects.vercel.app`          |
-| Supabase project        | `dstnxzljsbyusxoogkzr` (`ap-south-1`, staging only)                             |
-| Allowed browser origin  | Exact admin preview URL above                                                   |
-| Mobile preview target   | Public staging API and staging Supabase; never localhost/LAN for an EAS preview |
+| Component               | Verified staging value                                                                 |
+| ----------------------- | -------------------------------------------------------------------------------------- |
+| API base                | `https://api-staging-4101.up.railway.app/api/v1`                                       |
+| API environment/release | `staging` / `4360df98c16a9fe45eca027610d5683b57140d86`                                 |
+| Admin preview           | `https://thriftage-admin-6hwrrcub6-ahmad-khalid-s-projects.vercel.app`                 |
+| Supabase project        | `dstnxzljsbyusxoogkzr` (`ap-south-1`, staging only)                                    |
+| Allowed browser origin  | Exact admin preview URL above                                                          |
+| Expo project            | `@noone9029s-team/thriftage` / `8b3c5e61-0f52-4646-a29a-bf5b3dd86d91`                  |
+| Android preview build   | `dc462b59-c9f5-4088-a38f-1a4612596e94` from `aa036173e30db306e7770394688ff0b01c6cb1a5` |
+| Mobile preview target   | Public staging API and staging Supabase; never localhost/LAN for an EAS preview        |
 
-Current staging runtime flags disable registration, phone auth, seller verification, account deletion, AI Stylist, and push notifications. Realtime broadcast is server-side operational even though it is not a public client feature flag. Legal/support links and Sentry remain intentionally unconfigured blockers. The Vercel preview artifact and a running Expo Go development bundle can carry component-specific source identifiers that differ from the current API release; verify each component independently in diagnostics.
+Current staging runtime flags disable registration, phone auth, seller verification, account deletion, AI Stylist, and push notifications. Realtime broadcast is server-side operational even though it is not a public client feature flag. Legal/support links and Sentry remain intentionally unconfigured blockers. The internal Android artifact identifies mobile release `aa036173e30db306e7770394688ff0b01c6cb1a5` and API release `4360df98c16a9fe45eca027610d5683b57140d86` independently in diagnostics. Preview builds set `SENTRY_DISABLE_AUTO_UPLOAD=true` until Sentry credentials exist; production does not. Expo Go is development evidence only and is not interchangeable with the installed preview package.
 
 ## Identity and runtime
 
