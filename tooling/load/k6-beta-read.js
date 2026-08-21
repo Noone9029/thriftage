@@ -2,6 +2,7 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 
 import { matchesExactHttpsHost } from './load-target-guard.js';
+import { selectReadRoute } from './read-route-selector.js';
 
 const baseUrl = (__ENV.BASE_URL ?? '').replace(/\/$/, '');
 const expectedHost = __ENV.EXPECTED_STAGING_HOST ?? '';
@@ -49,24 +50,15 @@ export function setup() {
 
 export default function () {
   const headers = { Authorization: `Bearer ${token}` };
-  const responses = http.batch([
-    ['GET', `${baseUrl}/feed?mode=NEW&limit=20`, null, { headers, tags: { route: 'feed' } }],
-    [
-      'GET',
-      `${baseUrl}/listings?sort=NEWEST&limit=20`,
-      null,
-      { headers, tags: { route: 'search' } },
-    ],
-    [
-      'GET',
-      `${baseUrl}/feed?mode=RECOMMENDED&limit=20`,
-      null,
-      { headers, tags: { route: 'personalized-feed' } },
-    ],
-  ]);
-  check(responses, {
-    'read requests succeeded': (items) => items.every((item) => item.status === 200),
-  });
+  const route = selectReadRoute(__VU, __ITER);
+  const path =
+    route === 'feed'
+      ? '/feed?mode=NEW&limit=20'
+      : route === 'search'
+        ? '/listings?sort=NEWEST&limit=20'
+        : '/feed?mode=RECOMMENDED&limit=20';
+  const response = http.get(`${baseUrl}${path}`, { headers, tags: { route } });
+  check(response, { 'read request succeeded': (item) => item.status === 200 });
 
   if (__ENV.LISTING_ID) {
     const listing = http.get(`${baseUrl}/listings/${__ENV.LISTING_ID}`, {
