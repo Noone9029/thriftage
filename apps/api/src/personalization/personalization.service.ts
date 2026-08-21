@@ -299,18 +299,28 @@ export class PersonalizationService {
         where: { userId },
       }),
       this.prisma.listing.findMany({
-        include: {
+        select: {
           _count: { select: { likes: true, saves: true } },
+          colorFamily: true,
+          createdAt: true,
+          fitType: true,
+          garmentRole: true,
+          id: true,
+          priceMinor: true,
           seller: {
-            include: {
-              profile: true,
-              sellerVerifications: { select: { status: true }, where: { status: 'VERIFIED' } },
+            select: {
+              profile: { select: { completedSalesCount: true } },
+              sellerVerifications: {
+                select: { id: true },
+                take: 1,
+                where: { status: 'VERIFIED' },
+              },
             },
           },
-          styles: {
-            include: { styleDefinition: true },
-            orderBy: { styleDefinition: { sortOrder: 'asc' } },
-          },
+          sellerId: true,
+          sizeCompatibilityKey: true,
+          sizeSystem: true,
+          styles: { select: { styleDefinitionId: true } },
         },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         relationLoadStrategy: 'join',
