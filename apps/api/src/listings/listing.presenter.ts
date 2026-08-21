@@ -17,13 +17,14 @@ export class ListingPresenter {
 
   public async presentMany(
     records: readonly ListingRecord[],
-    viewerState: ViewerListingState,
+    viewerState: ViewerListingState | Promise<ViewerListingState>,
     matches: ReadonlyMap<string, ListingMatch> = new Map(),
   ): Promise<ListingDetail[]> {
     const keys = records.flatMap(({ images }) => images.map(({ storageKey }) => storageKey));
-    const urls = await this.storage.createSignedUrls(keys);
     const sellerIds = records.map((record) => record.sellerId);
-    const [ratings, verified] = await Promise.all([
+    const [resolvedViewerState, urls, ratings, verified] = await Promise.all([
+      viewerState,
+      this.storage.createSignedUrls(keys),
       this.reputation.summaries(sellerIds, 'BUYER_TO_SELLER'),
       this.reputation.verified(sellerIds),
     ]);
@@ -55,12 +56,12 @@ export class ListingPresenter {
           width: image.width,
         })),
         likeCount: record._count.likes,
-        likedByViewer: viewerState.likedIds.has(record.id),
+        likedByViewer: resolvedViewerState.likedIds.has(record.id),
         moderatedAt: record.moderatedAt?.toISOString() ?? null,
         priceMinor: record.priceMinor,
         rejectionReason: record.rejectionReason,
         saveCount: record._count.saves,
-        savedByViewer: viewerState.savedIds.has(record.id),
+        savedByViewer: resolvedViewerState.savedIds.has(record.id),
         seller: {
           id: record.seller.id,
           profileImageUrl: record.seller.profile?.profileImageUrl ?? null,

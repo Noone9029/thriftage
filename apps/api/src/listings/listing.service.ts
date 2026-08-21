@@ -168,7 +168,7 @@ export class ListingService {
             this.logger.warn(`Recommendation view event was not recorded: listingId=${listingId}`),
           );
       }
-      const state = await this.repository.getViewerState(viewerId, [record.id]);
+      const state = this.repository.getViewerState(viewerId, [record.id]);
       const [presented] = await this.presenter.presentMany(
         [record],
         state,
@@ -212,7 +212,7 @@ export class ListingService {
               (rankIndex.get(right.id) ?? Number.MAX_SAFE_INTEGER) ||
             left.id.localeCompare(right.id),
         );
-        const state = await this.repository.getViewerState(
+        const state = this.repository.getViewerState(
           viewerId,
           displayRecords.map(({ id }) => id),
         );
@@ -284,7 +284,7 @@ export class ListingService {
   }
 
   private async presentOne(record: ListingRecord, viewerId?: string): Promise<ListingDetail> {
-    const state = await this.repository.getViewerState(viewerId, [record.id]);
+    const state = this.repository.getViewerState(viewerId, [record.id]);
     const [presented] = await this.presenter.presentMany([record], state);
     if (presented === undefined) throw new MarketplaceDomainError('MARKETPLACE_SERVICE_ERROR');
     return presented;
@@ -296,7 +296,7 @@ export class ListingService {
     viewerId: string | undefined,
     encode: (last: ListingRecord) => string,
   ): Promise<ListingPage> {
-    const state = await this.repository.getViewerState(
+    const state = this.repository.getViewerState(
       viewerId,
       records.map(({ id }) => id),
     );

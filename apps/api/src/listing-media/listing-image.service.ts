@@ -37,7 +37,7 @@ export class ListingImageService {
         storageKey: key,
         width: processed.width,
       });
-      const state = await this.repository.getViewerState(userId, [listingId]);
+      const state = this.repository.getViewerState(userId, [listingId]);
       const [result] = await this.presenter.presentMany([record], state);
       if (result === undefined) throw new Error('Listing presentation failed.');
       return result;
@@ -61,7 +61,7 @@ export class ListingImageService {
       } catch {
         // The database is authoritative; a private orphan is safer than restoring a deleted image.
       }
-      const state = await this.repository.getViewerState(userId, [listingId]);
+      const state = this.repository.getViewerState(userId, [listingId]);
       const [result] = await this.presenter.presentMany([record], state);
       if (result === undefined) throw new Error('Listing presentation failed.');
       return result;
@@ -74,7 +74,7 @@ export class ListingImageService {
     try {
       const { imageIds } = imageOrderInputSchema.parse(input);
       const record = await this.repository.reorderImages(userId, listingId, imageIds);
-      const state = await this.repository.getViewerState(userId, [listingId]);
+      const state = this.repository.getViewerState(userId, [listingId]);
       const [result] = await this.presenter.presentMany([record], state);
       if (result === undefined) throw new Error('Listing presentation failed.');
       return result;

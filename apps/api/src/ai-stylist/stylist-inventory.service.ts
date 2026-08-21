@@ -192,7 +192,7 @@ export class StylistInventoryService {
     });
     const validIds = valid.map(({ id }) => id);
     const records = await this.listings.findByIds(validIds);
-    const viewerState = await this.listings.getViewerState(userId, validIds);
+    const viewerState = this.listings.getViewerState(userId, validIds);
     const ranking = await this.personalization.rankForYou(userId, new Date());
     const matches = new Map(ranking.ranked.map(({ id, match }) => [id, match]));
     const presented = await this.presenter.presentMany(records, viewerState, matches);

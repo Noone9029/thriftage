@@ -114,7 +114,7 @@ export class SocialService {
         parsed === null ? null : { listingId: parsed.listingId, savedAt: new Date(parsed.savedAt) };
       const excludedSellerIds = await this.safety.blockedCounterpartIds(userId);
       const result = await this.social.listSaved(userId, query.limit, cursor, excludedSellerIds);
-      const state = await this.listings.getViewerState(
+      const state = this.listings.getViewerState(
         userId,
         result.records.map(({ id }) => id),
       );

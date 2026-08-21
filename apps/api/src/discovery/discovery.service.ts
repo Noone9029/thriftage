@@ -46,7 +46,7 @@ export class DiscoveryService {
       const asOf = cursor?.asOf ?? new Date();
       const result = await this.discovery.rank(query.mode, viewerId, asOf, cursor, query.limit);
       const records = await this.listings.findByIds(result.ranks.map(({ id }) => id));
-      const state = await this.listings.getViewerState(
+      const state = this.listings.getViewerState(
         viewerId,
         records.map(({ id }) => id),
       );
@@ -85,7 +85,7 @@ export class DiscoveryService {
     const offset = cursor?.offset ?? 0;
     const page = result.ranked.slice(offset, offset + query.limit);
     const records = await this.listings.findByIds(page.map(({ id }) => id));
-    const state = await this.listings.getViewerState(
+    const state = this.listings.getViewerState(
       viewerId,
       records.map(({ id }) => id),
     );
