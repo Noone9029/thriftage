@@ -1,6 +1,8 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 
+import { matchesExactHttpsHost } from './load-target-guard.js';
+
 const baseUrl = (__ENV.BASE_URL ?? '').replace(/\/$/, '');
 const expectedHost = __ENV.EXPECTED_STAGING_HOST ?? '';
 const token = __ENV.LOAD_TEST_AUTH_TOKEN ?? '';
@@ -24,12 +26,10 @@ export const options = {
 };
 
 export function setup() {
-  const parsed = new URL(baseUrl);
   if (
     __ENV.TARGET_ENV !== 'staging' ||
     __ENV.ALLOW_STAGING_WRITES !== 'THRIFTAGE_SYNTHETIC_FIXTURES_ONLY' ||
-    parsed.protocol !== 'https:' ||
-    parsed.host !== expectedHost ||
+    !matchesExactHttpsHost(baseUrl, expectedHost) ||
     token.length < 20 ||
     !__ENV.CONVERSATION_ID
   ) {

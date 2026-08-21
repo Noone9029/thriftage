@@ -1,9 +1,12 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 
+import { matchesExactHttpsHost } from './load-target-guard.js';
+
 const baseUrl = (__ENV.BASE_URL ?? '').replace(/\/$/, '');
 const expectedHost = __ENV.EXPECTED_STAGING_HOST ?? '';
 const token = __ENV.LOAD_TEST_AUTH_TOKEN ?? '';
+const readLatencyThresholds = ['p(50)<250', 'p(95)<600', 'p(99)<1500'];
 
 function assertStagingTarget() {
   if (
@@ -12,8 +15,7 @@ function assertStagingTarget() {
   ) {
     throw new Error('Set TARGET_ENV=staging and ALLOW_STAGING_LOAD_TEST=THRIFTAGE_STAGING_ONLY.');
   }
-  const parsed = new URL(baseUrl);
-  if (parsed.protocol !== 'https:' || parsed.host !== expectedHost || token.length < 20) {
+  if (!matchesExactHttpsHost(baseUrl, expectedHost) || token.length < 20) {
     throw new Error('Use the exact HTTPS staging host and a synthetic tester access token.');
   }
 }
@@ -23,7 +25,7 @@ export const options = {
     beta_reads: {
       executor: 'ramping-vus',
       stages: [
-        { duration: '1m', target: 10 },
+        { duration: '1m', target: 30 },
         { duration: '3m', target: 30 },
         { duration: '1m', target: 0 },
       ],
@@ -31,7 +33,10 @@ export const options = {
   },
   thresholds: {
     checks: ['rate>0.99'],
-    http_req_duration: ['p(50)<250', 'p(95)<600', 'p(99)<1500'],
+    http_req_duration: readLatencyThresholds,
+    'http_req_duration{route:feed}': readLatencyThresholds,
+    'http_req_duration{route:personalized-feed}': readLatencyThresholds,
+    'http_req_duration{route:search}': readLatencyThresholds,
     http_req_failed: ['rate<0.01'],
   },
 };
