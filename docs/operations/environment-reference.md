@@ -7,7 +7,8 @@ Use independent secret stores for local, EAS `preview`, staging runtime, EAS `pr
 | Component               | Verified staging value                                                                 |
 | ----------------------- | -------------------------------------------------------------------------------------- |
 | API base                | `https://api-staging-4101.up.railway.app/api/v1`                                       |
-| API environment/release | `staging` / `4360df98c16a9fe45eca027610d5683b57140d86`                                 |
+| API environment/release | `staging` / `fa2d3f3c5c71dd9b4f49d1e64d1b9f3de1d06567`                                 |
+| API compute / DB region | Railway Singapore / Supabase `ap-south-1`                                              |
 | Admin preview           | `https://thriftage-admin-6hwrrcub6-ahmad-khalid-s-projects.vercel.app`                 |
 | Supabase project        | `dstnxzljsbyusxoogkzr` (`ap-south-1`, staging only)                                    |
 | Allowed browser origin  | Exact admin preview URL above                                                          |
@@ -15,7 +16,7 @@ Use independent secret stores for local, EAS `preview`, staging runtime, EAS `pr
 | Android preview build   | `dc462b59-c9f5-4088-a38f-1a4612596e94` from `aa036173e30db306e7770394688ff0b01c6cb1a5` |
 | Mobile preview target   | Public staging API and staging Supabase; never localhost/LAN for an EAS preview        |
 
-Current staging runtime flags disable registration, phone auth, seller verification, account deletion, AI Stylist, and push notifications. Realtime broadcast is server-side operational even though it is not a public client feature flag. Legal/support links and Sentry remain intentionally unconfigured blockers. The internal Android artifact identifies mobile release `aa036173e30db306e7770394688ff0b01c6cb1a5` and API release `4360df98c16a9fe45eca027610d5683b57140d86` independently in diagnostics. Preview builds set `SENTRY_DISABLE_AUTO_UPLOAD=true` until Sentry credentials exist; production does not. Expo Go is development evidence only and is not interchangeable with the installed preview package.
+Current staging uses `DATABASE_POOL_MAX=15`, matching the verified Supabase session-pool client limit. Runtime flags disable registration, phone auth, seller verification, account deletion, AI Stylist, and push notifications. Realtime broadcast is server-side operational even though it is not a public client feature flag. Legal/support links and Sentry remain intentionally unconfigured blockers. The internal Android artifact identifies mobile release `aa036173e30db306e7770394688ff0b01c6cb1a5`; its diagnostics obtain the current API release from the runtime. Preview builds set `SENTRY_DISABLE_AUTO_UPLOAD=true` until Sentry credentials exist; production does not. Expo Go is development evidence only and is not interchangeable with the installed preview package.
 
 ## Identity and runtime
 

@@ -7,13 +7,13 @@ This repository does not authorize public launch. Staging deployment and closed/
 ### Current verified staging inventory
 
 - API: `https://api-staging-4101.up.railway.app/api/v1` on Railway project `thriftage-staging`, environment `staging`, service `api`.
-- API release: `4360df98c16a9fe45eca027610d5683b57140d86`; `/health` and `/readiness` return 200 and identify `staging`.
+- API release: `fa2d3f3c5c71dd9b4f49d1e64d1b9f3de1d06567` on Railway Singapore; `/health` and `/readiness` return 200 and identify `staging`.
 - Admin: `https://thriftage-admin-6hwrrcub6-ahmad-khalid-s-projects.vercel.app` in the existing Vercel project `thriftage-admin`.
 - Database/Auth/Storage/Realtime: existing Supabase staging project `dstnxzljsbyusxoogkzr` in `ap-south-1`.
 - Mobile: Expo project `@noone9029s-team/thriftage` (`8b3c5e61-0f52-4646-a29a-bf5b3dd86d91`); Android internal build `dc462b59-c9f5-4088-a38f-1a4612596e94` from mobile release `aa036173e30db306e7770394688ff0b01c6cb1a5`.
 - The API allows the exact admin preview origin. Do not broaden credentialed CORS or create duplicate provider projects.
 
-Railway uses the repository `Dockerfile` and `railway.json`, Node 24, `/api/v1/readiness` as its health check, staging-only secret variables, and the least-privilege runtime database role. The API container pins the Supabase Root 2021 CA and requires TLS verification. Background loops execute in the API service; inspect deployment logs for outbox, order-finalization, deletion, and media failures after each release.
+Railway uses the repository `Dockerfile` and `railway.json`, Node 24, `/api/v1/readiness` as its health check, staging-only secret variables, and the least-privilege runtime database role. The API container pins the Supabase Root 2021 CA and requires TLS verification. Staging sets `DATABASE_POOL_MAX=15`, the verified session-pool client cap; do not raise it without a provider-plan change and a new connection proof. Background loops execute in the API service; inspect deployment logs for outbox, order-finalization, deletion, and media failures after each release.
 
 1. Start from a reviewed commit. CI must pass frozen install, secret scan, critical dependency audit, formatting, lint, typecheck, unit tests, Prisma validation, migration safety, fresh migration deployment, database/API integration tests, builds, and Expo Doctor.
 2. Build immutable API/admin artifacts tagged with `RELEASE_VERSION=<git SHA>`. Inject staging secrets only from the hosting secret store.
