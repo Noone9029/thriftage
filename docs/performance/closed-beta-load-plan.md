@@ -26,13 +26,13 @@ Record commit/release, region, database plan/pool size, fixture volume, k6 summa
 
 ## 2026-08-21 staging evidence
 
-The guarded read test targeted API release `fa2d3f3c5c71dd9b4f49d1e64d1b9f3de1d06567` on Railway Singapore with Supabase Postgres in `ap-south-1` and `DATABASE_POOL_MAX=15`. It used the approved synthetic demo identity and clearly test-scoped inventory. The scenario ramped from 0 to 30 VUs for one minute, held 30 for three minutes, then ramped down for one minute. Each VU performed one rotating feed, personalized-feed, or search request followed by one second of think time.
+The guarded read test targeted API release `b19ce9bad821a0787348f2ffb2dbc4d2dfdd38fd` on Railway Singapore with Supabase Postgres in `ap-south-1` and `DATABASE_POOL_MAX=15`. It used the approved synthetic demo identity and clearly test-scoped inventory. The scenario ramped from 0 to 30 VUs for one minute, held 30 for three minutes, then ramped down for one minute. Each VU performed one rotating feed, personalized-feed, or search request followed by one second of think time. The generator was the operator workstation configured for `America/New_York`, not a Pakistan-region load generator.
 
 | Route             | p50    | p95    | p99    |
 | ----------------- | ------ | ------ | ------ |
-| All reads         | 1.39 s | 2.86 s | 3.05 s |
-| Feed              | 1.26 s | 1.65 s | 1.75 s |
-| Personalized feed | 2.43 s | 3.02 s | 3.13 s |
-| Search            | 1.26 s | 1.63 s | 1.71 s |
+| All reads         | 520 ms | 636 ms | 687 ms |
+| Feed              | 496 ms | 564 ms | 610 ms |
+| Personalized feed | 584 ms | 663 ms | 716 ms |
+| Search            | 495 ms | 571 ms | 621 ms |
 
-Result: **FAIL**. All 2,820 checks passed and 0 of 2,821 HTTP requests failed, but every route exceeded the latency targets. Railway reported 2,826 2xx responses, no 4xx/5xx responses, peak CPU `0.259 vCPU`, and peak memory `326.9 MB` for the covering window. Two earlier diagnostic runs deliberately issued three parallel requests per VU and were retained only as saturation evidence; they are not the gate result. Sentry and representative beta-scale catalog evidence remain unavailable.
+Result: **FAIL**. All 4,722 checks passed and 0 of 4,723 HTTP requests failed. Feed and search now pass p95/p99, and all routes pass p99, but every route still misses p50; overall p95 misses by 36 ms and personalized-feed p95 misses by 63 ms. Joining nested Prisma relations reduced overall p95 from 2.86 s to 636 ms and p99 from 3.05 s to 687 ms without changing the scenario or thresholds. A separate sequential probe measured health p50 at 286 ms from the same operator host, so a Pakistan-region generator is required to separate application latency from the long-distance network floor. The gate remains failed until the original targets pass; Sentry and representative beta-scale catalog evidence also remain unavailable.
