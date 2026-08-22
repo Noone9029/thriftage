@@ -7,7 +7,7 @@ Use independent secret stores for local, EAS `preview`, staging runtime, EAS `pr
 | Component               | Verified staging value                                                                     |
 | ----------------------- | ------------------------------------------------------------------------------------------ |
 | API base                | `https://api-staging-4101.up.railway.app/api/v1`                                           |
-| API environment/release | `staging` / `c5e2f889c9363c5a9541e49fbf2ffff0b205a7b6`                                     |
+| API environment/release | `staging` / `adba7a9de89bcf80bac86c04cf951d0787d827ca`                                     |
 | API compute / DB region | Railway Singapore / Supabase `ap-south-1`                                                  |
 | Admin preview           | `https://thriftage-admin-6hwrrcub6-ahmad-khalid-s-projects.vercel.app`                     |
 | Account deletion page   | `https://thriftage-admin-6hwrrcub6-ahmad-khalid-s-projects.vercel.app/account-deletion`    |

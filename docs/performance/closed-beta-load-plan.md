@@ -44,3 +44,18 @@ Release `c5e2f889c9363c5a9541e49fbf2ffff0b205a7b6` caches the active recommendat
 After two warm-ups, a bounded authenticated sequential probe made 10 recommendation-feed requests from the same operator workstation. All returned HTTP 200. Client timing was p50 `579.93 ms` and p95 `648.78 ms`; correlated Railway request logs measured API timing at p50 `261.27 ms` and p95 `266.79 ms`. The approximately `319 ms` p50 gap is transit and edge overhead from the New York operator path to Railway Singapore. The narrowed candidate projection did not materially improve the small staging fixture, so no further speculative cache or infrastructure was added.
 
 This probe is diagnostic evidence, not a substitute for the guarded 30-VU scenario. The gate remains **FAIL** until the original thresholds pass from an approved Pakistan-region generator with representative beta-scale inventory and monitoring evidence.
+
+## 2026-08-22 regional staging diagnostic
+
+Release `adba7a9de89bcf80bac86c04cf951d0787d827ca` adds a bounded application-user lookup cache after profiling showed that authenticated user resolution added approximately `60 ms` per request between Railway Singapore and Supabase Mumbai. Only active standard users are cached, for at most three seconds and 5,000 entries; in-flight lookups are coalesced. Administrators, missing users, and suspended or deactivated users are never cached, so privileged and denied states remain authoritative on every request. Unit tests cover concurrency, expiry, and excluded states.
+
+An exact-release diagnostic ran from the existing Railway Singapore staging instance for three minutes with 30 concurrent workers against authenticated feed, personalized-feed, and search reads. This was a regional application diagnostic, not the required Pakistan-origin run and not representative beta-scale inventory.
+
+| Route             | Requests |       p50 |       p95 |       p99 |
+| ----------------- | -------: | --------: | --------: | --------: |
+| All reads         |    4,235 | 265.98 ms | 404.46 ms | 653.23 ms |
+| Feed              |    1,414 | 258.95 ms | 386.76 ms | 657.39 ms |
+| Personalized feed |    1,409 | 276.89 ms | 463.13 ms | 654.96 ms |
+| Search            |    1,412 | 250.16 ms | 390.91 ms | 640.43 ms |
+
+Result: **FAIL**. All routes pass p95 and p99 but miss the strict p50 target. The diagnostic recorded three client-side failures; correlated Railway logs for the measurement window recorded 4,264 responses, zero HTTP statuses >=400, zero upstream-error rows, and no application warning/error entries. Warm sequential authenticated p50 was `209.87–215.23 ms`, confirming that the optimization helps low-contention reads but does not clear the sustained concurrency gate. Stop extending cache duration: further work should measure database/query or regional-placement changes. The final gate still requires the approved Pakistan-region generator, representative beta inventory, and monitoring evidence.
