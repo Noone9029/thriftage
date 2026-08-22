@@ -1,4 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
+import { Platform } from 'react-native';
+
+import { appendImageUpload } from '../media/image-upload-form';
 
 const MAX_PROFILE_IMAGE_BYTES = 5 * 1024 * 1024;
 
@@ -22,14 +25,6 @@ export async function selectProfileImage(): Promise<SelectedProfileImage | null>
     throw new Error('Profile images must be no larger than 5 MB.');
   }
   const form = new FormData();
-  if (asset.file !== undefined) {
-    form.append('image', asset.file);
-  } else {
-    form.append('image', {
-      name: asset.fileName ?? 'profile-image.jpg',
-      type: asset.mimeType ?? 'image/jpeg',
-      uri: asset.uri,
-    } as unknown as Blob);
-  }
+  appendImageUpload(form, asset, 'profile-image.jpg', Platform.OS === 'web');
   return { form, uri: asset.uri };
 }

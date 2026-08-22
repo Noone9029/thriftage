@@ -1,4 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
+import { Platform } from 'react-native';
+
+import { appendImageUpload } from '../media/image-upload-form';
 
 const MAX_EVIDENCE_BYTES = 5 * 1024 * 1024;
 
@@ -15,12 +18,6 @@ export async function selectDisputeEvidence(): Promise<FormData | null> {
     throw new Error('Evidence images must be no larger than 5 MB.');
   }
   const form = new FormData();
-  if (asset.file !== undefined) form.append('image', asset.file);
-  else
-    form.append('image', {
-      name: asset.fileName ?? 'dispute-evidence.jpg',
-      type: asset.mimeType ?? 'image/jpeg',
-      uri: asset.uri,
-    } as unknown as Blob);
+  appendImageUpload(form, asset, 'dispute-evidence.jpg', Platform.OS === 'web');
   return form;
 }
