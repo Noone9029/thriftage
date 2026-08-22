@@ -7,7 +7,7 @@ Use independent secret stores for local, EAS `preview`, staging runtime, EAS `pr
 | Component               | Verified staging value                                                                     |
 | ----------------------- | ------------------------------------------------------------------------------------------ |
 | API base                | `https://api-staging-4101.up.railway.app/api/v1`                                           |
-| API environment/release | `staging` / `4c2e556a4d6edf06588e83851c464ffefd97d740`                                     |
+| API environment/release | `staging` / `f7fac85344697e73fd843b0bad7b393fb1a4678d`                                     |
 | API compute / DB region | Railway Singapore / Supabase `ap-south-1`                                                  |
 | Admin preview           | `https://thriftage-admin-6hwrrcub6-ahmad-khalid-s-projects.vercel.app`                     |
 | Account deletion page   | `https://thriftage-admin-6hwrrcub6-ahmad-khalid-s-projects.vercel.app/account-deletion`    |
@@ -15,10 +15,10 @@ Use independent secret stores for local, EAS `preview`, staging runtime, EAS `pr
 | Allowed browser origin  | Exact admin preview URL above                                                              |
 | Expo project            | `@noone9029s-team/thriftage` / `8b3c5e61-0f52-4646-a29a-bf5b3dd86d91`                      |
 | Android preview build   | `dc462b59-c9f5-4088-a38f-1a4612596e94` from `aa036173e30db306e7770394688ff0b01c6cb1a5`     |
-| Mobile preview OTA      | Group `150f9366-ca54-4e65-9cea-2582a854d303` at `edf83509126fb8dbbdd2ac3a83e1c19f2b6f4223` |
+| Mobile preview OTA      | Group `9255dbe7-9487-4c05-bb3c-287e4f1fbea2` at `da6246e4a9587d466df8f58ff74bd3684cc27754` |
 | Mobile preview target   | Public staging API and staging Supabase; never localhost/LAN for an EAS preview            |
 
-Current staging uses `DATABASE_POOL_MAX=15`, matching the verified Supabase session-pool client limit. Runtime flags disable registration, phone auth, seller verification, account deletion, AI Stylist, and push notifications. Account deletion was enabled only for the controlled 2026-08-21 disposable-identity drill and restored to `false` afterward. Its public unauthenticated Vercel page is configured as the backend `ACCOUNT_DELETION_URL` and is exposed through safe runtime config. Realtime broadcast is server-side operational even though it is not a public client feature flag. Privacy Policy, Terms, Community Guidelines, support links, and Sentry remain intentionally unconfigured blockers. The installed Android preview uses native build release `aa036173e30db306e7770394688ff0b01c6cb1a5` and preview OTA release `edf83509126fb8dbbdd2ac3a83e1c19f2b6f4223`; its diagnostics obtain the current API release from the runtime. Preview builds set `SENTRY_DISABLE_AUTO_UPLOAD=true` until Sentry credentials exist; production does not. Expo Go is development evidence only and is not interchangeable with the installed preview package.
+Current staging uses `DATABASE_POOL_MAX=15`, matching the verified Supabase session-pool client limit. Runtime flags disable registration, phone auth, seller verification, account deletion, AI Stylist, and push notifications. Account deletion was enabled only for the controlled 2026-08-21 disposable-identity drill and restored to `false` afterward. Its public unauthenticated Vercel page is configured as the backend `ACCOUNT_DELETION_URL` and is exposed through safe runtime config. Realtime broadcast is server-side operational even though it is not a public client feature flag. Privacy Policy, Terms, Community Guidelines, support links, and Sentry remain intentionally unconfigured blockers. The installed Android preview uses native build release `aa036173e30db306e7770394688ff0b01c6cb1a5` and compatible preview OTA release `da6246e4a9587d466df8f58ff74bd3684cc27754`; its diagnostics obtain the current API release from runtime metadata. Preview builds set `SENTRY_DISABLE_AUTO_UPLOAD=true` until Sentry credentials exist; production does not. Expo Go is development evidence only and is not interchangeable with the installed preview package.
 
 ## Identity and runtime
 

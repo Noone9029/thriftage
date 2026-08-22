@@ -4,7 +4,7 @@ This engineering inventory supports legal review, Google Play Data Safety, and A
 
 ## Reconciled staging snapshot
 
-Reconciled on 2026-08-21 against Railway API release `dd28395f6c815c37d8dbde125dd450f64adf5e45`, mobile preview release `aa036173e30db306e7770394688ff0b01c6cb1a5`, the Vercel admin preview, Prisma models, client storage, and installed SDK configuration. Supabase and the three hosting/release services below are active. Twilio, OpenAI, Expo Push, Sentry, external payments, and courier integrations are not active in staging.
+Reconciled through 2026-08-22 against Railway API release `f7fac85344697e73fd843b0bad7b393fb1a4678d`, Android preview build `dc462b59-c9f5-4088-a38f-1a4612596e94`, compatible preview OTA `da6246e4a9587d466df8f58ff74bd3684cc27754`, the Vercel admin preview, Prisma models, client storage, and installed SDK configuration. Supabase and the three hosting/release services below are active. Twilio, OpenAI, Expo Push, Sentry, external payments, and courier integrations are not active in staging.
 
 ## Data flow inventory
 

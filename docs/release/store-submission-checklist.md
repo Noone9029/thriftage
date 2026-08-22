@@ -2,6 +2,8 @@
 
 This is an owner checklist, not authorization to submit publicly. Closed/internal testing is the maximum scope of the current readiness goal. Values marked **CLIENT REQUIRED** must not be invented.
 
+Current missing client/account-owner inputs are consolidated in `docs/release/external-beta-prerequisites.md`. Android sideload instructions and package identity are in `docs/release/android-beta-installation.md`. No store submission has been performed.
+
 ## Apple / TestFlight
 
 - [ ] Final app name, subtitle, description, keywords, primary/secondary category — **CLIENT REQUIRED**

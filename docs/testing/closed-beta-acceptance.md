@@ -21,6 +21,8 @@ Run `pnpm test`, migrate a fresh disposable database from zero, then run `pnpm t
 
 Record release SHA, environment, request IDs, fixture IDs, tester, timestamp, and PASS/FAIL. First run `pnpm staging:smoke`, then `pnpm security:authorization:staging` with dedicated synthetic A/B/Admin fixtures. Complete the seller → admin → buyer → seller → buyer → worker → review journey from `docs/operations/closed-beta-runbook.md`. Use a separate completed order for the optional dispute path. Exercise real Auth, Storage, Realtime reconnect/refetch, Twilio, SMTP, push, and bounded OpenAI only when approved credentials exist; otherwise keep that feature disabled and record `BLOCKED`.
 
+Give invited testers `docs/testing/beta-tester-checklist.md` and the platform installation guide. Process reports through `docs/operations/beta-feedback-process.md`. The 2026-08-22 emulator commerce journey is already recorded; do not repeat it without a regression reason.
+
 ## Physical-device record
 
 At minimum, install the actual preview artifact on a supported Android device and record model/OS/build ID. Repeat on iPhone when Apple access exists. Capture cold start, deep links, email/phone auth, photo permission denial/acceptance, keyboard/back behavior, background/reconnect, push, checkout, logout, and deletion. Test small, typical, and large layouts plus TalkBack/VoiceOver. Web export or simulator-only evidence cannot close this gate.

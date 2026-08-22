@@ -28,7 +28,7 @@ eas build --profile preview --platform ios
 eas build --profile production --platform all
 ```
 
-Production builds are for store-facilitated testing, not automatic public release. Record build URLs/IDs and SHA. For an OTA preview test, publish to `preview`, install the matching runtime, confirm update and symbolicated deliberate Sentry test, then test rollback. The verified runtime `0.1.0` preview update is group `150f9366-ca54-4e65-9cea-2582a854d303` (Android `01a02808-e96c-74d3-88f9-5e8c28691169`) at release `edf83509126fb8dbbdd2ac3a83e1c19f2b6f4223`; it is preview-only and does not authorize production promotion. `SENTRY_AUTH_TOKEN` is sensitive; the DSN is public but still environment-specific. Expo's Sentry guide describes automatic EAS Build source-map upload: [Using Sentry](https://docs.expo.dev/guides/using-sentry/).
+Production builds are for store-facilitated testing, not automatic public release. Record build URLs/IDs and SHA. The verified Android preview is build `dc462b59-c9f5-4088-a38f-1a4612596e94`, version `0.1.0` (1), SHA-256 `b0227e5d9a2b35884a55795179c7940e2440ea79e46d6aaa30a264d24694e591`. Runtime `0.1.0` currently uses preview group `9255dbe7-9487-4c05-bb3c-287e4f1fbea2` (Android `01a02aff-28c2-79a8-b60f-da678bf85199`) at `da6246e4a9587d466df8f58ff74bd3684cc27754`. It is preview-only and does not authorize production promotion. See `docs/release/android-beta-installation.md`; replace the expiring artifact before 2026-09-04. A symbolicated Sentry event remains blocked until credentials exist. `SENTRY_AUTH_TOKEN` is sensitive; the DSN is public but environment-specific. Expo's Sentry guide describes automatic EAS Build source-map upload: [Using Sentry](https://docs.expo.dev/guides/using-sentry/).
 
 ## Device acceptance
 
