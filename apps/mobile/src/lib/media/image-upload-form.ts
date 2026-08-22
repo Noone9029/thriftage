@@ -1,6 +1,7 @@
 import type { ImagePickerAsset } from 'expo-image-picker';
+import { File } from 'expo-file-system';
 
-type ImageUploadAsset = Pick<ImagePickerAsset, 'file' | 'fileName' | 'mimeType' | 'uri'>;
+type ImageUploadAsset = Pick<ImagePickerAsset, 'file' | 'fileName' | 'uri'>;
 
 export function appendImageUpload(
   form: FormData,
@@ -8,14 +9,13 @@ export function appendImageUpload(
   fallbackName: string,
   isWeb: boolean,
 ): void {
-  if (isWeb && asset.file !== undefined) {
-    form.append('image', asset.file);
+  if (isWeb) {
+    if (asset.file === undefined) {
+      throw new Error('The browser did not provide a readable image file.');
+    }
+    form.append('image', asset.file, asset.fileName ?? fallbackName);
     return;
   }
 
-  form.append('image', {
-    name: asset.fileName ?? fallbackName,
-    type: asset.mimeType ?? 'image/jpeg',
-    uri: asset.uri,
-  } as unknown as Blob);
+  form.append('image', new File(asset.uri), asset.fileName ?? fallbackName);
 }

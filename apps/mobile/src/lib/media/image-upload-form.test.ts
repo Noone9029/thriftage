@@ -2,8 +2,18 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { appendImageUpload } from './image-upload-form';
 
+vi.mock('expo-file-system', () => ({
+  File: class MockFile {
+    public readonly uri: string;
+
+    public constructor(uri: string) {
+      this.uri = uri;
+    }
+  },
+}));
+
 describe('appendImageUpload', () => {
-  it('uses the React Native URI part on Android even when Expo supplies a file value', () => {
+  it('wraps the selected Android URI in an Expo file-backed blob', () => {
     const append = vi.fn();
     const file = {} as File;
 
@@ -12,18 +22,17 @@ describe('appendImageUpload', () => {
       {
         file,
         fileName: 'selected.png',
-        mimeType: 'image/png',
         uri: 'content://media/selected.png',
       },
       'fallback.jpg',
       false,
     );
 
-    expect(append).toHaveBeenCalledWith('image', {
-      name: 'selected.png',
-      type: 'image/png',
-      uri: 'content://media/selected.png',
-    });
+    expect(append).toHaveBeenCalledWith(
+      'image',
+      expect.objectContaining({ uri: 'content://media/selected.png' }),
+      'selected.png',
+    );
   });
 
   it('uses the browser File object on web', () => {
@@ -37,6 +46,6 @@ describe('appendImageUpload', () => {
       true,
     );
 
-    expect(append).toHaveBeenCalledWith('image', file);
+    expect(append).toHaveBeenCalledWith('image', file, 'fallback.jpg');
   });
 });
