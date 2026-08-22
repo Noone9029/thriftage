@@ -67,7 +67,7 @@ export class SocialService {
       if (result.changed && active) {
         this.events.publish({ actorId: userId, name: 'seller_followed', targetUserId });
       }
-      return socialActionResultSchema.parse(result);
+      return socialActionResultSchema.parse({ active: result.active, count: result.count });
     } catch (error: unknown) {
       throw mapMarketplaceError(error);
     }
@@ -164,7 +164,7 @@ export class SocialService {
           })
           .catch(() => undefined);
       }
-      return socialActionResultSchema.parse(result);
+      return socialActionResultSchema.parse({ active: result.active, count: result.count });
     } catch (error: unknown) {
       throw mapMarketplaceError(error);
     }
