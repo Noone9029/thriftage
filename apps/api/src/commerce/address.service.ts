@@ -18,8 +18,19 @@ export class AddressService {
 
   private present(record: Awaited<ReturnType<AddressRepository['create']>>): Address {
     return addressSchema.parse({
-      ...record,
+      addressLine1: record.addressLine1,
+      addressLine2: record.addressLine2,
+      city: record.city,
+      countryCode: record.countryCode,
       createdAt: record.createdAt.toISOString(),
+      deliveryInstructions: record.deliveryInstructions,
+      id: record.id,
+      isDefault: record.isDefault,
+      label: record.label,
+      phone: record.phone,
+      postalCode: record.postalCode,
+      recipientName: record.recipientName,
+      region: record.region,
       updatedAt: record.updatedAt.toISOString(),
     });
   }
