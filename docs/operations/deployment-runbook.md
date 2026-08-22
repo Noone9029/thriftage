@@ -7,7 +7,7 @@ This repository does not authorize public launch. Staging deployment and closed/
 ### Current verified staging inventory
 
 - API: `https://api-staging-4101.up.railway.app/api/v1` on Railway project `thriftage-staging`, environment `staging`, service `api`.
-- API release: `adba7a9de89bcf80bac86c04cf951d0787d827ca` on Railway Singapore; deployment `a371df19-76f7-4e37-aa21-30df6ea4f6de`; `/health` and `/readiness` return 200 and identify `staging`.
+- API release: `4c2e556a4d6edf06588e83851c464ffefd97d740` on Railway Singapore; deployment `efc61fd1-47d8-437c-bcd0-2c4a45ecfcd9`; `/health` and `/readiness` return 200 and identify `staging`.
 - Admin: `https://thriftage-admin-6hwrrcub6-ahmad-khalid-s-projects.vercel.app` in the existing Vercel project `thriftage-admin`; the public unauthenticated account-deletion page is available at `/account-deletion` and configured in API runtime metadata.
 - Database/Auth/Storage/Realtime: existing Supabase staging project `dstnxzljsbyusxoogkzr` in `ap-south-1`.
 - Mobile: Expo project `@noone9029s-team/thriftage` (`8b3c5e61-0f52-4646-a29a-bf5b3dd86d91`); Android internal build `dc462b59-c9f5-4088-a38f-1a4612596e94` from native mobile release `aa036173e30db306e7770394688ff0b01c6cb1a5`, updated on the preview channel to release `edf83509126fb8dbbdd2ac3a83e1c19f2b6f4223` by OTA group `150f9366-ca54-4e65-9cea-2582a854d303`.

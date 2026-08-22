@@ -59,3 +59,18 @@ An exact-release diagnostic ran from the existing Railway Singapore staging inst
 | Search            |    1,412 | 250.16 ms | 390.91 ms | 640.43 ms |
 
 Result: **FAIL**. All routes pass p95 and p99 but miss the strict p50 target. The diagnostic recorded three client-side failures; correlated Railway logs for the measurement window recorded 4,264 responses, zero HTTP statuses >=400, zero upstream-error rows, and no application warning/error entries. Warm sequential authenticated p50 was `209.87–215.23 ms`, confirming that the optimization helps low-contention reads but does not clear the sustained concurrency gate. Stop extending cache duration: further work should measure database/query or regional-placement changes. The final gate still requires the approved Pakistan-region generator, representative beta inventory, and monitoring evidence.
+
+### Database round-trip optimization evidence
+
+Release `4c2e556a4d6edf06588e83851c464ffefd97d740` keeps bidirectional block checks authoritative inside the listing query, hydrates chronological NEW feed records without a separate rank lookup, and combines five bounded personalization-history reads into one bounded `UNION ALL` query. It does not extend cache duration, add infrastructure, or weaken listing eligibility. The new personalization SQL was executed read-only against staging PostgreSQL before deployment; unit tests cover the one-query feed path, in-query block predicates, and per-source history limits. The complete default suite, typecheck, builds, formatting, lint, migration safety, and secret scans pass. The isolated destructive integration suite was not run locally because no disposable `TEST_DATABASE_URL` is available; staging was not repurposed as a test database.
+
+The exact-release three-minute, 30-worker authenticated regional diagnostic produced:
+
+| Route             | Requests |       p50 |       p95 |       p99 |
+| ----------------- | -------: | --------: | --------: | --------: |
+| All reads         |    4,634 | 138.73 ms | 249.43 ms | 597.30 ms |
+| Feed              |    1,545 | 128.33 ms | 193.44 ms | 470.03 ms |
+| Personalized feed |    1,546 | 192.02 ms | 298.95 ms | 659.45 ms |
+| Search            |    1,543 | 128.20 ms | 196.26 ms | 549.16 ms |
+
+Result: **regional technical targets PASS** with zero diagnostic failures. Correlated Railway logs recorded 4,641 HTTP 200 responses from the diagnostic source at server p50 `132 ms`, p95 `244 ms`, and p99 `577 ms`, with zero upstream-error rows and no application warning/error entries. This clears the measured Singapore-regional latency defect. The authoritative release gate remains **BLOCKED**, not PASS, until an approved Pakistan-origin generator, representative beta-scale inventory, and monitoring evidence reproduce the result.
