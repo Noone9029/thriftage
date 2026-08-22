@@ -44,6 +44,34 @@ export class DiscoveryService {
       }
       const cursor = this.parseCursor(query, query.cursor);
       const asOf = cursor?.asOf ?? new Date();
+      if (query.mode === 'NEW') {
+        const result = await this.listings.listNewFeed(
+          viewerId,
+          asOf,
+          cursor === null ? null : { createdAt: cursor.createdAt, id: cursor.id },
+          query.limit,
+        );
+        const state = this.listings.getViewerState(
+          viewerId,
+          result.records.map(({ id }) => id),
+        );
+        const items = await this.presenter.presentMany(result.records, state);
+        const last = result.records.at(-1);
+        return {
+          items,
+          nextCursor:
+            result.hasMore && last !== undefined
+              ? encodeCursor({
+                  asOf: asOf.toISOString(),
+                  createdAt: last.createdAt.toISOString(),
+                  id: last.id,
+                  kind: 'DISCOVERY',
+                  mode: query.mode,
+                  score: 0,
+                })
+              : null,
+        };
+      }
       const result = await this.discovery.rank(query.mode, viewerId, asOf, cursor, query.limit);
       const records = await this.listings.findByIds(result.ranks.map(({ id }) => id));
       const state = this.listings.getViewerState(

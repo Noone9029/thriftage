@@ -243,6 +243,37 @@ describe.sequential('marketplace integration', () => {
     expect(new Set([...first.items, ...second.items].map(({ id }) => id)).size).toBe(3);
   });
 
+  it('excludes blocked sellers in either direction inside authenticated search', async () => {
+    const viewer = await user('search_viewer');
+    const blockedByViewer = await user('search_blocked_by_viewer');
+    const blockingViewer = await user('search_blocking_viewer');
+    const allowedSeller = await user('search_allowed_seller');
+    const selectedCategory = await category();
+    const createListing = (sellerId: string, title: string) =>
+      prisma.listing.create({
+        data: {
+          ...directListingInput(selectedCategory.id, title),
+          sellerId,
+          status: 'ACTIVE',
+        },
+      });
+    await Promise.all([
+      createListing(blockedByViewer.id, 'Viewer blocked this seller'),
+      createListing(blockingViewer.id, 'This seller blocked the viewer'),
+      createListing(allowedSeller.id, 'Allowed seller listing'),
+      prisma.userBlock.create({
+        data: { blockedUserId: blockedByViewer.id, blockerId: viewer.id },
+      }),
+      prisma.userBlock.create({
+        data: { blockedUserId: viewer.id, blockerId: blockingViewer.id },
+      }),
+    ]);
+
+    const page = await listingService.search({ limit: 20, sort: 'NEWEST' }, viewer.id);
+
+    expect(page.items.map(({ seller }) => seller.id)).toEqual([allowedSeller.id]);
+  });
+
   it('boosts followed sellers in deterministic recommended discovery', async () => {
     const viewer = await user('feed_viewer');
     const followedSeller = await user('followed_seller');

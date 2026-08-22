@@ -195,9 +195,7 @@ export class ListingService {
     try {
       const query = listingSearchQuerySchema.parse(queryInput);
       const cursor = this.parseSearchCursor(query, query.cursor);
-      const excludedSellerIds =
-        viewerId === undefined ? [] : await this.safety.blockedCounterpartIds(viewerId);
-      const result = await this.repository.search(query, cursor, excludedSellerIds);
+      const result = await this.repository.search(query, cursor, viewerId);
       if (query.sort === 'PERSONALIZED' && viewerId !== undefined) {
         const ranked = await this.personalization.rankForYou(viewerId, new Date());
         const rankIndex = new Map(ranked.ranked.map((item, index) => [item.id, index]));

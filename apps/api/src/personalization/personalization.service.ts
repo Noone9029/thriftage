@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   getPrismaClient,
+  Prisma,
   type PrismaClient,
   type RecommendationConfiguration,
 } from '@thriftage/db';
@@ -33,6 +34,12 @@ const profileInclude = {
 
 const behaviorHistoryLimit = 500;
 const behaviorHistoryWindowMs = 90 * 86_400_000;
+
+interface BehavioralStyleSignal {
+  readonly occurredAt: Date;
+  readonly styleDefinitionId: string;
+  readonly weight: number;
+}
 // Ranking configuration changes are rare; activation invalidates this instance immediately.
 const activeConfigurationCacheTtlMs = 30_000;
 const defaultRecommendationConfiguration = {
@@ -282,17 +289,8 @@ export class PersonalizationService {
     const config = configuration ?? defaultRecommendationConfiguration;
     const ninetyDaysAgo = new Date(asOf.getTime() - behaviorHistoryWindowMs);
     // Read the bounded history in parallel with the profile, then apply its reset boundary below.
-    // Newest-first limits preserve the same post-reset records without a profile-dependent DB round.
-    const [
-      profileRow,
-      candidates,
-      followsWindow,
-      eventsWindow,
-      likesWindow,
-      savesWindow,
-      purchasesWindow,
-      messagesWindow,
-    ] = await Promise.all([
+    // The union preserves a per-source newest-first limit while avoiding five pool round trips.
+    const [profileRow, candidates, followsWindow, behavioralStyleSignals] = await Promise.all([
       this.prisma.userStyleProfile.findUnique({
         include: profileInclude,
         relationLoadStrategy: 'join',
@@ -351,84 +349,22 @@ export class PersonalizationService {
         take: behaviorHistoryLimit,
         where: { createdAt: { gt: ninetyDaysAgo, lte: asOf }, followerId: userId },
       }),
-      this.prisma.recommendationEvent.findMany({
-        include: { listing: { include: { styles: true } } },
-        orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }],
-        relationLoadStrategy: 'join',
-        take: behaviorHistoryLimit,
-        where: { occurredAt: { gt: ninetyDaysAgo, lte: asOf }, userId },
-      }),
-      this.prisma.listingLike.findMany({
-        include: { listing: { include: { styles: true } } },
-        orderBy: [{ createdAt: 'desc' }, { listingId: 'desc' }],
-        relationLoadStrategy: 'join',
-        take: behaviorHistoryLimit,
-        where: { createdAt: { gt: ninetyDaysAgo, lte: asOf }, userId },
-      }),
-      this.prisma.savedListing.findMany({
-        include: { listing: { include: { styles: true } } },
-        orderBy: [{ createdAt: 'desc' }, { listingId: 'desc' }],
-        relationLoadStrategy: 'join',
-        take: behaviorHistoryLimit,
-        where: { createdAt: { gt: ninetyDaysAgo, lte: asOf }, userId },
-      }),
-      this.prisma.order.findMany({
-        include: { listing: { include: { styles: true } } },
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-        relationLoadStrategy: 'join',
-        take: behaviorHistoryLimit,
-        where: {
-          buyerId: userId,
-          createdAt: { gt: ninetyDaysAgo, lte: asOf },
-          status: { in: ['DELIVERED', 'COMPLETED'] },
-        },
-      }),
-      this.prisma.message.findMany({
-        include: { conversation: { include: { listing: { include: { styles: true } } } } },
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-        relationLoadStrategy: 'join',
-        take: behaviorHistoryLimit,
-        where: { createdAt: { gt: ninetyDaysAgo, lte: asOf }, senderId: userId },
-      }),
+      this.behavioralStyleSignals(userId, ninetyDaysAgo, asOf),
     ]);
     const resetAt = profileRow?.behavioralResetAt ?? new Date(0);
     const since = resetAt > ninetyDaysAgo ? resetAt : ninetyDaysAgo;
     const afterReset = (occurredAt: Date): boolean => occurredAt.getTime() > since.getTime();
     const follows = followsWindow.filter(({ createdAt }) => afterReset(createdAt));
-    const events = eventsWindow.filter(({ occurredAt }) => afterReset(occurredAt));
-    const likes = likesWindow.filter(({ createdAt }) => afterReset(createdAt));
-    const saves = savesWindow.filter(({ createdAt }) => afterReset(createdAt));
-    const purchases = purchasesWindow.filter(({ createdAt }) => afterReset(createdAt));
-    const messages = messagesWindow.filter(({ createdAt }) => afterReset(createdAt));
     const styleAffinity = new Map<string, number>();
-    const addAffinity = (
-      styles: readonly { styleDefinitionId: string }[],
-      weight: number,
-      at: Date,
-    ) => {
-      const ageDays = Math.max(0, (asOf.getTime() - at.getTime()) / 86_400_000);
-      const value = weight * Math.max(0.1, 1 - ageDays / 90);
-      for (const { styleDefinitionId } of styles)
-        styleAffinity.set(styleDefinitionId, (styleAffinity.get(styleDefinitionId) ?? 0) + value);
-    };
-    const eventWeights = {
-      CHECKOUT: 6,
-      FOLLOW_SELLER: 4,
-      IMPRESSION: 0.1,
-      LIKE: 3,
-      MESSAGE_SELLER: 5,
-      NOT_INTERESTED: -5,
-      PURCHASE: 9,
-      SAVE: 4,
-      VIEW: 1,
-    } as const;
-    for (const event of events)
-      addAffinity(event.listing.styles, eventWeights[event.type], event.occurredAt);
-    for (const like of likes) addAffinity(like.listing.styles, 3, like.createdAt);
-    for (const save of saves) addAffinity(save.listing.styles, 4, save.createdAt);
-    for (const order of purchases) addAffinity(order.listing.styles, 9, order.createdAt);
-    for (const message of messages)
-      addAffinity(message.conversation.listing.styles, 5, message.createdAt);
+    for (const signal of behavioralStyleSignals) {
+      if (!afterReset(signal.occurredAt)) continue;
+      const ageDays = Math.max(0, (asOf.getTime() - signal.occurredAt.getTime()) / 86_400_000);
+      const value = signal.weight * Math.max(0.1, 1 - ageDays / 90);
+      styleAffinity.set(
+        signal.styleDefinitionId,
+        (styleAffinity.get(signal.styleDefinitionId) ?? 0) + value,
+      );
+    }
 
     const profile: RecommendationProfile = {
       budgetMaxMinor: profileRow?.budgetMaxMinor ?? null,
@@ -706,6 +642,102 @@ export class PersonalizationService {
         this.activeConfigurationLoading = undefined;
       }
     }
+  }
+
+  private behavioralStyleSignals(
+    userId: string,
+    after: Date,
+    asOf: Date,
+  ): Promise<readonly BehavioralStyleSignal[]> {
+    return this.prisma.$queryRaw<BehavioralStyleSignal[]>(Prisma.sql`
+      SELECT
+        signal."occurredAt",
+        ls."style_definition_id" AS "styleDefinitionId",
+        signal."weight"
+      FROM (
+        SELECT
+          event."listingId",
+          event."occurredAt",
+          CASE event."type"
+            WHEN 'CHECKOUT' THEN 6.0
+            WHEN 'FOLLOW_SELLER' THEN 4.0
+            WHEN 'IMPRESSION' THEN 0.1
+            WHEN 'LIKE' THEN 3.0
+            WHEN 'MESSAGE_SELLER' THEN 5.0
+            WHEN 'NOT_INTERESTED' THEN -5.0
+            WHEN 'PURCHASE' THEN 9.0
+            WHEN 'SAVE' THEN 4.0
+            WHEN 'VIEW' THEN 1.0
+          END::double precision AS "weight"
+        FROM (
+          SELECT
+            re."listing_id" AS "listingId",
+            re."occurred_at" AS "occurredAt",
+            re."type"::text AS "type"
+          FROM "recommendation_events" re
+          WHERE re."user_id" = ${userId}::uuid
+            AND re."occurred_at" > ${after}
+            AND re."occurred_at" <= ${asOf}
+          ORDER BY re."occurred_at" DESC, re."id" DESC
+          LIMIT ${behaviorHistoryLimit}
+        ) event
+
+        UNION ALL
+
+        SELECT liked."listingId", liked."occurredAt", 3.0::double precision AS "weight"
+        FROM (
+          SELECT ll."listing_id" AS "listingId", ll."created_at" AS "occurredAt"
+          FROM "listing_likes" ll
+          WHERE ll."user_id" = ${userId}::uuid
+            AND ll."created_at" > ${after}
+            AND ll."created_at" <= ${asOf}
+          ORDER BY ll."created_at" DESC, ll."listing_id" DESC
+          LIMIT ${behaviorHistoryLimit}
+        ) liked
+
+        UNION ALL
+
+        SELECT saved."listingId", saved."occurredAt", 4.0::double precision AS "weight"
+        FROM (
+          SELECT sl."listing_id" AS "listingId", sl."created_at" AS "occurredAt"
+          FROM "saved_listings" sl
+          WHERE sl."user_id" = ${userId}::uuid
+            AND sl."created_at" > ${after}
+            AND sl."created_at" <= ${asOf}
+          ORDER BY sl."created_at" DESC, sl."listing_id" DESC
+          LIMIT ${behaviorHistoryLimit}
+        ) saved
+
+        UNION ALL
+
+        SELECT purchased."listingId", purchased."occurredAt", 9.0::double precision AS "weight"
+        FROM (
+          SELECT o."listing_id" AS "listingId", o."created_at" AS "occurredAt"
+          FROM "orders" o
+          WHERE o."buyer_id" = ${userId}::uuid
+            AND o."created_at" > ${after}
+            AND o."created_at" <= ${asOf}
+            AND o."status" IN ('DELIVERED', 'COMPLETED')
+          ORDER BY o."created_at" DESC, o."id" DESC
+          LIMIT ${behaviorHistoryLimit}
+        ) purchased
+
+        UNION ALL
+
+        SELECT messaged."listingId", messaged."occurredAt", 5.0::double precision AS "weight"
+        FROM (
+          SELECT c."listing_id" AS "listingId", m."created_at" AS "occurredAt", m."id"
+          FROM "messages" m
+          JOIN "conversations" c ON c."id" = m."conversation_id"
+          WHERE m."sender_id" = ${userId}::uuid
+            AND m."created_at" > ${after}
+            AND m."created_at" <= ${asOf}
+          ORDER BY m."created_at" DESC, m."id" DESC
+          LIMIT ${behaviorHistoryLimit}
+        ) messaged
+      ) signal
+      JOIN "listing_styles" ls ON ls."listing_id" = signal."listingId"
+    `);
   }
 
   private async assertActiveStyles(ids: readonly string[]): Promise<void> {

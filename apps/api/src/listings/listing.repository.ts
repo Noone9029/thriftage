@@ -258,7 +258,7 @@ export class ListingRepository {
   public async search(
     query: ListingSearchQuery,
     cursor: SearchCursor | null,
-    excludedSellerIds: readonly string[] = [],
+    viewerId?: string,
   ): Promise<{ readonly hasMore: boolean; readonly records: readonly ListingRecord[] }> {
     const categoryIds =
       query.categoryId === undefined ? undefined : await this.findDescendantIds(query.categoryId);
@@ -297,8 +297,7 @@ export class ListingRepository {
         ? {}
         : { size: { equals: query.size, mode: 'insensitive' as const } }),
       status: 'ACTIVE',
-      ...(excludedSellerIds.length === 0 ? {} : { sellerId: { notIn: [...excludedSellerIds] } }),
-      seller: { accountStatus: 'ACTIVE', deletedAt: null },
+      seller: this.activeSellerFilter(viewerId),
       AND: [textFilter, cursorFilter],
     };
     const rows = await this.client.listing.findMany({
@@ -309,6 +308,36 @@ export class ListingRepository {
       where,
     });
     return { hasMore: rows.length > query.limit, records: rows.slice(0, query.limit) };
+  }
+
+  public async listNewFeed(
+    viewerId: string | undefined,
+    asOf: Date,
+    cursor: ChronologicalCursor | null,
+    limit: number,
+  ): Promise<{ readonly hasMore: boolean; readonly records: readonly ListingRecord[] }> {
+    const rows = await this.client.listing.findMany({
+      ...listingArgs,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      relationLoadStrategy: 'join',
+      take: limit + 1,
+      where: {
+        AND: [
+          { createdAt: { lte: asOf } },
+          cursor === null
+            ? {}
+            : {
+                OR: [
+                  { createdAt: { lt: cursor.createdAt } },
+                  { createdAt: cursor.createdAt, id: { lt: cursor.id } },
+                ],
+              },
+        ],
+        seller: this.activeSellerFilter(viewerId),
+        status: 'ACTIVE',
+      },
+    });
+    return { hasMore: rows.length > limit, records: rows.slice(0, limit) };
   }
 
   public async listOwned(
@@ -589,5 +618,18 @@ export class ListingRepository {
       },
     });
     return { hasMore: rows.length > limit, records: rows.slice(0, limit) };
+  }
+
+  private activeSellerFilter(viewerId?: string): Prisma.UserWhereInput {
+    return {
+      accountStatus: 'ACTIVE',
+      ...(viewerId === undefined
+        ? {}
+        : {
+            blocksCreated: { none: { blockedUserId: viewerId } },
+            blocksReceived: { none: { blockerId: viewerId } },
+          }),
+      deletedAt: null,
+    };
   }
 }
