@@ -9,7 +9,7 @@ export type ApplicationUserResolution =
   | { readonly state: 'suspended'; readonly user: User }
   | { readonly state: 'deactivated'; readonly user: User };
 
-const activeStandardUserCacheTtlMs = 2_000;
+const activeStandardUserCacheTtlMs = 3_000;
 const maximumActiveStandardUserCacheEntries = 5_000;
 const applicationUserResolverPrisma = Symbol('APPLICATION_USER_RESOLVER_PRISMA');
 

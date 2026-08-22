@@ -61,14 +61,14 @@ describe('ApplicationUserResolver', () => {
     expect(findUnique).toHaveBeenCalledTimes(1);
   });
 
-  it('expires the active standard-user cache after two seconds', async () => {
+  it('expires the active standard-user cache after three seconds', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-22T00:00:00Z'));
     const findUnique = vi.fn().mockResolvedValue(activeUser);
     const resolver = resolverWith(findUnique);
 
     await resolver.resolve(identity);
-    vi.advanceTimersByTime(2_001);
+    vi.advanceTimersByTime(3_001);
     await resolver.resolve(identity);
 
     expect(findUnique).toHaveBeenCalledTimes(2);
