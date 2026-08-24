@@ -1,9 +1,12 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import type { ColorValue } from 'react-native';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { marketplaceColors } from '../../../src/components/marketplace/marketplace-theme';
+import {
+  marketplaceColors,
+  marketplaceShadows,
+} from '../../../src/components/marketplace/marketplace-theme';
 
 const icons = {
   index: 'home',
@@ -36,21 +39,27 @@ export default function MarketplaceTabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: marketplaceColors.forest,
         tabBarInactiveTintColor: '#777C77',
-        tabBarIcon: ({ color, size }) => (
-          <MaterialIcons
-            color={color}
-            name={icons[route.name as keyof typeof icons] ?? 'circle'}
-            size={size}
-          />
-        ),
+        tabBarIcon: ({ color, size }) =>
+          route.name === 'sell' ? (
+            <View style={styles.sellIcon}>
+              <MaterialIcons color={marketplaceColors.white} name="add" size={27} />
+            </View>
+          ) : (
+            <MaterialIcons
+              color={color}
+              name={icons[route.name as keyof typeof icons] ?? 'circle'}
+              size={size}
+            />
+          ),
         tabBarItemStyle: { minHeight: 48 },
         tabBarLabel: ({ children, color }) => <TabLabel color={color}>{children}</TabLabel>,
         tabBarStyle: {
+          ...marketplaceShadows.floating,
           backgroundColor: marketplaceColors.paper,
-          borderTopColor: marketplaceColors.border,
-          height: 68,
-          paddingBottom: 8,
-          paddingTop: 6,
+          borderTopColor: 'rgba(227,221,210,0.75)',
+          height: 74,
+          paddingBottom: 9,
+          paddingTop: 7,
         },
       })}
     >
@@ -80,9 +89,21 @@ export default function MarketplaceTabsLayout() {
 
 const styles = StyleSheet.create({
   tabLabel: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 10,
+    fontWeight: '800',
     lineHeight: 15,
     textAlign: 'center',
+  },
+  sellIcon: {
+    ...marketplaceShadows.card,
+    alignItems: 'center',
+    backgroundColor: marketplaceColors.accent,
+    borderColor: marketplaceColors.paper,
+    borderRadius: 24,
+    borderWidth: 4,
+    height: 48,
+    justifyContent: 'center',
+    marginTop: -14,
+    width: 48,
   },
 });

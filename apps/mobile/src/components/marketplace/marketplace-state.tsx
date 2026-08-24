@@ -1,7 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { marketplaceColors } from './marketplace-theme';
+import { marketplaceColors, marketplaceRadii, marketplaceSpacing } from './marketplace-theme';
 
 interface MarketplaceStateProps {
   readonly actionLabel?: string;
@@ -21,19 +21,28 @@ export function MarketplaceState({
   title,
 }: MarketplaceStateProps) {
   return (
-    <View style={styles.container}>
+    <View accessibilityLiveRegion="polite" style={styles.container}>
+      <View style={styles.glow} />
       {loading ? (
-        <ActivityIndicator color={marketplaceColors.forest} size="large" />
+        <View style={styles.icon}>
+          <ActivityIndicator color={marketplaceColors.accent} size="small" />
+        </View>
       ) : (
         <View style={styles.icon}>
-          <MaterialIcons color={marketplaceColors.forest} name={icon} size={28} />
+          <MaterialIcons color={marketplaceColors.forest} name={icon} size={30} />
         </View>
       )}
+      <Text style={styles.eyebrow}>{loading ? 'CURATING' : 'THRIFTAGE'}</Text>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.message}>{message}</Text>
       {actionLabel !== undefined && onAction !== undefined ? (
-        <Pressable accessibilityRole="button" onPress={onAction} style={styles.action}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={onAction}
+          style={({ pressed }) => [styles.action, pressed && styles.actionPressed]}
+        >
           <Text style={styles.actionText}>{actionLabel}</Text>
+          <MaterialIcons color={marketplaceColors.white} name="arrow-forward" size={17} />
         </Pressable>
       ) : null}
     </View>
@@ -42,28 +51,64 @@ export function MarketplaceState({
 
 const styles = StyleSheet.create({
   action: {
+    alignItems: 'center',
     backgroundColor: marketplaceColors.forest,
-    borderRadius: 999,
-    marginTop: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 11,
+    borderRadius: marketplaceRadii.pill,
+    flexDirection: 'row',
+    gap: marketplaceSpacing.sm,
+    marginTop: marketplaceSpacing.sm,
+    paddingHorizontal: marketplaceSpacing.xl,
+    paddingVertical: 13,
   },
-  actionText: { color: marketplaceColors.white, fontSize: 14, fontWeight: '800' },
-  container: { alignItems: 'center', gap: 10, paddingHorizontal: 32, paddingVertical: 48 },
+  actionPressed: { opacity: 0.76, transform: [{ scale: 0.98 }] },
+  actionText: { color: marketplaceColors.white, fontSize: 14, fontWeight: '900' },
+  container: {
+    alignItems: 'center',
+    minHeight: 310,
+    overflow: 'hidden',
+    paddingHorizontal: marketplaceSpacing.xxxl,
+    paddingVertical: 54,
+  },
+  eyebrow: {
+    color: marketplaceColors.accent,
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 2.2,
+    marginTop: marketplaceSpacing.lg,
+  },
+  glow: {
+    backgroundColor: marketplaceColors.accentSoft,
+    borderRadius: 120,
+    height: 190,
+    opacity: 0.56,
+    position: 'absolute',
+    right: -85,
+    top: -60,
+    width: 190,
+  },
   icon: {
     alignItems: 'center',
-    backgroundColor: '#E4EAE4',
-    borderRadius: 28,
-    height: 56,
+    backgroundColor: marketplaceColors.forestSoft,
+    borderColor: marketplaceColors.white,
+    borderRadius: 35,
+    borderWidth: 5,
+    height: 70,
     justifyContent: 'center',
-    width: 56,
+    width: 70,
   },
   message: {
     color: marketplaceColors.muted,
     fontSize: 14,
     lineHeight: 21,
+    marginTop: marketplaceSpacing.sm,
     maxWidth: 320,
     textAlign: 'center',
   },
-  title: { color: marketplaceColors.text, fontSize: 20, fontWeight: '800' },
+  title: {
+    color: marketplaceColors.ink,
+    fontSize: 23,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+    marginTop: marketplaceSpacing.sm,
+  },
 });

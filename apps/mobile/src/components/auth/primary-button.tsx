@@ -1,5 +1,7 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
 
+import { marketplaceColors, marketplaceRadii } from '../marketplace/marketplace-theme';
+
 interface PrimaryButtonProps {
   readonly disabled?: boolean | undefined;
   readonly loading?: boolean | undefined;
@@ -22,7 +24,7 @@ export function PrimaryButton({ disabled, loading, onPress, title }: PrimaryButt
       ]}
     >
       {loading === true ? (
-        <ActivityIndicator color="#FFFFFF" />
+        <ActivityIndicator color={marketplaceColors.white} />
       ) : (
         <Text style={styles.text}>{title}</Text>
       )}
@@ -33,13 +35,13 @@ export function PrimaryButton({ disabled, loading, onPress, title }: PrimaryButt
 const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
-    backgroundColor: '#17664F',
-    borderRadius: 15,
+    backgroundColor: marketplaceColors.accent,
+    borderRadius: marketplaceRadii.lg,
     justifyContent: 'center',
     minHeight: 54,
     paddingHorizontal: 18,
   },
   disabled: { opacity: 0.55 },
-  pressed: { backgroundColor: '#0E4E3B' },
-  text: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  pressed: { backgroundColor: marketplaceColors.accentDeep, transform: [{ scale: 0.99 }] },
+  text: { color: marketplaceColors.white, fontSize: 15, fontWeight: '900' },
 });

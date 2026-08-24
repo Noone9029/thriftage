@@ -1,5 +1,7 @@
 import { StyleSheet, Text, TextInput, type TextInputProps, View } from 'react-native';
 
+import { marketplaceColors, marketplaceRadii } from '../marketplace/marketplace-theme';
+
 interface FormFieldProps extends TextInputProps {
   readonly error?: string | undefined;
   readonly label: string;
@@ -12,7 +14,7 @@ export function FormField({ error, label, ...inputProps }: FormFieldProps) {
       <TextInput
         accessibilityLabel={label}
         accessibilityState={{ disabled: inputProps.editable === false }}
-        placeholderTextColor="#969187"
+        placeholderTextColor={marketplaceColors.mutedLight}
         style={[styles.input, error === undefined ? null : styles.inputError]}
         {...inputProps}
       />
@@ -27,18 +29,18 @@ export function FormField({ error, label, ...inputProps }: FormFieldProps) {
 
 const styles = StyleSheet.create({
   container: { gap: 7 },
-  error: { color: '#A23C2A', fontSize: 13, lineHeight: 18 },
+  error: { color: marketplaceColors.danger, fontSize: 13, lineHeight: 18 },
   input: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#D8D2C6',
-    borderRadius: 14,
+    backgroundColor: marketplaceColors.background,
+    borderColor: marketplaceColors.border,
+    borderRadius: marketplaceRadii.md,
     borderWidth: 1,
-    color: '#1D2924',
+    color: marketplaceColors.text,
     fontSize: 16,
     minHeight: 52,
     paddingHorizontal: 15,
     paddingVertical: 13,
   },
-  inputError: { borderColor: '#C95F48' },
-  label: { color: '#293A33', fontSize: 14, fontWeight: '600' },
+  inputError: { borderColor: marketplaceColors.danger },
+  label: { color: marketplaceColors.text, fontSize: 13, fontWeight: '800' },
 });
