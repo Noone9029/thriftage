@@ -188,10 +188,10 @@ export default function DiscoveryScreen() {
 
             <Pressable
               accessibilityLabel={
-                stylistEnabled ? 'Open AI Fashion Stylist' : 'Open stylist preview'
+                stylistEnabled ? 'Open AI Fashion Stylist' : 'Open AI Stylist preview'
               }
               accessibilityRole="button"
-              onPress={() => router.push(stylistEnabled ? '/stylist' : '/style-profile')}
+              onPress={() => router.push('/stylist')}
               style={({ pressed }) => [
                 styles.stylistCard,
                 !stylistEnabled && styles.stylistCardPaused,
@@ -207,17 +207,17 @@ export default function DiscoveryScreen() {
               </View>
               <View style={styles.stylistCopy}>
                 <Text style={styles.stylistEyebrow}>
-                  {stylistEnabled ? 'YOUR AI STYLIST' : 'YOUR STYLE PROFILE'}
+                  {stylistEnabled ? 'YOUR AI STYLIST' : 'STYLIST PREVIEW'}
                 </Text>
                 <Text style={styles.stylistTitle}>
                   {stylistEnabled
                     ? 'Turn an idea into a shoppable look'
-                    : 'Teach Thriftage what catches your eye'}
+                    : 'See what your next look could become'}
                 </Text>
                 <Text style={styles.stylistBody}>
                   {stylistEnabled
                     ? 'Try an occasion, budget, color, or favorite piece.'
-                    : 'The live stylist is resting; your private preferences still shape discovery.'}
+                    : 'The live Stylist is resting. Preview the experience and tune your private style profile.'}
                 </Text>
               </View>
               <MaterialIcons color={marketplaceColors.forest} name="arrow-forward" size={20} />

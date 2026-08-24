@@ -33,6 +33,7 @@ export default function StylistHomeScreen() {
     readonly unknown[],
     string | undefined
   >({
+    enabled: runtime.isSuccess && runtime.data.features.aiStylist,
     getNextPageParam: ({ nextCursor }) => nextCursor ?? undefined,
     initialPageParam: undefined,
     queryFn: ({ pageParam }) =>
@@ -62,7 +63,30 @@ export default function StylistHomeScreen() {
     <SafeAreaView style={styles.safe}>
       <FlatList
         ListEmptyComponent={
-          conversations.isLoading ? (
+          runtime.isLoading ? (
+            <MarketplaceState
+              loading
+              message="Checking Stylist availability."
+              title="Opening Stylist"
+            />
+          ) : runtime.isError ? (
+            <MarketplaceState
+              actionLabel="Try again"
+              icon="cloud-off"
+              message="Stylist availability could not be checked. Your marketplace browsing still works."
+              onAction={() => void runtime.refetch()}
+              title="Stylist status unavailable"
+            />
+          ) : !stylistEnabled ? (
+            <View style={styles.empty}>
+              <MaterialIcons color={marketplaceColors.accent} name="auto-awesome" size={34} />
+              <Text style={styles.emptyTitle}>Ideas ready for later</Text>
+              <Text style={styles.emptyCopy}>
+                When the live Stylist returns, start with an occasion, budget, color, or favorite
+                piece. Recommendations will use only eligible Thriftage inventory.
+              </Text>
+            </View>
+          ) : conversations.isLoading ? (
             <MarketplaceState
               loading
               message="Loading your private outfit history."
@@ -162,25 +186,25 @@ export default function StylistHomeScreen() {
                 </View>
               )}
             </View>
-            {stylistEnabled ? (
-              <View style={styles.promptSection}>
-                <Text style={styles.promptLabel}>TRY ASKING</Text>
-                <View style={styles.promptGrid}>
-                  {stylistStarterPrompts.slice(0, 3).map((prompt, index) => (
-                    <View key={prompt} style={styles.promptCard}>
-                      <MaterialIcons
-                        color={marketplaceColors.accent}
-                        name={index === 0 ? 'school' : index === 1 ? 'celebration' : 'weekend'}
-                        size={18}
-                      />
-                      <Text numberOfLines={2} style={styles.promptText}>
-                        {prompt}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
+            <View style={styles.promptSection}>
+              <Text style={styles.promptLabel}>
+                {stylistEnabled ? 'TRY ASKING' : 'WHEN IT RETURNS, TRY'}
+              </Text>
+              <View style={styles.promptGrid}>
+                {stylistStarterPrompts.slice(0, 3).map((prompt, index) => (
+                  <View key={prompt} style={styles.promptCard}>
+                    <MaterialIcons
+                      color={marketplaceColors.accent}
+                      name={index === 0 ? 'school' : index === 1 ? 'celebration' : 'weekend'}
+                      size={18}
+                    />
+                    <Text numberOfLines={2} style={styles.promptText}>
+                      {prompt}
+                    </Text>
+                  </View>
+                ))}
               </View>
-            ) : null}
+            </View>
             {create.isError ? (
               <Text style={styles.error}>
                 The Stylist could not start. Check your connection and try again.
