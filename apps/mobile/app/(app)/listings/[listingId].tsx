@@ -3,14 +3,30 @@ import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MarketplaceState } from '../../../src/components/marketplace/marketplace-state';
 import { ListingCard } from '../../../src/components/marketplace/listing-card';
 import {
+  IconButton,
+  SectionHeader,
+  TrustPill,
+} from '../../../src/components/marketplace/marketplace-primitives';
+import { DetailSkeleton } from '../../../src/components/marketplace/marketplace-skeleton';
+import {
   formatMoney,
   marketplaceColors,
+  marketplaceRadii,
+  marketplaceShadows,
 } from '../../../src/components/marketplace/marketplace-theme';
 import { ReportPanel } from '../../../src/components/marketplace/report-panel';
 import { useListingActions } from '../../../src/hooks/use-listing-actions';
@@ -22,6 +38,7 @@ export default function ListingDetailScreen() {
   const { width } = useWindowDimensions();
   const { listingId = '' } = useLocalSearchParams<{ listingId?: string }>();
   const [reporting, setReporting] = useState(false);
+  const [activeImage, setActiveImage] = useState(0);
   const { state } = useAuth();
   const actions = useListingActions();
   const runtime = useRuntimeConfig();
@@ -37,7 +54,7 @@ export default function ListingDetailScreen() {
     queryKey: ['marketplace', 'listing', listingId, 'similar'],
   });
   if (query.isLoading) {
-    return <MarketplaceState loading message="Loading listing details." title="Opening piece" />;
+    return <DetailSkeleton />;
   }
   if (query.isError || query.data === undefined) {
     return (
@@ -56,47 +73,75 @@ export default function ListingDetailScreen() {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.topBar}>
-          <Pressable
+          <IconButton
             accessibilityLabel="Go back"
             onPress={() => router.back()}
-            style={styles.topButton}
-          >
-            <MaterialIcons color={marketplaceColors.text} name="arrow-back" size={23} />
-          </Pressable>
+            icon="arrow-back"
+          />
           {!ownListing ? (
             <View style={styles.topActions}>
-              <Pressable onPress={() => actions.like.mutate(listing)} style={styles.topButton}>
-                <MaterialIcons
-                  color={listing.likedByViewer ? marketplaceColors.accent : marketplaceColors.text}
-                  name={listing.likedByViewer ? 'favorite' : 'favorite-border'}
-                  size={23}
-                />
-              </Pressable>
-              <Pressable onPress={() => actions.save.mutate(listing)} style={styles.topButton}>
-                <MaterialIcons
-                  color={marketplaceColors.forest}
-                  name={listing.savedByViewer ? 'bookmark' : 'bookmark-border'}
-                  size={23}
-                />
-              </Pressable>
+              <IconButton
+                accessibilityLabel="Share listing"
+                icon="ios-share"
+                onPress={() =>
+                  void Share.share({
+                    message: `See ${listing.title} on Thriftage — ${formatMoney(listing.priceMinor, listing.currency)}`,
+                  })
+                }
+              />
+              <IconButton
+                accessibilityLabel={listing.likedByViewer ? 'Unlike item' : 'Like item'}
+                active={listing.likedByViewer}
+                icon={listing.likedByViewer ? 'favorite' : 'favorite-border'}
+                onPress={() => actions.like.mutate(listing)}
+              />
+              <IconButton
+                accessibilityLabel={listing.savedByViewer ? 'Remove saved item' : 'Save item'}
+                active={listing.savedByViewer}
+                icon={listing.savedByViewer ? 'bookmark' : 'bookmark-border'}
+                onPress={() => actions.save.mutate(listing)}
+              />
             </View>
           ) : null}
         </View>
-        <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
-          {listing.images.map((image) => (
-            <Image
-              cachePolicy="memory-disk"
-              contentFit="cover"
-              key={image.id}
-              source={image.url}
-              style={{ height: Math.min(width * 1.12, 620), width }}
-            />
-          ))}
-        </ScrollView>
+        <View style={styles.gallery}>
+          <ScrollView
+            horizontal
+            onMomentumScrollEnd={(event) =>
+              setActiveImage(Math.round(event.nativeEvent.contentOffset.x / width))
+            }
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+          >
+            {listing.images.map((image) => (
+              <Image
+                cachePolicy="memory-disk"
+                contentFit="cover"
+                key={image.id}
+                source={image.url}
+                style={{ height: Math.min(width * 1.12, 620), width }}
+              />
+            ))}
+          </ScrollView>
+          {listing.images.length > 1 ? (
+            <View style={styles.galleryCount}>
+              <MaterialIcons color={marketplaceColors.white} name="collections" size={14} />
+              <Text style={styles.galleryCountText}>
+                {activeImage + 1}/{listing.images.length}
+              </Text>
+            </View>
+          ) : null}
+        </View>
         <View style={styles.body}>
-          <Text style={styles.category}>{listing.category.name.toUpperCase()}</Text>
+          <View style={styles.identityRow}>
+            <Text style={styles.category}>{listing.category.name.toUpperCase()}</Text>
+            <Text style={styles.posted}>ONE-OF-ONE PIECE</Text>
+          </View>
           <Text style={styles.title}>{listing.title}</Text>
-          <Text style={styles.price}>{formatMoney(listing.priceMinor, listing.currency)}</Text>
+          <View style={styles.priceRow}>
+            <Text style={styles.price}>{formatMoney(listing.priceMinor, listing.currency)}</Text>
+            <TrustPill icon="verified-user" label="Protected checkout" tone="neutral" />
+          </View>
           {listing.match !== null ? (
             <View style={styles.matchPanel}>
               <View style={styles.matchScore}>
@@ -119,6 +164,8 @@ export default function ListingDetailScreen() {
             </Text>
           ) : null}
           <Pressable
+            accessibilityLabel={`View seller ${listing.seller.username}`}
+            accessibilityRole="button"
             onPress={() => router.push(`/sellers/${listing.seller.username}`)}
             style={styles.seller}
           >
@@ -131,7 +178,16 @@ export default function ListingDetailScreen() {
             )}
             <View style={styles.sellerText}>
               <Text style={styles.soldBy}>SOLD BY</Text>
-              <Text style={styles.username}>@{listing.seller.username}</Text>
+              <View style={styles.sellerNameRow}>
+                <Text style={styles.username}>@{listing.seller.username}</Text>
+                {listing.seller.sellerVerified ? (
+                  <MaterialIcons color={marketplaceColors.success} name="verified" size={16} />
+                ) : null}
+              </View>
+              <Text style={styles.sellerRating}>
+                {listing.seller.sellerRating.average?.toFixed(1) ?? 'New'} ★ ·{' '}
+                {listing.seller.sellerRating.count} reviews
+              </Text>
             </View>
             <MaterialIcons color={marketplaceColors.muted} name="chevron-right" size={24} />
           </Pressable>
@@ -141,7 +197,9 @@ export default function ListingDetailScreen() {
             <Spec label="Brand" value={listing.brand ?? 'Not specified'} />
             <Spec label="Color" value={listing.color ?? 'Not specified'} />
           </View>
-          <Text style={styles.sectionTitle}>About this piece</Text>
+          <View style={styles.detailSectionHeader}>
+            <SectionHeader eyebrow="THE DETAILS" title="About this piece" />
+          </View>
           <Text style={styles.description}>{listing.description}</Text>
           {listing.personalization !== null ? (
             <View style={styles.tags}>
@@ -157,11 +215,15 @@ export default function ListingDetailScreen() {
             </View>
           ) : null}
           <View style={styles.engagement}>
-            <Text style={styles.engagementText}>{listing.likeCount} likes</Text>
-            <Text style={styles.engagementText}>{listing.saveCount} saves</Text>
+            <TrustPill icon="favorite" label={`${listing.likeCount} likes`} tone="accent" />
+            <TrustPill icon="bookmark" label={`${listing.saveCount} saves`} tone="neutral" />
           </View>
           {!ownListing ? (
-            <Pressable onPress={() => setReporting((value) => !value)}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ expanded: reporting }}
+              onPress={() => setReporting((value) => !value)}
+            >
               <Text style={styles.reportLink}>Report this listing</Text>
             </Pressable>
           ) : null}
@@ -171,6 +233,8 @@ export default function ListingDetailScreen() {
           {listing.status === 'ACTIVE' && runtime.data?.features.aiStylist === true ? (
             <Pressable
               accessibilityLabel={`Build an outfit around ${listing.title}`}
+              accessibilityRole="button"
+              accessibilityState={{ busy: startingStylist, disabled: startingStylist }}
               disabled={startingStylist}
               onPress={() => {
                 setStartingStylist(true);
@@ -202,32 +266,9 @@ export default function ListingDetailScreen() {
               <MaterialIcons color={marketplaceColors.forest} name="arrow-forward" size={20} />
             </Pressable>
           ) : null}
-          {!ownListing && listing.status === 'ACTIVE' ? (
-            <View style={styles.commerceActions}>
-              <Pressable
-                disabled={startingConversation}
-                onPress={() => {
-                  setStartingConversation(true);
-                  void thriftageApiClient
-                    .startConversation(listing.id)
-                    .then((conversation) => router.push(`/messages/${conversation.id}`))
-                    .finally(() => setStartingConversation(false));
-                }}
-                style={styles.messageButton}
-              >
-                <Text style={styles.messageButtonText}>Message seller</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => router.push(`/checkout/${listing.id}`)}
-                style={styles.buyButton}
-              >
-                <Text style={styles.buyButtonText}>Buy now</Text>
-              </Pressable>
-            </View>
-          ) : null}
           {(similar.data?.items.length ?? 0) > 0 ? (
             <View style={styles.similarSection}>
-              <Text style={styles.sectionTitle}>Similar pieces</Text>
+              <SectionHeader eyebrow="KEEP EXPLORING" title="More like this" />
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -243,6 +284,41 @@ export default function ListingDetailScreen() {
           ) : null}
         </View>
       </ScrollView>
+      {!ownListing && listing.status === 'ACTIVE' ? (
+        <View style={styles.stickyBar}>
+          <View style={styles.stickyCopy}>
+            <Text style={styles.stickyPrice}>
+              {formatMoney(listing.priceMinor, listing.currency)}
+            </Text>
+            <Text style={styles.stickyHint}>Cash on delivery</Text>
+          </View>
+          <Pressable
+            accessibilityLabel="Message seller"
+            accessibilityRole="button"
+            accessibilityState={{ busy: startingConversation, disabled: startingConversation }}
+            disabled={startingConversation}
+            onPress={() => {
+              setStartingConversation(true);
+              void thriftageApiClient
+                .startConversation(listing.id)
+                .then((conversation) => router.push(`/messages/${conversation.id}`))
+                .finally(() => setStartingConversation(false));
+            }}
+            style={styles.messageButton}
+          >
+            <MaterialIcons color={marketplaceColors.forest} name="chat-bubble-outline" size={20} />
+          </Pressable>
+          <Pressable
+            accessibilityLabel={`Buy ${listing.title}`}
+            accessibilityRole="button"
+            onPress={() => router.push(`/checkout/${listing.id}`)}
+            style={styles.buyButton}
+          >
+            <Text style={styles.buyButtonText}>Buy now</Text>
+            <MaterialIcons color={marketplaceColors.white} name="arrow-forward" size={18} />
+          </Pressable>
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -260,21 +336,23 @@ const styles = StyleSheet.create({
   buyButton: {
     alignItems: 'center',
     backgroundColor: marketplaceColors.accent,
-    borderRadius: 15,
-    flex: 1,
-    padding: 16,
+    borderRadius: marketplaceRadii.lg,
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+    minHeight: 50,
+    paddingHorizontal: 20,
   },
   buyButtonText: { color: '#fff', fontWeight: '900' },
-  commerceActions: { flexDirection: 'row', gap: 10, marginTop: 24 },
   messageButton: {
     alignItems: 'center',
     borderColor: marketplaceColors.forest,
-    borderRadius: 15,
+    borderRadius: marketplaceRadii.lg,
     borderWidth: 1,
-    flex: 1,
-    padding: 16,
+    height: 50,
+    justifyContent: 'center',
+    width: 50,
   },
-  messageButtonText: { color: marketplaceColors.forest, fontWeight: '900' },
   styleThisButton: {
     alignItems: 'center',
     backgroundColor: '#E3EAE5',
@@ -298,24 +376,40 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 48,
   },
-  body: { padding: 20 },
+  body: {
+    backgroundColor: marketplaceColors.background,
+    borderTopLeftRadius: marketplaceRadii.hero,
+    borderTopRightRadius: marketplaceRadii.hero,
+    marginTop: -24,
+    padding: 20,
+    paddingTop: 27,
+  },
   category: {
     color: marketplaceColors.accent,
     fontSize: 10,
     fontWeight: '900',
     letterSpacing: 1.8,
   },
-  content: { paddingBottom: 40 },
+  content: { paddingBottom: 120 },
   description: { color: marketplaceColors.text, fontSize: 14, lineHeight: 23, marginTop: 9 },
-  engagement: {
-    borderTopColor: marketplaceColors.border,
-    borderTopWidth: 1,
+  engagement: { flexDirection: 'row', gap: 8, marginTop: 25 },
+  gallery: { position: 'relative' },
+  galleryCount: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(14,43,35,0.78)',
+    borderRadius: marketplaceRadii.pill,
+    bottom: 38,
     flexDirection: 'row',
-    gap: 18,
-    marginTop: 25,
-    paddingTop: 15,
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    position: 'absolute',
+    right: 14,
+    zIndex: 2,
   },
-  engagementText: { color: marketplaceColors.muted, fontSize: 12, fontWeight: '700' },
+  galleryCountText: { color: marketplaceColors.white, fontSize: 10, fontWeight: '900' },
+  detailSectionHeader: { marginTop: 25 },
+  identityRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   matchLabel: { color: marketplaceColors.white, fontSize: 9, fontWeight: '900', letterSpacing: 1 },
   matchNumber: { color: marketplaceColors.white, fontSize: 24, fontWeight: '900' },
   matchPanel: {
@@ -335,7 +429,14 @@ const styles = StyleSheet.create({
   },
   reasonRow: { alignItems: 'center', flexDirection: 'row', gap: 7 },
   reasonText: { color: marketplaceColors.white, flex: 1, fontSize: 11, fontWeight: '700' },
-  price: { color: marketplaceColors.forest, fontSize: 22, fontWeight: '900', marginTop: 9 },
+  posted: { color: marketplaceColors.muted, fontSize: 8, fontWeight: '900', letterSpacing: 1.2 },
+  price: { color: marketplaceColors.forest, fontSize: 24, fontWeight: '900' },
+  priceRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 12,
+  },
   reportLink: {
     color: marketplaceColors.danger,
     fontSize: 12,
@@ -358,13 +459,15 @@ const styles = StyleSheet.create({
     marginTop: 20,
     padding: 12,
   },
+  sellerNameRow: { alignItems: 'center', flexDirection: 'row', gap: 5 },
+  sellerRating: { color: marketplaceColors.muted, fontSize: 10, marginTop: 4 },
   sellerText: { flex: 1, marginLeft: 11 },
   soldBy: { color: marketplaceColors.muted, fontSize: 9, fontWeight: '800', letterSpacing: 1.2 },
   spec: { width: '48%' },
   specLabel: { color: marketplaceColors.muted, fontSize: 10, fontWeight: '700' },
   specs: {
-    backgroundColor: '#EAE6DD',
-    borderRadius: 16,
+    backgroundColor: marketplaceColors.sand,
+    borderRadius: marketplaceRadii.xl,
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 14,
@@ -403,14 +506,23 @@ const styles = StyleSheet.create({
     top: 0,
     zIndex: 2,
   },
-  topButton: {
+  stickyBar: {
+    ...marketplaceShadows.floating,
     alignItems: 'center',
-    backgroundColor: 'rgba(255,253,248,0.92)',
-    borderRadius: 22,
-    height: 44,
-    justifyContent: 'center',
-    width: 44,
+    backgroundColor: marketplaceColors.paper,
+    borderTopColor: marketplaceColors.border,
+    borderTopWidth: 1,
+    bottom: 0,
+    flexDirection: 'row',
+    gap: 9,
+    left: 0,
+    padding: 12,
+    position: 'absolute',
+    right: 0,
   },
+  stickyCopy: { flex: 1 },
+  stickyHint: { color: marketplaceColors.muted, fontSize: 9, marginTop: 2 },
+  stickyPrice: { color: marketplaceColors.forest, fontSize: 14, fontWeight: '900' },
   username: { color: marketplaceColors.forest, fontSize: 14, fontWeight: '900', marginTop: 3 },
   unavailableBanner: {
     alignSelf: 'flex-start',

@@ -8,8 +8,18 @@ import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ListingCard } from '../../../src/components/marketplace/listing-card';
+import {
+  SectionHeader,
+  TrustPill,
+} from '../../../src/components/marketplace/marketplace-primitives';
 import { MarketplaceState } from '../../../src/components/marketplace/marketplace-state';
-import { marketplaceColors } from '../../../src/components/marketplace/marketplace-theme';
+import { ProfileSkeleton } from '../../../src/components/marketplace/marketplace-skeleton';
+import {
+  marketplaceColors,
+  marketplaceRadii,
+  marketplaceShadows,
+  marketplaceSpacing,
+} from '../../../src/components/marketplace/marketplace-theme';
 import { ReportPanel } from '../../../src/components/marketplace/report-panel';
 import { thriftageApiClient } from '../../../src/lib/auth/auth-composition';
 import { useAuth } from '../../../src/providers/auth-provider';
@@ -39,13 +49,7 @@ export default function SellerProfileScreen() {
     onSuccess: () => router.back(),
   });
   if (seller.isLoading) {
-    return (
-      <MarketplaceState
-        loading
-        message="Loading this seller's public wardrobe."
-        title="Opening profile"
-      />
-    );
+    return <ProfileSkeleton />;
   }
   if (seller.isError || seller.data === undefined) {
     return (
@@ -64,22 +68,39 @@ export default function SellerProfileScreen() {
       <FlatList<ListingDetail>
         ListEmptyComponent={
           <MarketplaceState
-            message="This seller has no active marketplace listings."
-            title="Wardrobe is empty"
+            actionLabel="Explore other wardrobes"
+            message="This seller has no active pieces right now. Check back after their next closet drop."
+            onAction={() => router.push('/')}
+            title="Between closet drops"
           />
         }
         ListHeaderComponent={
           <View style={styles.header}>
             <View style={styles.topRow}>
-              <Pressable onPress={() => router.back()} style={styles.back}>
-                <MaterialIcons color={marketplaceColors.text} name="arrow-back" size={23} />
+              <Pressable
+                accessibilityLabel="Go back"
+                accessibilityRole="button"
+                onPress={() => router.back()}
+                style={styles.back}
+              >
+                <MaterialIcons color={marketplaceColors.white} name="arrow-back" size={23} />
               </Pressable>
               {!ownProfile ? (
                 <View style={styles.safetyActions}>
-                  <Pressable onPress={() => setReporting((value) => !value)}>
-                    <MaterialIcons color={marketplaceColors.muted} name="flag" size={21} />
+                  <Pressable
+                    accessibilityLabel={`Report ${profile.username}`}
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: reporting }}
+                    onPress={() => setReporting((value) => !value)}
+                    style={styles.safetyIcon}
+                  >
+                    <MaterialIcons color={marketplaceColors.white} name="flag" size={20} />
                   </Pressable>
                   <Pressable
+                    accessibilityLabel={`Block ${profile.username}`}
+                    accessibilityRole="button"
+                    accessibilityState={{ busy: block.isPending, disabled: block.isPending }}
+                    disabled={block.isPending}
                     onPress={() =>
                       Alert.alert(
                         `Block @${profile.username}?`,
@@ -90,11 +111,17 @@ export default function SellerProfileScreen() {
                         ],
                       )
                     }
+                    style={styles.safetyIcon}
                   >
-                    <MaterialIcons color={marketplaceColors.danger} name="block" size={21} />
+                    <MaterialIcons color={marketplaceColors.white} name="block" size={20} />
                   </Pressable>
                 </View>
               ) : null}
+            </View>
+            <View style={styles.coverArt}>
+              <View style={styles.coverOrbLarge} />
+              <View style={styles.coverOrbSmall} />
+              <Text style={styles.coverMark}>WARDROBE / {profile.username.toUpperCase()}</Text>
             </View>
             <View style={styles.identity}>
               {profile.profileImageUrl === null ? (
@@ -104,23 +131,39 @@ export default function SellerProfileScreen() {
               ) : (
                 <Image source={profile.profileImageUrl} style={styles.avatar} />
               )}
-              <Text style={styles.username}>@{profile.username}</Text>
-              {profile.sellerVerified ? (
-                <Text style={styles.verified}>✓ Verified seller</Text>
-              ) : null}
+              <View style={styles.usernameRow}>
+                <Text style={styles.username}>@{profile.username}</Text>
+                {profile.sellerVerified ? (
+                  <MaterialIcons color={marketplaceColors.success} name="verified" size={20} />
+                ) : null}
+              </View>
+              <Text style={styles.memberSince}>
+                Thrifting here since {new Date(profile.memberSince).getFullYear()}
+              </Text>
               {profile.university !== null ? (
                 <Text style={styles.university}>{profile.university}</Text>
               ) : null}
               {profile.bio !== null ? <Text style={styles.bio}>{profile.bio}</Text> : null}
               {!ownProfile ? (
                 <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{
+                    busy: follow.isPending,
+                    disabled: follow.isPending,
+                    selected: profile.followedByViewer,
+                  }}
+                  disabled={follow.isPending}
                   onPress={() => follow.mutate()}
                   style={[styles.follow, profile.followedByViewer && styles.following]}
                 >
                   <Text
                     style={[styles.followText, profile.followedByViewer && styles.followingText]}
                   >
-                    {profile.followedByViewer ? 'Following' : 'Follow seller'}
+                    {follow.isPending
+                      ? 'Updating…'
+                      : profile.followedByViewer
+                        ? 'Following'
+                        : 'Follow wardrobe'}
                   </Text>
                 </Pressable>
               ) : null}
@@ -132,23 +175,39 @@ export default function SellerProfileScreen() {
               <Stat label="Sales" value={profile.completedSalesCount} />
             </View>
             <Pressable
+              accessibilityLabel={`Read reviews for ${profile.username}`}
+              accessibilityRole="button"
               onPress={() => router.push(`/reviews/users/${profile.username}`)}
               style={styles.reputation}
             >
-              <Text style={styles.reputationText}>
-                Seller {profile.sellerRating.average?.toFixed(1) ?? '—'} ★ ·{' '}
-                {profile.sellerRating.count} reviews
-              </Text>
-              <Text style={styles.reputationText}>
-                Buyer {profile.buyerRating.average?.toFixed(1) ?? '—'} ★ ·{' '}
-                {profile.buyerRating.count} reviews
-              </Text>
-              <Text style={styles.reviewLink}>View seller reviews</Text>
+              <View style={styles.reputationIcon}>
+                <MaterialIcons color={marketplaceColors.gold} name="star" size={23} />
+              </View>
+              <View style={styles.reputationCopy}>
+                <Text style={styles.reputationTitle}>
+                  {profile.sellerRating.average?.toFixed(1) ?? 'New'} seller rating
+                </Text>
+                <Text style={styles.reputationText}>
+                  {profile.sellerRating.count} seller reviews · {profile.completedSalesCount}{' '}
+                  completed sales
+                </Text>
+              </View>
+              <MaterialIcons color={marketplaceColors.muted} name="chevron-right" size={22} />
             </Pressable>
+            <View style={styles.trustRow}>
+              {profile.sellerVerified ? <TrustPill label="Verified seller" /> : null}
+              <TrustPill icon="payments" label="COD ready" tone="neutral" />
+              <TrustPill icon="forum" label="In-app chat" tone="neutral" />
+            </View>
             {reporting ? (
               <ReportPanel onClose={() => setReporting(false)} userId={profile.id} />
             ) : null}
-            <Text style={styles.section}>Active listings</Text>
+            <View style={styles.section}>
+              <SectionHeader
+                eyebrow={`${profile.listingCount} PIECES AVAILABLE`}
+                title="Shop the wardrobe"
+              />
+            </View>
           </View>
         }
         contentContainerStyle={styles.content}
@@ -171,16 +230,31 @@ function Stat({ label, value }: { label: string; value: number }) {
 }
 
 const styles = StyleSheet.create({
-  avatar: { borderRadius: 47, height: 94, width: 94 },
+  avatar: {
+    borderColor: marketplaceColors.background,
+    borderRadius: 50,
+    borderWidth: 5,
+    height: 100,
+    width: 100,
+  },
   avatarPlaceholder: {
     alignItems: 'center',
     backgroundColor: '#E1E7E1',
-    borderRadius: 47,
-    height: 94,
+    borderColor: marketplaceColors.background,
+    borderRadius: 50,
+    borderWidth: 5,
+    height: 100,
     justifyContent: 'center',
-    width: 94,
+    width: 100,
   },
-  back: { padding: 3 },
+  back: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 21,
+    height: 42,
+    justifyContent: 'center',
+    width: 42,
+  },
   bio: {
     color: marketplaceColors.text,
     fontSize: 13,
@@ -190,6 +264,43 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   content: { paddingBottom: 35, paddingHorizontal: 8 },
+  coverArt: {
+    backgroundColor: marketplaceColors.forestDeep,
+    borderRadius: marketplaceRadii.hero,
+    height: 150,
+    marginTop: 8,
+    overflow: 'hidden',
+    padding: marketplaceSpacing.lg,
+  },
+  coverMark: {
+    bottom: 17,
+    color: 'rgba(255,255,255,0.68)',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1.8,
+    position: 'absolute',
+    right: 17,
+  },
+  coverOrbLarge: {
+    backgroundColor: marketplaceColors.accent,
+    borderRadius: 90,
+    height: 170,
+    opacity: 0.5,
+    position: 'absolute',
+    right: -42,
+    top: -80,
+    width: 170,
+  },
+  coverOrbSmall: {
+    backgroundColor: marketplaceColors.gold,
+    borderRadius: 42,
+    bottom: -32,
+    height: 84,
+    left: 52,
+    opacity: 0.28,
+    position: 'absolute',
+    width: 84,
+  },
   follow: {
     backgroundColor: marketplaceColors.forest,
     borderRadius: 999,
@@ -205,31 +316,46 @@ const styles = StyleSheet.create({
   },
   followingText: { color: marketplaceColors.forest },
   header: { paddingBottom: 12, paddingHorizontal: 10 },
-  identity: { alignItems: 'center', marginTop: 6 },
+  identity: { alignItems: 'center', marginTop: -50 },
+  memberSince: { color: marketplaceColors.muted, fontSize: 10, marginTop: 5 },
   safeArea: { backgroundColor: marketplaceColors.background, flex: 1 },
   safetyActions: { flexDirection: 'row', gap: 18 },
   verified: { color: marketplaceColors.accent, fontSize: 12, fontWeight: '900', marginTop: 7 },
-  reputation: { gap: 5, marginTop: 13, paddingHorizontal: 6 },
+  reputation: {
+    ...marketplaceShadows.card,
+    alignItems: 'center',
+    backgroundColor: marketplaceColors.paper,
+    borderColor: marketplaceColors.border,
+    borderRadius: marketplaceRadii.lg,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+    padding: 13,
+  },
+  reputationCopy: { flex: 1 },
+  reputationIcon: {
+    alignItems: 'center',
+    backgroundColor: '#F8EDDA',
+    borderRadius: 18,
+    height: 42,
+    justifyContent: 'center',
+    width: 42,
+  },
   reputationText: {
-    color: marketplaceColors.text,
-    fontSize: 12,
-    fontWeight: '700',
-    textAlign: 'center',
+    color: marketplaceColors.muted,
+    fontSize: 10,
+    lineHeight: 15,
+    marginTop: 3,
   },
-  reviewLink: {
-    color: marketplaceColors.accent,
-    fontSize: 12,
-    fontWeight: '900',
-    marginTop: 4,
-    textAlign: 'center',
-  },
-  section: { color: marketplaceColors.text, fontSize: 19, fontWeight: '900', marginTop: 25 },
+  reputationTitle: { color: marketplaceColors.text, fontSize: 13, fontWeight: '900' },
+  section: { marginTop: 28 },
   stat: { alignItems: 'center', flex: 1 },
   statLabel: { color: marketplaceColors.muted, fontSize: 10, marginTop: 3 },
   stats: {
     backgroundColor: marketplaceColors.paper,
     borderColor: marketplaceColors.border,
-    borderRadius: 16,
+    borderRadius: marketplaceRadii.lg,
     borderWidth: 1,
     flexDirection: 'row',
     marginTop: 22,
@@ -240,8 +366,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    left: 10,
+    paddingVertical: 18,
+    position: 'absolute',
+    right: 10,
+    top: 0,
+    zIndex: 2,
   },
+  safetyIcon: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 20,
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+  },
+  trustRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 13 },
   university: { color: marketplaceColors.muted, fontSize: 12, marginTop: 5 },
-  username: { color: marketplaceColors.text, fontSize: 23, fontWeight: '900', marginTop: 12 },
+  username: { color: marketplaceColors.text, fontSize: 23, fontWeight: '900' },
+  usernameRow: { alignItems: 'center', flexDirection: 'row', gap: 6, marginTop: 12 },
 });

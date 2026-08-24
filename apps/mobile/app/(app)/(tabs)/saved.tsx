@@ -1,11 +1,21 @@
 import type { ListingDetail, ListingPage } from '@thriftage/shared';
 import { type InfiniteData, useInfiniteQuery } from '@tanstack/react-query';
+import { router } from 'expo-router';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ListingCard } from '../../../src/components/marketplace/listing-card';
+import {
+  ScreenHeader,
+  TrustPill,
+} from '../../../src/components/marketplace/marketplace-primitives';
+import { ListingGridSkeleton } from '../../../src/components/marketplace/marketplace-skeleton';
 import { MarketplaceState } from '../../../src/components/marketplace/marketplace-state';
-import { marketplaceColors } from '../../../src/components/marketplace/marketplace-theme';
+import {
+  marketplaceColors,
+  marketplaceRadii,
+  marketplaceSpacing,
+} from '../../../src/components/marketplace/marketplace-theme';
 import { useListingActions } from '../../../src/hooks/use-listing-actions';
 import { thriftageApiClient } from '../../../src/lib/auth/auth-composition';
 
@@ -29,11 +39,7 @@ export default function SavedScreen() {
       <FlatList<ListingDetail>
         ListEmptyComponent={
           saved.isLoading ? (
-            <MarketplaceState
-              loading
-              message="Gathering your saved pieces."
-              title="Loading saves"
-            />
+            <ListingGridSkeleton />
           ) : saved.isError ? (
             <MarketplaceState
               actionLabel="Retry"
@@ -44,17 +50,25 @@ export default function SavedScreen() {
             />
           ) : (
             <MarketplaceState
+              actionLabel="Keep discovering"
               icon="bookmark-border"
-              message="Save pieces while browsing to build a private shortlist here."
-              title="Nothing saved yet"
+              message="Tap the bookmark on anything you love. Your private edit will come together here."
+              onAction={() => router.push('/')}
+              title="Start your personal edit"
             />
           )
         }
         ListHeaderComponent={
           <View style={styles.header}>
-            <Text style={styles.eyebrow}>YOUR SHORTLIST</Text>
-            <Text style={styles.heading}>Saved pieces</Text>
-            <Text style={styles.copy}>A private collection of items you want to revisit.</Text>
+            <ScreenHeader
+              eyebrow="YOUR PRIVATE EDIT"
+              subtitle="Keep the pieces worth a second look in one beautifully simple shortlist."
+              title="Saved for later"
+            />
+            <View style={styles.summary}>
+              <TrustPill icon="lock" label="Only you can see this" tone="neutral" />
+              <Text style={styles.count}>{items.length} pieces</Text>
+            </View>
           </View>
         }
         contentContainerStyle={styles.content}
@@ -77,10 +91,19 @@ export default function SavedScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingBottom: 28, paddingHorizontal: 8 },
-  copy: { color: marketplaceColors.muted, fontSize: 14, marginTop: 7 },
-  eyebrow: { color: marketplaceColors.accent, fontSize: 11, fontWeight: '900', letterSpacing: 2 },
-  header: { paddingBottom: 18, paddingHorizontal: 10, paddingTop: 20 },
-  heading: { color: marketplaceColors.forest, fontSize: 30, fontWeight: '900', marginTop: 8 },
+  content: { paddingBottom: 32, paddingHorizontal: 8 },
+  count: { color: marketplaceColors.muted, fontSize: 11, fontWeight: '800' },
+  header: { paddingBottom: 18, paddingHorizontal: 10, paddingTop: 18 },
   safeArea: { backgroundColor: marketplaceColors.background, flex: 1 },
+  summary: {
+    alignItems: 'center',
+    backgroundColor: marketplaceColors.paper,
+    borderColor: marketplaceColors.border,
+    borderRadius: marketplaceRadii.lg,
+    borderWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: marketplaceSpacing.xl,
+    padding: marketplaceSpacing.md,
+  },
 });
