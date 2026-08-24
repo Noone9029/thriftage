@@ -16,11 +16,38 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MarketplaceState } from '../../src/components/marketplace/marketplace-state';
-import { marketplaceColors } from '../../src/components/marketplace/marketplace-theme';
+import {
+  marketplaceColors,
+  marketplaceRadii,
+  marketplaceShadows,
+} from '../../src/components/marketplace/marketplace-theme';
 import { thriftageApiClient } from '../../src/lib/auth/auth-composition';
 
 const totalSteps = 6;
 type ColorSelection = { colorFamily: ColorFamily; sentiment: 'PREFER' | 'AVOID' };
+
+function optionalRupeesToMinor(value: string): number | null {
+  if (value.trim() === '') return null;
+  const parsed = Number(value.replaceAll(',', ''));
+  return Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed * 100) : Number.NaN;
+}
+
+const colorSwatches: Readonly<Record<ColorFamily, string>> = {
+  BEIGE: '#D6C3A5',
+  BLACK: '#151817',
+  BLUE: '#527EAA',
+  BROWN: '#76533C',
+  GREEN: '#527863',
+  GREY: '#969B99',
+  METALLIC: '#AAA9A5',
+  MULTICOLOR: '#E68369',
+  ORANGE: '#E98245',
+  PINK: '#E7A7B3',
+  PURPLE: '#806395',
+  RED: '#BA4D4A',
+  WHITE: '#F9F7F0',
+  YELLOW: '#E7C65A',
+};
 
 export default function StyleProfileScreen() {
   const queryClient = useQueryClient();
@@ -76,8 +103,8 @@ export default function StyleProfileScreen() {
   }, [profile.data]);
 
   const buildInput = (quizStep: number): StyleProfileInput => ({
-    budgetMaxMinor: budgetMax.trim() === '' ? null : Math.round(Number(budgetMax) * 100),
-    budgetMinMinor: budgetMin.trim() === '' ? null : Math.round(Number(budgetMin) * 100),
+    budgetMaxMinor: optionalRupeesToMinor(budgetMax),
+    budgetMinMinor: optionalRupeesToMinor(budgetMin),
     colors,
     currency: 'PKR',
     expressions,
@@ -124,9 +151,17 @@ export default function StyleProfileScreen() {
     },
   });
   const next = () => {
+    setError(null);
     if (step === 0 && selectedStyles.length === 0) return setError('Choose at least one style.');
-    if (step === 4 && priorities.length === 0)
-      return setError('Choose at least one fashion priority.');
+    if (step === 4) {
+      if (priorities.length === 0) return setError('Choose at least one fashion priority.');
+      const minimum = optionalRupeesToMinor(budgetMin);
+      const maximum = optionalRupeesToMinor(budgetMax);
+      if (Number.isNaN(minimum) || Number.isNaN(maximum))
+        return setError('Enter valid whole or decimal PKR budget amounts.');
+      if (minimum !== null && maximum !== null && minimum > maximum)
+        return setError('Maximum budget must be greater than or equal to minimum budget.');
+    }
     save.mutate({
       complete: step === totalSteps - 1,
       nextStep: Math.min(totalSteps - 1, step + 1),
@@ -156,13 +191,23 @@ export default function StyleProfileScreen() {
   return (
     <SafeAreaView style={screen.safeArea}>
       <View style={screen.topBar}>
-        <Pressable accessibilityLabel="Close style profile" onPress={() => router.back()}>
+        <Pressable
+          accessibilityLabel="Close style profile"
+          accessibilityRole="button"
+          hitSlop={10}
+          onPress={() => router.back()}
+        >
           <MaterialIcons color={marketplaceColors.text} name="close" size={25} />
         </Pressable>
         <Text style={screen.step}>
           Step {step + 1} of {totalSteps}
         </Text>
-        <Pressable onPress={() => router.push('/personalization-settings')}>
+        <Pressable
+          accessibilityLabel="Open personalization settings"
+          accessibilityRole="button"
+          hitSlop={10}
+          onPress={() => router.push('/personalization-settings')}
+        >
           <MaterialIcons color={marketplaceColors.forest} name="tune" size={23} />
         </Pressable>
       </View>
@@ -223,21 +268,30 @@ export default function StyleProfileScreen() {
                       selection?.sentiment === 'AVOID' && screen.choiceAvoid,
                     ]}
                   >
-                    <Text
+                    <View
                       style={[
-                        screen.choiceText,
-                        selection !== undefined && screen.choiceTextActive,
+                        screen.colorSwatch,
+                        { backgroundColor: colorSwatches[color] },
+                        color === 'WHITE' && screen.colorSwatchLight,
                       ]}
-                    >
-                      {color}
-                    </Text>
-                    <Text style={screen.choiceHint}>
-                      {selection?.sentiment === 'PREFER'
-                        ? 'Prefer'
-                        : selection?.sentiment === 'AVOID'
-                          ? 'Avoid'
-                          : 'Neutral'}
-                    </Text>
+                    />
+                    <View style={screen.choiceCopy}>
+                      <Text
+                        style={[
+                          screen.choiceText,
+                          selection !== undefined && screen.choiceTextActive,
+                        ]}
+                      >
+                        {color}
+                      </Text>
+                      <Text style={screen.choiceHint}>
+                        {selection?.sentiment === 'PREFER'
+                          ? 'Prefer'
+                          : selection?.sentiment === 'AVOID'
+                            ? 'Avoid'
+                            : 'Neutral'}
+                      </Text>
+                    </View>
                   </Pressable>
                 );
               })}
@@ -387,11 +441,21 @@ export default function StyleProfileScreen() {
       </ScrollView>
       <View style={screen.footer}>
         {step > 0 ? (
-          <Pressable onPress={() => setStep((value) => value - 1)} style={screen.back}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setStep((value) => value - 1)}
+            style={screen.back}
+          >
             <Text style={screen.backText}>Back</Text>
           </Pressable>
         ) : null}
-        <Pressable disabled={save.isPending} onPress={next} style={screen.primary}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ busy: save.isPending, disabled: save.isPending }}
+          disabled={save.isPending}
+          onPress={next}
+          style={screen.primary}
+        >
           <Text style={screen.primaryText}>
             {save.isPending
               ? 'Saving…'
@@ -441,20 +505,45 @@ function ChoiceGrid({
           onPress={() => onToggle(value)}
           style={[screen.choice, selected.includes(value) && screen.choiceActive]}
         >
+          <View style={[screen.choiceIcon, selected.includes(value) && screen.choiceIconActive]}>
+            <MaterialIcons
+              color={selected.includes(value) ? marketplaceColors.forest : marketplaceColors.accent}
+              name={choiceIcon(label)}
+              size={18}
+            />
+          </View>
           <Text style={[screen.choiceText, selected.includes(value) && screen.choiceTextActive]}>
             {label.replaceAll('_', ' ')}
           </Text>
+          {selected.includes(value) ? (
+            <MaterialIcons color={marketplaceColors.white} name="check-circle" size={17} />
+          ) : null}
         </Pressable>
       ))}
     </View>
   );
 }
 
+function choiceIcon(label: string): keyof typeof MaterialIcons.glyphMap {
+  const normalized = label.toLowerCase();
+  if (normalized.includes('vintage')) return 'history';
+  if (normalized.includes('minimal')) return 'crop-square';
+  if (normalized.includes('formal') || normalized.includes('professional'))
+    return 'business-center';
+  if (normalized.includes('athl') || normalized.includes('sport')) return 'directions-run';
+  if (normalized.includes('tech')) return 'memory';
+  if (normalized.includes('comfort')) return 'self-improvement';
+  if (normalized.includes('price')) return 'savings';
+  if (normalized.includes('sustain')) return 'eco';
+  if (normalized.includes('exclusive')) return 'diamond';
+  return 'auto-awesome';
+}
+
 const screen = StyleSheet.create({
   back: {
     alignItems: 'center',
     borderColor: marketplaceColors.border,
-    borderRadius: 14,
+    borderRadius: marketplaceRadii.lg,
     borderWidth: 1,
     justifyContent: 'center',
     paddingHorizontal: 20,
@@ -463,11 +552,15 @@ const screen = StyleSheet.create({
   budgetField: { flex: 1 },
   budgetRow: { flexDirection: 'row', gap: 12 },
   choice: {
+    ...marketplaceShadows.card,
+    alignItems: 'center',
     backgroundColor: marketplaceColors.paper,
     borderColor: marketplaceColors.border,
-    borderRadius: 16,
+    borderRadius: marketplaceRadii.xl,
     borderWidth: 1,
-    minHeight: 62,
+    flexDirection: 'row',
+    gap: 8,
+    minHeight: 72,
     padding: 13,
     width: '47%',
   },
@@ -476,14 +569,27 @@ const screen = StyleSheet.create({
     borderColor: marketplaceColors.forest,
   },
   choiceAvoid: { backgroundColor: '#8B3A3A', borderColor: '#8B3A3A' },
+  choiceIcon: {
+    alignItems: 'center',
+    backgroundColor: marketplaceColors.accentSoft,
+    borderRadius: 14,
+    height: 34,
+    justifyContent: 'center',
+    width: 34,
+  },
+  choiceIconActive: { backgroundColor: marketplaceColors.white },
   choiceHint: { color: '#C6C2B9', fontSize: 10, marginTop: 4 },
+  choiceCopy: { flex: 1 },
   choiceText: {
     color: marketplaceColors.text,
-    fontSize: 13,
+    flex: 1,
+    fontSize: 12,
     fontWeight: '800',
     textTransform: 'capitalize',
   },
   choiceTextActive: { color: marketplaceColors.white },
+  colorSwatch: { borderRadius: 14, height: 28, marginBottom: 5, width: 28 },
+  colorSwatchLight: { borderColor: marketplaceColors.borderStrong, borderWidth: 1 },
   content: { padding: 24, paddingBottom: 120 },
   error: { color: marketplaceColors.danger, fontWeight: '700', marginTop: 18 },
   eyebrow: { color: marketplaceColors.accent, fontSize: 11, fontWeight: '900', letterSpacing: 2 },
@@ -495,6 +601,7 @@ const screen = StyleSheet.create({
     marginTop: 20,
   },
   footer: {
+    ...marketplaceShadows.floating,
     backgroundColor: marketplaceColors.background,
     borderTopColor: marketplaceColors.border,
     borderTopWidth: 1,
@@ -510,7 +617,7 @@ const screen = StyleSheet.create({
   input: {
     backgroundColor: marketplaceColors.paper,
     borderColor: marketplaceColors.border,
-    borderRadius: 14,
+    borderRadius: marketplaceRadii.lg,
     borderWidth: 1,
     color: marketplaceColors.text,
     padding: 14,
@@ -518,7 +625,7 @@ const screen = StyleSheet.create({
   primary: {
     alignItems: 'center',
     backgroundColor: marketplaceColors.forest,
-    borderRadius: 14,
+    borderRadius: marketplaceRadii.lg,
     flex: 1,
     padding: 16,
   },
@@ -528,7 +635,7 @@ const screen = StyleSheet.create({
   review: {
     backgroundColor: marketplaceColors.paper,
     borderColor: marketplaceColors.border,
-    borderRadius: 20,
+    borderRadius: marketplaceRadii.hero,
     borderWidth: 1,
     gap: 14,
     padding: 20,
@@ -543,7 +650,11 @@ const screen = StyleSheet.create({
   },
   resultStyle: { color: marketplaceColors.forest, fontSize: 25, fontWeight: '900' },
   safeArea: { backgroundColor: marketplaceColors.background, flex: 1 },
-  section: { marginTop: 26 },
+  section: {
+    backgroundColor: 'rgba(255,252,247,0.42)',
+    borderRadius: marketplaceRadii.xl,
+    marginTop: 26,
+  },
   step: { color: marketplaceColors.muted, fontSize: 12, fontWeight: '800' },
   subtitle: { color: marketplaceColors.muted, fontSize: 15, lineHeight: 22, marginTop: 10 },
   title: {

@@ -12,12 +12,20 @@ import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MarketplaceState } from '../../../src/components/marketplace/marketplace-state';
-import { marketplaceColors } from '../../../src/components/marketplace/marketplace-theme';
+import {
+  marketplaceColors,
+  marketplaceRadii,
+  marketplaceShadows,
+  marketplaceSpacing,
+} from '../../../src/components/marketplace/marketplace-theme';
+import { useRuntimeConfig } from '../../../src/hooks/use-runtime-config';
 import { thriftageApiClient } from '../../../src/lib/auth/auth-composition';
+import { stylistStarterPrompts } from '../../../src/lib/ai-stylist/stylist-mobile';
 
 export default function StylistHomeScreen() {
   const [includeArchived, setIncludeArchived] = useState(false);
   const queryClient = useQueryClient();
+  const runtime = useRuntimeConfig();
   const conversations = useInfiniteQuery<
     AiStylistConversationPage,
     Error,
@@ -48,6 +56,7 @@ export default function StylistHomeScreen() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ai-stylist', 'conversations'] }),
   });
   const items = conversations.data?.pages.flatMap((page) => page.items) ?? [];
+  const stylistEnabled = runtime.data?.features.aiStylist === true;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -83,12 +92,15 @@ export default function StylistHomeScreen() {
             <View style={styles.topRow}>
               <Pressable
                 accessibilityLabel="Go back"
+                accessibilityRole="button"
                 onPress={() => router.back()}
                 style={styles.iconButton}
               >
                 <MaterialIcons color={marketplaceColors.forest} name="arrow-back" size={22} />
               </Pressable>
               <Pressable
+                accessibilityLabel="Open saved outfits"
+                accessibilityRole="button"
                 onPress={() => router.push('/stylist/saved-outfits')}
                 style={styles.savedButton}
               >
@@ -100,23 +112,75 @@ export default function StylistHomeScreen() {
                 <Text style={styles.savedText}>Saved outfits</Text>
               </Pressable>
             </View>
-            <Text style={styles.eyebrow}>THRIFTAGE STYLIST</Text>
-            <Text style={styles.title}>Style your next chapter.</Text>
-            <Text style={styles.copy}>
-              Personalized outfit intelligence grounded only in live marketplace pieces—never
-              invented products.
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              disabled={create.isPending}
-              onPress={() => create.mutate()}
-              style={styles.newButton}
-            >
-              <MaterialIcons color={marketplaceColors.white} name="auto-awesome" size={20} />
-              <Text style={styles.newButtonText}>
-                {create.isPending ? 'Starting…' : 'Start a new outfit'}
+            <View style={styles.hero}>
+              <View style={styles.heroOrb} />
+              <Text style={styles.eyebrow}>THRIFTAGE STYLIST</Text>
+              <Text style={styles.title}>Style your next chapter.</Text>
+              <Text style={styles.copy}>
+                Outfit intelligence grounded only in real marketplace pieces—never invented
+                products.
               </Text>
-            </Pressable>
+              {stylistEnabled ? (
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={create.isPending}
+                  onPress={() => create.mutate()}
+                  style={styles.newButton}
+                >
+                  <MaterialIcons
+                    color={marketplaceColors.forestDeep}
+                    name="auto-awesome"
+                    size={20}
+                  />
+                  <Text style={styles.newButtonText}>
+                    {create.isPending ? 'Starting…' : 'Create a new look'}
+                  </Text>
+                  <MaterialIcons
+                    color={marketplaceColors.forestDeep}
+                    name="arrow-forward"
+                    size={18}
+                  />
+                </Pressable>
+              ) : (
+                <View style={styles.pausedCard}>
+                  <View style={styles.pausedIcon}>
+                    <MaterialIcons color={marketplaceColors.forest} name="style" size={21} />
+                  </View>
+                  <View style={styles.pausedCopy}>
+                    <Text style={styles.pausedTitle}>The live Stylist is resting</Text>
+                    <Text style={styles.pausedText}>
+                      Your saved looks remain available, and your style profile still shapes For
+                      You.
+                    </Text>
+                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => router.push('/style-profile')}
+                  >
+                    <Text style={styles.pausedAction}>Tune style</Text>
+                  </Pressable>
+                </View>
+              )}
+            </View>
+            {stylistEnabled ? (
+              <View style={styles.promptSection}>
+                <Text style={styles.promptLabel}>TRY ASKING</Text>
+                <View style={styles.promptGrid}>
+                  {stylistStarterPrompts.slice(0, 3).map((prompt, index) => (
+                    <View key={prompt} style={styles.promptCard}>
+                      <MaterialIcons
+                        color={marketplaceColors.accent}
+                        name={index === 0 ? 'school' : index === 1 ? 'celebration' : 'weekend'}
+                        size={18}
+                      />
+                      <Text numberOfLines={2} style={styles.promptText}>
+                        {prompt}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
             {create.isError ? (
               <Text style={styles.error}>
                 The Stylist could not start. Check your connection and try again.
@@ -131,7 +195,11 @@ export default function StylistHomeScreen() {
             </View>
             <View style={styles.historyRow}>
               <Text style={styles.historyTitle}>Your conversations</Text>
-              <Pressable onPress={() => setIncludeArchived((current) => !current)}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: includeArchived }}
+                onPress={() => setIncludeArchived((current) => !current)}
+              >
                 <Text style={styles.archiveToggle}>
                   {includeArchived ? 'Active only' : 'Include archived'}
                 </Text>
@@ -147,7 +215,12 @@ export default function StylistHomeScreen() {
             void conversations.fetchNextPage();
         }}
         renderItem={({ item }) => (
-          <Pressable onPress={() => router.push(`/stylist/${item.id}`)} style={styles.conversation}>
+          <Pressable
+            accessibilityLabel={`Open Stylist conversation ${item.title}`}
+            accessibilityRole="button"
+            onPress={() => router.push(`/stylist/${item.id}`)}
+            style={styles.conversation}
+          >
             <View style={styles.conversationIcon}>
               <MaterialIcons color={marketplaceColors.accent} name="auto-awesome" size={20} />
             </View>
@@ -170,6 +243,9 @@ export default function StylistHomeScreen() {
                 accessibilityLabel={
                   item.archivedAt === null ? 'Archive conversation' : 'Restore conversation'
                 }
+                accessibilityRole="button"
+                accessibilityState={{ busy: archive.isPending, disabled: archive.isPending }}
+                disabled={archive.isPending}
                 onPress={(event) => {
                   event.stopPropagation();
                   archive.mutate({ archived: item.archivedAt === null, id: item.id });
@@ -184,6 +260,9 @@ export default function StylistHomeScreen() {
               </Pressable>
               <Pressable
                 accessibilityLabel="Delete conversation"
+                accessibilityRole="button"
+                accessibilityState={{ busy: remove.isPending, disabled: remove.isPending }}
+                disabled={remove.isPending}
                 onPress={(event) => {
                   event.stopPropagation();
                   Alert.alert(
@@ -224,10 +303,11 @@ const styles = StyleSheet.create({
   },
   content: { paddingBottom: 30, paddingHorizontal: 16 },
   conversation: {
+    ...marketplaceShadows.card,
     alignItems: 'center',
     backgroundColor: marketplaceColors.paper,
     borderColor: marketplaceColors.border,
-    borderRadius: 18,
+    borderRadius: marketplaceRadii.xl,
     borderWidth: 1,
     flexDirection: 'row',
     gap: 12,
@@ -245,7 +325,7 @@ const styles = StyleSheet.create({
   },
   conversationTitle: { color: marketplaceColors.text, flex: 1, fontSize: 14, fontWeight: '900' },
   conversationTitleRow: { alignItems: 'center', flexDirection: 'row', gap: 6 },
-  copy: { color: marketplaceColors.muted, fontSize: 14, lineHeight: 21, marginTop: 8 },
+  copy: { color: 'rgba(255,255,255,0.7)', fontSize: 13, lineHeight: 20, marginTop: 9 },
   empty: { alignItems: 'center', paddingHorizontal: 30, paddingVertical: 46 },
   emptyCopy: {
     color: marketplaceColors.muted,
@@ -261,9 +341,27 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '900',
     letterSpacing: 2.3,
-    marginTop: 22,
+    marginTop: 0,
   },
   header: { paddingBottom: 12, paddingTop: 8 },
+  hero: {
+    ...marketplaceShadows.floating,
+    backgroundColor: marketplaceColors.forestDeep,
+    borderRadius: marketplaceRadii.hero,
+    marginTop: marketplaceSpacing.xl,
+    overflow: 'hidden',
+    padding: marketplaceSpacing.xl,
+  },
+  heroOrb: {
+    backgroundColor: marketplaceColors.accent,
+    borderRadius: 110,
+    height: 190,
+    opacity: 0.48,
+    position: 'absolute',
+    right: -78,
+    top: -82,
+    width: 190,
+  },
   historyRow: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -282,26 +380,75 @@ const styles = StyleSheet.create({
   },
   newButton: {
     alignItems: 'center',
-    backgroundColor: marketplaceColors.forest,
-    borderRadius: 17,
+    backgroundColor: marketplaceColors.white,
+    borderRadius: marketplaceRadii.lg,
     flexDirection: 'row',
     gap: 9,
     justifyContent: 'center',
     marginTop: 20,
     padding: 16,
   },
-  newButtonText: { color: marketplaceColors.white, fontSize: 14, fontWeight: '900' },
+  newButtonText: { color: marketplaceColors.forestDeep, fontSize: 14, fontWeight: '900' },
+  pausedAction: { color: marketplaceColors.accentDeep, fontSize: 10, fontWeight: '900' },
+  pausedCard: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderRadius: marketplaceRadii.lg,
+    flexDirection: 'row',
+    gap: 9,
+    marginTop: marketplaceSpacing.xl,
+    padding: 11,
+  },
+  pausedCopy: { flex: 1 },
+  pausedIcon: {
+    alignItems: 'center',
+    backgroundColor: marketplaceColors.forestSoft,
+    borderRadius: 15,
+    height: 38,
+    justifyContent: 'center',
+    width: 38,
+  },
+  pausedText: { color: marketplaceColors.muted, fontSize: 9, lineHeight: 13, marginTop: 2 },
+  pausedTitle: { color: marketplaceColors.forest, fontSize: 11, fontWeight: '900' },
   preview: { color: marketplaceColors.muted, fontSize: 11, marginTop: 4 },
   privacyCard: {
     alignItems: 'flex-start',
-    backgroundColor: '#E2EAE4',
-    borderRadius: 14,
+    backgroundColor: marketplaceColors.forestSoft,
+    borderRadius: marketplaceRadii.lg,
     flexDirection: 'row',
     gap: 9,
     marginTop: 13,
     padding: 12,
   },
   privacyText: { color: marketplaceColors.forest, flex: 1, fontSize: 11, lineHeight: 16 },
+  promptCard: {
+    alignItems: 'center',
+    backgroundColor: marketplaceColors.paper,
+    borderColor: marketplaceColors.border,
+    borderRadius: marketplaceRadii.lg,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    minHeight: 58,
+    padding: 10,
+    width: '48.5%',
+  },
+  promptGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  promptLabel: {
+    color: marketplaceColors.muted,
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1.6,
+    marginBottom: 9,
+  },
+  promptSection: { marginTop: marketplaceSpacing.lg },
+  promptText: {
+    color: marketplaceColors.text,
+    flex: 1,
+    fontSize: 9,
+    fontWeight: '800',
+    lineHeight: 13,
+  },
   rowActions: { flexDirection: 'row' },
   safe: { backgroundColor: marketplaceColors.background, flex: 1 },
   savedButton: {
@@ -317,7 +464,7 @@ const styles = StyleSheet.create({
   smallIcon: { padding: 5 },
   timestamp: { color: marketplaceColors.muted, fontSize: 9, marginTop: 5 },
   title: {
-    color: marketplaceColors.forest,
+    color: marketplaceColors.white,
     fontSize: 34,
     fontWeight: '900',
     letterSpacing: -1.2,
