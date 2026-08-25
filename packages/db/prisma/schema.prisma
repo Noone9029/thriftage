@@ -56,6 +56,31 @@ enum AiResponseFeedbackKind {
   REPORT
 }
 
+enum MarketingLeadKind {
+  BETA
+  SELLER
+}
+
+enum MarketingAudience {
+  BUYER
+  SELLER
+  BOTH
+}
+
+enum MarketingSellerType {
+  CLOSET_SELLER
+  THRIFT_RESELLER
+  FASHION_CREATOR
+  OTHER
+}
+
+enum MarketingItemVolume {
+  ONE_TO_TEN
+  ELEVEN_TO_THIRTY
+  THIRTY_ONE_TO_SEVENTY_FIVE
+  MORE_THAN_SEVENTY_FIVE
+}
+
 enum PhoneVerificationAttemptStatus {
   PENDING
   PROVIDER_VERIFIED
@@ -1757,4 +1782,37 @@ model AiAttributionEvent {
   @@index([generationId, listingId, type], map: "ai_attribution_events_generation_listing_type_idx")
   @@index([type, createdAt], map: "ai_attribution_events_type_created_idx")
   @@map("ai_attribution_events")
+}
+
+model MarketingLead {
+  id              String               @id @default(uuid()) @db.Uuid
+  kind            MarketingLeadKind
+  emailNormalized String               @map("email_normalized") @db.VarChar(254)
+  name            String?              @db.VarChar(120)
+  city            String               @db.VarChar(100)
+  audience        MarketingAudience?
+  sellerType      MarketingSellerType? @map("seller_type")
+  itemVolume      MarketingItemVolume? @map("item_volume")
+  styleInterest   String?              @map("style_interest") @db.VarChar(120)
+  storeUrl        String?              @map("store_url") @db.VarChar(500)
+  message         String?              @db.VarChar(1000)
+  source          String               @db.VarChar(100)
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([kind, emailNormalized], map: "marketing_leads_kind_email_key")
+  @@index([kind, createdAt, id], map: "marketing_leads_kind_created_idx")
+  @@map("marketing_leads")
+}
+
+model MarketingLeadRateLimitBucket {
+  fingerprintHash String   @map("fingerprint_hash") @db.Char(64)
+  bucketStart     DateTime @map("bucket_start") @db.Timestamptz(3)
+  requestCount    Int      @default(1) @map("request_count")
+  expiresAt       DateTime @map("expires_at") @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@id([fingerprintHash, bucketStart], map: "marketing_lead_rate_limit_buckets_pkey")
+  @@index([expiresAt], map: "marketing_lead_rate_limit_buckets_expiry_idx")
+  @@map("marketing_lead_rate_limit_buckets")
 }

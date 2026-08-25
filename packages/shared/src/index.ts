@@ -12,6 +12,7 @@ export * from './marketplace/listing-contracts';
 export * from './marketplace/marketplace-error-contracts';
 export * from './marketplace/moderation-contracts';
 export * from './marketplace/social-contracts';
+export * from './marketing/marketing-lead-contracts';
 export * from './notifications/notification-contracts';
 export * from './operations/closed-beta-contracts';
 export * from './personalization/personalization-contracts';

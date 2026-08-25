@@ -62,6 +62,10 @@ export {
   AiGenerationStatus,
   AiProviderCode,
   AiAttributionEventType,
+  MarketingLeadKind,
+  MarketingAudience,
+  MarketingSellerType,
+  MarketingItemVolume,
 } from './generated/client/client';
 export type {
   Address,
@@ -122,6 +126,8 @@ export type {
   SavedOutfit,
   SavedOutfitItem,
   AiAttributionEvent,
+  MarketingLead,
+  MarketingLeadRateLimitBucket,
 } from './generated/client/client';
 
 export const DATABASE_PROVIDER = 'postgresql' as const;
