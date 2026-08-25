@@ -7,6 +7,7 @@ Thriftage is a mobile-first peer-to-peer fashion marketplace. The repository con
 ```text
 apps/
   mobile/   Expo + React Native customer application
+  web/      Next.js public brand, seller-interest, and beta website
   admin/    Next.js operations console
   api/      NestJS REST API
 packages/
@@ -44,6 +45,7 @@ npm.cmd install --global pnpm@11.16.0
    Copy-Item apps/api/.env.example apps/api/.env
    Copy-Item apps/admin/.env.example apps/admin/.env.local
    Copy-Item apps/mobile/.env.example apps/mobile/.env
+   Copy-Item apps/web/.env.example apps/web/.env.local
    ```
 
 3. Update `packages/db/.env` with local connection strings, validate the schema, and apply migrations:
@@ -63,9 +65,12 @@ npm.cmd install --global pnpm@11.16.0
    pnpm.cmd --filter @thriftage/api dev
    pnpm.cmd --filter @thriftage/admin dev
    pnpm.cmd --filter @thriftage/mobile dev
+   pnpm.cmd --filter @thriftage/web dev
    ```
 
-The API health check is available at `http://localhost:4000/api/v1/health`; the admin app uses port 3000, and Expo selects its available development port.
+The API health check is available at `http://localhost:4000/api/v1/health`; the admin app uses port 3000, the public website uses port 3001, and Expo selects its available development port.
+
+The public site exposes `/`, `/sell`, and `/beta`. Its forms use a server-only pooled `DATABASE_URL`, a random `MARKETING_FORM_HASH_SECRET` of at least 32 characters, validation, a honeypot, and pseudonymous database-backed rate limits. Leads are stored separately from application users. Keep the optional policy/support URLs unset until approved content exists; the footer renders those links as unavailable rather than inventing destinations.
 
 Set the backend Supabase, Twilio Verify, storage, trust-policy, dispute, support, realtime, outbox, and Expo push variables from `apps/api/.env.example`. Routine token verification uses the publishable key; secure phone linking, controlled storage, and API-originated realtime use a backend-only Supabase secret key. Push and realtime remain disabled by default. Protected requests use `Authorization: Bearer <access-token>`; see the [identity and onboarding architecture](./docs/architecture/identity-onboarding.md), [marketplace discovery architecture](./docs/architecture/marketplace-discovery.md), and [trusted communication and commerce architecture](./docs/architecture/trusted-communication-commerce.md).
 
@@ -87,7 +92,7 @@ pnpm.cmd test:db
 pnpm.cmd build
 ```
 
-`pnpm build` creates production artifacts for the API and shared packages, a Next.js admin build, and an Expo web export. Android and iOS release binaries require platform signing and release configuration.
+`pnpm build` creates production artifacts for the API and shared packages, Next.js public-web and admin builds, and an Expo web export. Android and iOS release binaries require platform signing and release configuration.
 
 ## Closed-beta readiness
 
@@ -125,6 +130,19 @@ pnpm.cmd test:db
 
 The database test guard refuses non-test database names before any cleanup runs.
 For a disposable named `prisma dev` instance, set `ALLOW_PRISMA_DEV_TEST_DATABASE=true`; only non-default localhost ports are accepted by that override.
+
+One Docker-free workflow is:
+
+```powershell
+pnpm.cmd --filter @thriftage/db exec prisma dev --detach --name thriftage-web-test
+$env:TEST_DATABASE_URL = '<the local prisma dev URL>'
+$env:DATABASE_URL = $env:TEST_DATABASE_URL
+$env:ALLOW_PRISMA_DEV_TEST_DATABASE = 'true'
+pnpm.cmd db:migrate:deploy
+pnpm.cmd --filter @thriftage/web test:integration
+```
+
+Keep this test database isolated from staging or production. The guard refuses shared database names and default local PostgreSQL ports unless the explicit Prisma Dev override is present.
 
 ## Marketplace operations
 

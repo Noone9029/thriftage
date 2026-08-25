@@ -10,6 +10,7 @@ Use independent secret stores for local, EAS `preview`, staging runtime, EAS `pr
 | API environment/release | `staging` / `f7fac85344697e73fd843b0bad7b393fb1a4678d`                                     |
 | API compute / DB region | Railway Singapore / Supabase `ap-south-1`                                                  |
 | Admin preview           | `https://thriftage-admin-6hwrrcub6-ahmad-khalid-s-projects.vercel.app`                     |
+| Public web preview      | `https://thriftage-city8gqoc-ahmad-khalid-s-projects.vercel.app` (Vercel-protected)        |
 | Account deletion page   | `https://thriftage-admin-6hwrrcub6-ahmad-khalid-s-projects.vercel.app/account-deletion`    |
 | Supabase project        | `dstnxzljsbyusxoogkzr` (`ap-south-1`, staging only)                                        |
 | Allowed browser origin  | Exact admin preview URL above                                                              |
@@ -19,6 +20,8 @@ Use independent secret stores for local, EAS `preview`, staging runtime, EAS `pr
 | Mobile preview target   | Public staging API and staging Supabase; never localhost/LAN for an EAS preview            |
 
 Current staging uses `DATABASE_POOL_MAX=15`, matching the verified Supabase session-pool client limit. Runtime flags disable registration, phone auth, seller verification, account deletion, AI Stylist, and push notifications. Account deletion was enabled only for the controlled 2026-08-21 disposable-identity drill and restored to `false` afterward. Its public unauthenticated Vercel page is configured as the backend `ACCOUNT_DELETION_URL` and is exposed through safe runtime config. Realtime broadcast is server-side operational even though it is not a public client feature flag. Privacy Policy, Terms, Community Guidelines, support links, and Sentry remain intentionally unconfigured blockers. The installed Android preview uses native build release `aa036173e30db306e7770394688ff0b01c6cb1a5` and compatible preview OTA release `da6246e4a9587d466df8f58ff74bd3684cc27754`; its diagnostics obtain the current API release from runtime metadata. Preview builds set `SENTRY_DISABLE_AUTO_UPLOAD=true` until Sentry credentials exist; production does not. Expo Go is development evidence only and is not interchangeable with the installed preview package.
+
+The public web preview is project `thriftage-web` (`prj_qiVxDdcvMb6TFlzracqRAAguzxcH`), separate from `thriftage-admin`. It has no custom domain and remains behind Vercel preview protection. Only its server-side form runtime receives the staging database URL and HMAC secret; neither value is browser-exposed.
 
 ## Identity and runtime
 
@@ -33,6 +36,24 @@ Current staging uses `DATABASE_POOL_MAX=15`, matching the verified Supabase sess
 | `DATABASE_URL`         | backend secret/runtime | Pooled TLS URL for least-privilege login role `thriftage_api`.         |
 | `DATABASE_POOL_MAX`    | runtime/performance    | Prisma client cap; must not exceed the provider pool's client limit.   |
 | `TEST_DATABASE_URL`    | test secret            | Disposable integration-test database only.                             |
+
+## Public website
+
+The public Next.js application is a separate Vercel project from the admin console. It accepts no browser-side database or provider secrets.
+
+| Variable                               | Classification       | Requirement                                                                                                                                                                                                    |
+| -------------------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                         | web server secret    | Pooled TLS URL for the least-privilege `thriftage_api` role; used only by server-side forms. For the current Supabase pooler with node-postgres, use `sslmode=require&uselibpqcompat=true`; never disable TLS. |
+| `MARKETING_FORM_HASH_SECRET`           | web server secret    | At least 32 random characters for HMAC-pseudonymized abuse fingerprints.                                                                                                                                       |
+| `NEXT_PUBLIC_SITE_URL`                 | public build/runtime | Canonical HTTPS origin; Vercel preview host is used automatically when omitted.                                                                                                                                |
+| `NEXT_PUBLIC_PRIVACY_URL`              | public build/runtime | Approved Privacy URL; omit until approved.                                                                                                                                                                     |
+| `NEXT_PUBLIC_TERMS_URL`                | public build/runtime | Approved Terms URL; omit until approved.                                                                                                                                                                       |
+| `NEXT_PUBLIC_COMMUNITY_GUIDELINES_URL` | public build/runtime | Approved Community Guidelines URL; omit until approved.                                                                                                                                                        |
+| `NEXT_PUBLIC_SUPPORT_URL`              | public build/runtime | Approved support destination; omit until approved.                                                                                                                                                             |
+
+Beta and seller-interest records live in the dedicated `marketing_leads` table, not `users`. The companion rate-limit table stores only HMAC fingerprints, never raw IP addresses or user agents. Both tables enforce RLS and grant access only through the trusted server runtime role.
+
+The current protected preview uses encrypted libpq-compatible `require` semantics because Vercel does not yet load the repository's Supabase CA bundle. Before an authorized production/public promotion, include the CA in the public web runtime, return the URL to `sslmode=verify-full`, and prove a hosted form write with certificate verification enabled.
 
 ## Mobile and EAS
 

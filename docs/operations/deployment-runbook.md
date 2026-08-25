@@ -9,6 +9,7 @@ This repository does not authorize public launch. Staging deployment and closed/
 - API: `https://api-staging-4101.up.railway.app/api/v1` on Railway project `thriftage-staging`, environment `staging`, service `api`.
 - API release: `f7fac85344697e73fd843b0bad7b393fb1a4678d` on Railway Singapore; deployment `a6c44f4b-1845-43e6-81ea-946718e7c9ce`; `/health` and `/readiness` return 200 and identify `staging`.
 - Admin: `https://thriftage-admin-6hwrrcub6-ahmad-khalid-s-projects.vercel.app` in the existing Vercel project `thriftage-admin`; the public unauthenticated account-deletion page is available at `/account-deletion` and configured in API runtime metadata.
+- Public web: protected preview `https://thriftage-city8gqoc-ahmad-khalid-s-projects.vercel.app` in the separate Vercel project `thriftage-web` (`prj_qiVxDdcvMb6TFlzracqRAAguzxcH`); deployment `dpl_3XpASaFbaDQV9mE3a5aDvJtEEdzb` is READY. No custom domain or production promotion is configured.
 - Database/Auth/Storage/Realtime: existing Supabase staging project `dstnxzljsbyusxoogkzr` in `ap-south-1`.
 - Mobile: Expo project `@noone9029s-team/thriftage` (`8b3c5e61-0f52-4646-a29a-bf5b3dd86d91`); Android internal build `dc462b59-c9f5-4088-a38f-1a4612596e94` from native mobile release `aa036173e30db306e7770394688ff0b01c6cb1a5`, updated on the preview channel to release `da6246e4a9587d466df8f58ff74bd3684cc27754` by OTA group `9255dbe7-9487-4c05-bb3c-287e4f1fbea2`.
 - The API allows the exact admin preview origin. Do not broaden credentialed CORS or create duplicate provider projects.
@@ -25,6 +26,16 @@ Railway uses the repository `Dockerfile` and `railway.json`, Node 24, `/api/v1/r
 The deployed smoke requires `TARGET_ENV=staging`, `ALLOW_STAGING_SMOKE=THRIFTAGE_STAGING_ONLY`, an exact HTTPS `STAGING_API_URL` ending at `/api/v1`, `EXPECTED_STAGING_HOST`, and `EXPECTED_RELEASE_VERSION`; an optional `STAGING_SMOKE_AUTH_TOKEN` adds a read-only authenticated probe. The authorization matrix additionally requires `ALLOW_STAGING_AUTHORIZATION_MATRIX=THRIFTAGE_SYNTHETIC_FIXTURES_ONLY`, non-placeholder `USER_A_TOKEN`, `USER_B_TOKEN`, and `ADMIN_TOKEN` values, plus `USER_A_USER_ID`, `USER_A_USERNAME`, `USER_A_ORDER_ID`, `USER_A_DRAFT_LISTING_ID`, `USER_A_DRAFT_LISTING_TITLE`, `USER_A_AI_CONVERSATION_ID`, `USER_A_SAVED_OUTFIT_ID`, `USER_A_PRIVATE_CONVERSATION_ID`, `USER_A_DISPUTE_ID`, and `BLOCKED_CONVERSATION_ID`. Both tools refuse production-looking hosts and never print response bodies or credentials.
 
 `.github/workflows/staging-smoke.yml` exposes the same read-only check through a manually dispatched, protected `staging` GitHub Environment. Configure its optional token as an environment secret. Railway and Vercel remain manually promoted staging targets; do not add production auto-promotion.
+
+### Public web preview
+
+The public site deploys from monorepo root directory `apps/web`; do not relink or overwrite the existing `thriftage-admin` project. Project settings use Next.js, `pnpm install --frozen-lockfile`, `pnpm build`, and `.next`. `vercel.web.json` records the same build settings for operator clarity.
+
+Preview-only server secrets are `DATABASE_URL` and `MARKETING_FORM_HASH_SECRET`. The database URL uses the staging `thriftage_api` role and encrypted Supabase pooler connection with `sslmode=require&uselibpqcompat=true`; the HMAC secret is at least 32 random characters. Legal/support URLs remain unset until approved. Do not place either secret in a `NEXT_PUBLIC_*` variable.
+
+The verified deployment returns HTTP 200 for `/`, `/sell`, `/beta`, `/robots.txt`, `/sitemap.xml`, `/opengraph-image.png`, `/icon.svg`, and `/apple-icon.png`. Hosted QA proved invalid-email and honeypot rejection, beta and seller creation, per-kind duplicate handling, success states, and a five-request/15-minute boundary where the sixth submission was rejected and not persisted. Keep deployment protection enabled until public launch is explicitly authorized.
+
+Production promotion additionally requires an approved domain and legal/support destinations, public-web monitoring, a provider CA available to the function runtime so PostgreSQL returns to `sslmode=verify-full`, and named human approval. Do not treat the protected preview URL as a production launch.
 
 Supabase Realtime REST broadcast uses `/realtime/v1/api/broadcast/{topic}/events/{event}?private=true` with the server-only `apikey`; clients subscribe with their own authenticated session and private-channel authorization. Keep provider keys out of logs and documentation.
 
