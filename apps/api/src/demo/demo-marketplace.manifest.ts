@@ -697,7 +697,7 @@ const activeCollections: Readonly<Record<string, readonly Product[]>> = {
     product(
       'Black Training Leggings',
       'bottoms',
-      230000,
+      165000,
       'LIKE_NEW',
       'M',
       'Black',
@@ -725,7 +725,7 @@ const activeCollections: Readonly<Record<string, readonly Product[]>> = {
     product(
       'Cobalt Performance Tee',
       'tops',
-      175000,
+      150000,
       'NEW',
       'L',
       'Cobalt',
@@ -869,7 +869,7 @@ const activeCollections: Readonly<Record<string, readonly Product[]>> = {
     product(
       'Black Everyday Sneakers',
       'sneakers',
-      280000,
+      180000,
       'GOOD',
       'EU 40',
       'Black',

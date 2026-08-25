@@ -99,6 +99,11 @@ async function main(): Promise<void> {
 
   const outfitPlans = [
     {
+      name: 'Athleisure under PKR 5,000',
+      titles: ['Cobalt Performance Tee', 'Black Training Leggings', 'Black Everyday Sneakers'],
+      maxMinor: 500_000,
+    },
+    {
       name: 'Minimal campus under PKR 8,000',
       titles: ['Minimal White Linen Shirt', 'Stone Wide-Leg Trousers', 'Black Everyday Sneakers'],
       maxMinor: 800_000,
@@ -200,4 +205,7 @@ main()
     console.error(error instanceof Error ? error.message : 'Demo verification failed.');
     process.exitCode = 1;
   })
-  .finally(async () => prisma.$disconnect());
+  .finally(async () => {
+    await prisma.$disconnect();
+    process.exit();
+  });

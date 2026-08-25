@@ -29,6 +29,8 @@ pnpm seed:demo:verify
 
 The three deterministic ranking profiles are `neutralarchive` (Minimalist, neutral, relaxed, M, under PKR 8,000), `lahorelayers` (Streetwear/Techwear, dark, oversized, L, under PKR 10,000), and `sundaywardrobe` (Old Money/Smart Casual, beige/navy, tailored, M, under PKR 15,000). Verify that the real recommendation service produces different top results and match contributions for each.
 
+`pnpm seed:demo:verify` also proves complete structured outfit candidates at PKR 4,950 (athleisure), PKR 7,000 (minimal campus), PKR 9,400 (streetwear), PKR 12,300 (smart casual), and PKR 14,250 (wedding guest). These checks query real ACTIVE inventory and never alter the outfit algorithm.
+
 For visual QA on Android, inspect Discover, Search and filters, listing detail galleries, seller profiles, Saved, Style Profile/For You, Messages, Orders, reviews, and the Stylist fallback. Capture evidence under `docs/demo/screenshots/` without passwords, tokens, private contact values, or secret-bearing browser chrome.
 
 The current evidence set contains:
