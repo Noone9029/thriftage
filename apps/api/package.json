@@ -6,6 +6,10 @@
     "build": "nest build",
     "ai:eval": "tsx src/ai-stylist/evals/live-eval.ts",
     "dev": "nest start --watch",
+    "demo:seed": "tsx src/demo/demo-marketplace.cli.ts seed",
+    "demo:reset": "tsx src/demo/demo-marketplace.cli.ts reset",
+    "demo:report": "tsx src/demo/demo-marketplace.cli.ts report",
+    "demo:verify": "tsx src/demo/demo-marketplace.verify.ts",
     "start": "node dist/main.js",
     "test:integration": "vitest run --config vitest.integration.config.mts",
     "typecheck": "tsc --noEmit"

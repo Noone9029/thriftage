@@ -36,6 +36,10 @@
     "db:migrate:deploy": "pnpm --filter @thriftage/db migrate:deploy",
     "db:seed:categories": "pnpm --filter @thriftage/db seed:categories",
     "db:seed:styles": "pnpm --filter @thriftage/db seed:styles",
+    "seed:demo": "pnpm --filter @thriftage/api demo:seed",
+    "seed:demo:reset": "pnpm --filter @thriftage/api demo:reset",
+    "seed:demo:report": "pnpm --filter @thriftage/api demo:report",
+    "seed:demo:verify": "pnpm --filter @thriftage/api demo:verify",
     "db:validate": "pnpm --filter @thriftage/db prisma:validate",
     "test:db": "pnpm --filter @thriftage/db test:integration && pnpm --filter @thriftage/api test:integration"
   },
