@@ -25,10 +25,19 @@
       "channel": "preview",
       "distribution": "internal",
       "environment": "preview",
+      "android": {
+        "buildType": "apk"
+      },
       "env": {
         "EXPO_PROJECT_ID": "8b3c5e61-0f52-4646-a29a-bf5b3dd86d91",
         "SENTRY_DISABLE_AUTO_UPLOAD": "true",
         "THRIFTAGE_APP_VARIANT": "preview"
+      }
+    },
+    "preview-simulator": {
+      "extends": "preview",
+      "ios": {
+        "simulator": true
       }
     },
     "production": {

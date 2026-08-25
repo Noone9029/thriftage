@@ -59,6 +59,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       buildNumber: process.env.IOS_BUILD_NUMBER?.trim() || '1',
       bundleIdentifier,
       infoPlist: {
+        ITSAppUsesNonExemptEncryption: false,
         NSPhotoLibraryUsageDescription:
           'Thriftage uses selected photos only when you add profile, listing, or evidence images.',
       },
