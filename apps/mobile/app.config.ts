@@ -41,8 +41,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ...config,
     android: {
       adaptiveIcon: {
-        backgroundColor: '#004d3f',
-        foregroundImage: './assets/engineering-placeholder-icon.png',
+        backgroundColor: '#163D32',
+        foregroundImage: './assets/thriftage-adaptive-icon.png',
       },
       package: androidPackage,
       permissions: ['android.permission.POST_NOTIFICATIONS'],
@@ -51,10 +51,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     experiments: { typedRoutes: true },
     extra: {
       appVariant: variant,
-      brandingStatus: 'engineering-placeholder',
+      brandingStatus: 'thriftage-tag-loop-v1',
       eas: { projectId },
     },
-    icon: './assets/engineering-placeholder-icon.png',
+    icon: './assets/thriftage-app-icon.png',
     ios: {
       buildNumber: process.env.IOS_BUILD_NUMBER?.trim() || '1',
       bundleIdentifier,
@@ -73,8 +73,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       [
         'expo-splash-screen',
         {
-          backgroundColor: '#004d3f',
-          image: './assets/engineering-placeholder-icon.png',
+          backgroundColor: '#163D32',
+          image: './assets/thriftage-adaptive-icon.png',
           imageWidth: 220,
           resizeMode: 'contain',
         },

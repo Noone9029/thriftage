@@ -1,0 +1,28 @@
+{
+  "color": {
+    "forest": "#163D32",
+    "forestDeep": "#0E2B23",
+    "forestSoft": "#DFE9E3",
+    "ivory": "#F6F2EA",
+    "paper": "#FFFCF7",
+    "sand": "#ECE5D8",
+    "ink": "#111815",
+    "stone": "#68716C",
+    "coral": "#F06543",
+    "coralDeep": "#C94C2E",
+    "success": "#24705A",
+    "warning": "#C99032",
+    "danger": "#A63D3A"
+  },
+  "radius": {
+    "small": "10px",
+    "control": "14px",
+    "surface": "24px",
+    "hero": "30px",
+    "pill": "999px"
+  },
+  "type": {
+    "display": "Fraunces Variable, Georgia, serif",
+    "body": "Manrope Variable, Arial, sans-serif"
+  }
+}
