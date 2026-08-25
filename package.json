@@ -9,7 +9,8 @@
     "pnpm": ">=11.0.0"
   },
   "scripts": {
-    "dev": "pnpm --parallel --filter @thriftage/mobile --filter @thriftage/admin --filter @thriftage/api dev",
+    "dev": "pnpm --parallel --filter @thriftage/mobile --filter @thriftage/admin --filter @thriftage/api --filter @thriftage/web dev",
+    "dev:web": "pnpm --filter @thriftage/web dev",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "vitest run",
@@ -41,7 +42,7 @@
     "seed:demo:report": "pnpm --filter @thriftage/api demo:report",
     "seed:demo:verify": "pnpm --filter @thriftage/api demo:verify",
     "db:validate": "pnpm --filter @thriftage/db prisma:validate",
-    "test:db": "pnpm --filter @thriftage/db test:integration && pnpm --filter @thriftage/api test:integration"
+    "test:db": "pnpm --filter @thriftage/db test:integration && pnpm --filter @thriftage/api test:integration && pnpm --filter @thriftage/web test:integration"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
