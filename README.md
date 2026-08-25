@@ -130,6 +130,8 @@ For a disposable named `prisma dev` instance, set `ALLOW_PRISMA_DEV_TEST_DATABAS
 
 Run `pnpm db:seed:categories` after migrations to upsert the approved Clothing, Shoes, and Accessories taxonomy. Sellers create private drafts, upload 3–10 validated photos, and submit for review. Only an API-authorized ADMIN may approve, reject, remove, manage taxonomy, or resolve reports. See the [marketplace discovery architecture](./docs/architecture/marketplace-discovery.md) for storage policy, state transitions, ranking, local test data, and admin bootstrapping.
 
+For a protected local or staging demo, use the operator-only `pnpm seed:demo`, `pnpm seed:demo:report`, and explicit `pnpm seed:demo:reset` commands. They require an exact environment confirmation and project identity, use reserved synthetic ownership, and never run during application startup. See the [synthetic demo marketplace guide](./docs/demo/demo-marketplace.md). This content is for demonstration and QA only; it does not replace authorized beta inventory.
+
 ## Communication and commerce
 
 Users can start persisted listing conversations, receive private realtime delivery hints, and see unread state. Deterministic contact-sharing protection blocks high-confidence phone, email, and WhatsApp patterns and routes protected evidence to the audited admin moderation workspace.
