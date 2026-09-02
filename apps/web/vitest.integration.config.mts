@@ -27,6 +27,9 @@ export default defineConfig({
   resolve: {
     alias: {
       '@thriftage/db': fileURLToPath(new URL('../../packages/db/src/index.ts', import.meta.url)),
+      '@thriftage/shared': fileURLToPath(
+        new URL('../../packages/shared/src/index.ts', import.meta.url),
+      ),
       'server-only': fileURLToPath(new URL('./src/test/server-only.ts', import.meta.url)),
     },
   },
