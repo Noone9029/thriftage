@@ -175,7 +175,7 @@ describe.sequential('trust, reputation, and marketplace operations', () => {
       'Confirmed manipulation pattern.',
     );
     expect(
-      (await reputation.summaries([seller.id], 'BUYER_TO_SELLER')).get(seller.id),
+      (await new ReputationReader(prisma).summaries([seller.id], 'BUYER_TO_SELLER')).get(seller.id),
     ).toMatchObject({ average: null, count: 0 });
   });
 
