@@ -67,6 +67,10 @@ const stylistListing = {
     styles: [],
   },
   priceMinor: 300_000,
+  stockAvailable: 1,
+  stockQuantity: 1,
+  stockReserved: 0,
+  stockSold: 0,
   rejectionReason: null,
   saveCount: 0,
   savedByViewer: false,
@@ -139,10 +143,21 @@ describe('ThriftageApiClient', () => {
   it('validates public runtime flags without sending a bearer token', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       jsonResponse({
+        commerce: {
+          commissionBps: 1000,
+          deliveryCities: ['Lahore'],
+          deliveryCountryCode: 'PK',
+          lahoreDeliveryFeeMinor: 25_000,
+          paymentExpiryMinutes: 15,
+        },
         environment: 'staging',
         features: {
           accountDeletion: true,
           aiStylist: false,
+          cashOnDelivery: false,
+          localCourier: false,
+          payfast: false,
+          payouts: false,
           phoneAuth: true,
           pushNotifications: false,
           registration: true,

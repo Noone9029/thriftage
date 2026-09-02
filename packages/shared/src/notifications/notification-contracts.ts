@@ -23,6 +23,7 @@ export const notificationTypeValues = [
   'SELLER_VERIFICATION_APPROVED',
   'SELLER_VERIFICATION_REJECTED',
   'ACCOUNT_RESTRICTED',
+  'PAYOUT_DESTINATION_CHANGED',
 ] as const;
 export const notificationTypeSchema = z.enum(notificationTypeValues);
 

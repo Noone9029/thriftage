@@ -13,9 +13,13 @@ import {
 
 import { mapProfileError, ProfileApiException, ProfileDomainError } from './profile.errors';
 import type { ProfileRepositoryContract } from './profile.repository';
+import type { MarketplaceEventPublisher } from '../common/marketplace-event-publisher';
 
 export class ProfileService {
-  public constructor(private readonly repository: ProfileRepositoryContract) {}
+  public constructor(
+    private readonly repository: ProfileRepositoryContract,
+    private readonly events?: MarketplaceEventPublisher,
+  ) {}
 
   public async getMine(userId: string): Promise<PrivateUserProfile> {
     try {
@@ -46,9 +50,11 @@ export class ProfileService {
 
   public async create(userId: string, input: ProfileCreateInput): Promise<PrivateUserProfile> {
     try {
-      return serializePrivateUserProfile(
+      const profile = serializePrivateUserProfile(
         await this.repository.create(userId, profileCreateInputSchema.parse(input)),
       );
+      this.events?.publish({ actorId: userId, name: 'profile_completed' });
+      return profile;
     } catch (error: unknown) {
       throw mapProfileError(error);
     }

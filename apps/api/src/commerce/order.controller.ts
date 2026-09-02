@@ -13,12 +13,10 @@ import type { User } from '@thriftage/db';
 import {
   checkoutInputSchema,
   orderCancellationInputSchema,
-  shipmentInputSchema,
   type CheckoutInput,
   type OrderCancellationInput,
   type OrderDetail,
   type OrderPage,
-  type ShipmentInput,
 } from '@thriftage/shared';
 import { z } from 'zod';
 
@@ -80,14 +78,6 @@ export class OrderController {
     @Body(new ZodValidationPipe(orderCancellationInputSchema)) input: OrderCancellationInput,
   ): Promise<OrderDetail> {
     return this.orders.cancelSeller(user.id, orderId, input);
-  }
-  @Post(':orderId/shipment')
-  public ship(
-    @CurrentUser() user: User,
-    @Param('orderId', uuidPipe) orderId: string,
-    @Body(new ZodValidationPipe(shipmentInputSchema)) input: ShipmentInput,
-  ): Promise<OrderDetail> {
-    return this.orders.ship(user.id, orderId, input);
   }
   @Patch(':orderId/confirm-delivery')
   public delivery(

@@ -9,6 +9,11 @@ allowBuilds:
   prisma: true
   sharp: true
 
+overrides:
+  deepmerge-ts: 8.0.0
+  fast-uri: 3.1.6
+  mysql2: 3.22.0
+
 catalog:
   typescript: ^6.0.3
   vitest: ^4.1.10

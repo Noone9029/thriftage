@@ -55,6 +55,7 @@ export const listingDraftInputSchema = z.strictObject({
   currency: currencyCodeSchema.default('PKR'),
   description: z.string().trim().min(20).max(2000),
   priceMinor: z.number().int().positive().max(2_000_000_000),
+  stockQuantity: z.number().int().min(1).max(999).optional(),
   size: z.string().trim().min(1).max(50),
   title: z.string().trim().min(5).max(120),
   personalization: z
@@ -102,6 +103,10 @@ const listingBaseShape = {
   likeCount: z.number().int().nonnegative(),
   likedByViewer: z.boolean(),
   priceMinor: z.number().int().positive(),
+  stockAvailable: z.number().int().nonnegative().max(999),
+  stockReserved: z.number().int().nonnegative().max(999),
+  stockSold: z.number().int().nonnegative().max(999),
+  stockQuantity: z.number().int().min(1).max(999),
   rejectionReason: z.string().nullable(),
   saveCount: z.number().int().nonnegative(),
   savedByViewer: z.boolean(),

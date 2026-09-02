@@ -36,6 +36,38 @@ const definitions: Record<
     message: 'Payment provider is unavailable.',
     status: HttpStatus.SERVICE_UNAVAILABLE,
   },
+  PAYMENT_METHOD_DISABLED: {
+    message: 'This payment method is not enabled.',
+    status: HttpStatus.CONFLICT,
+  },
+  PAYMENT_SIGNATURE_INVALID: {
+    message: 'Payment callback signature is invalid.',
+    status: HttpStatus.UNAUTHORIZED,
+  },
+  PAYMENT_STATUS_MISMATCH: {
+    message: 'Payment status could not be reconciled.',
+    status: HttpStatus.CONFLICT,
+  },
+  PAYOUT_DESTINATION_INVALID: {
+    message: 'Check the payout destination.',
+    status: HttpStatus.BAD_REQUEST,
+  },
+  PAYOUT_NOT_ELIGIBLE: {
+    message: 'This order is not eligible for payout.',
+    status: HttpStatus.CONFLICT,
+  },
+  PAYOUT_SEPARATION_OF_DUTIES_REQUIRED: {
+    message: 'A different administrator must approve this payout batch.',
+    status: HttpStatus.CONFLICT,
+  },
+  REFUND_NOT_ALLOWED: {
+    message: 'This order is not eligible for a full refund.',
+    status: HttpStatus.CONFLICT,
+  },
+  SETTLEMENT_MISMATCH: {
+    message: 'The settlement does not match the order.',
+    status: HttpStatus.CONFLICT,
+  },
   SELF_PURCHASE_NOT_ALLOWED: {
     message: 'You cannot purchase your own listing.',
     status: HttpStatus.CONFLICT,

@@ -58,6 +58,9 @@ const apiEnvironmentSchema = z
     AI_STYLIST_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120_000).default(20_000),
     API_HOST: z.string().min(1).default('0.0.0.0'),
     API_PORT: z.coerce.number().int().min(1).max(65_535).default(4000),
+    COD_ENABLED: z.enum(['true', 'false']).default('false'),
+    COMMERCIAL_APPROVAL_REFERENCE: z.string().trim().min(8).max(255).optional(),
+    COURIER_AGREEMENT_REFERENCE: z.string().trim().min(8).max(255).optional(),
     PORT: z.coerce.number().int().min(1).max(65_535).optional(),
     CONVERSATION_MAX_STARTS_PER_DAY: z.coerce.number().int().min(1).max(100).default(25),
     CORS_ORIGINS: z.string().optional(),
@@ -81,6 +84,21 @@ const apiEnvironmentSchema = z
       .regex(/^[a-z0-9][a-z0-9-]{1,62}$/)
       .default('listing-images'),
     LISTING_IMAGE_SIGNED_URL_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(900),
+    LOCAL_COURIER_ENABLED: z.enum(['true', 'false']).default('false'),
+    LOCAL_COURIER_SERVICE_CITIES: z.string().trim().min(1).default('Lahore'),
+    LOCAL_COURIER_SERVICE_COUNTRY_CODE: z
+      .string()
+      .trim()
+      .length(2)
+      .transform((value) => value.toUpperCase())
+      .default('PK'),
+    LAHORE_DELIVERY_FEE_MINOR: z.coerce.number().int().nonnegative().max(10_000_000).default(0),
+    LAHORE_DELIVERY_RATE_VERSION: z
+      .string()
+      .trim()
+      .regex(/^[a-z0-9][a-z0-9-]{2,39}$/)
+      .default('lahore-flat-v1'),
+    MARKETPLACE_COMMISSION_BPS: z.coerce.number().int().min(0).max(10_000).default(1_000),
     MESSAGE_MAX_BLOCKED_PER_HOUR: z.coerce.number().int().min(1).max(100).default(10),
     MESSAGE_MAX_SENDS_PER_MINUTE: z.coerce.number().int().min(1).max(120).default(20),
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -112,8 +130,22 @@ const apiEnvironmentSchema = z
     COMMUNITY_GUIDELINES_URL: z.string().trim().url().optional(),
     PRIVACY_POLICY_URL: z.string().trim().url().optional(),
     RELEASE_VERSION: z.string().trim().min(1).max(120).default('development'),
-    REGISTRATION_ENABLED: z.enum(['true', 'false']).default('true'),
+    REGISTRATION_ENABLED: z.enum(['true', 'false']).default('false'),
     PHONE_AUTH_ENABLED: z.enum(['true', 'false']).default('true'),
+    PAYFAST_ENABLED: z.enum(['true', 'false']).default('false'),
+    PAYFAST_LIVE_ENABLED: z.enum(['true', 'false']).default('false'),
+    PAYFAST_CHECKOUT_URL: z.string().trim().url().optional(),
+    PAYFAST_STATUS_URL: z.string().trim().url().optional(),
+    PAYFAST_MERCHANT_ID: z.string().trim().min(4).max(255).optional(),
+    PAYFAST_SIGNING_SECRET: z.string().trim().min(24).optional(),
+    PAYFAST_MARKETPLACE_APPROVAL_REFERENCE: z.string().trim().min(8).max(255).optional(),
+    PAYMENT_EXPIRY_MINUTES: z.coerce
+      .number()
+      .int()
+      .refine((value) => value === 15, 'Hosted PayFast checkout expiry is fixed at 15 minutes.')
+      .default(15),
+    PAYOUTS_ENABLED: z.enum(['true', 'false']).default('false'),
+    PAYOUT_ENCRYPTION_KEY: z.string().trim().min(43).max(44).optional(),
     PUSH_RECEIPT_DELAY_SECONDS: z.coerce.number().int().min(60).max(3600).default(900),
     REALTIME_BROADCAST_ENABLED: z.enum(['true', 'false']).default('false'),
     SELLER_VERIFICATION_MIN_COMPLETED_SALES: z.coerce.number().int().min(0).max(1000).default(0),
@@ -149,8 +181,59 @@ const apiEnvironmentSchema = z
       .optional(),
     TERMS_OF_USE_URL: z.string().trim().url().optional(),
     ACCOUNT_DELETION_URL: z.string().trim().url().optional(),
+    WITHHOLDING_BPS: z.coerce.number().int().min(0).max(10_000).default(0),
+    WITHHOLDING_RULE_VERSION: z.string().trim().min(1).max(40).default('withholding-unapproved-v1'),
   })
   .superRefine((environment, context) => {
+    if (environment.MARKETPLACE_COMMISSION_BPS !== 1_000) {
+      context.addIssue({
+        code: 'custom',
+        message: 'MARKETPLACE_COMMISSION_BPS is fixed at 1000 for the approved beta policy.',
+        path: ['MARKETPLACE_COMMISSION_BPS'],
+      });
+    }
+    if (environment.PAYFAST_LIVE_ENABLED === 'true' && environment.PAYFAST_ENABLED !== 'true') {
+      context.addIssue({
+        code: 'custom',
+        message: 'PAYFAST_ENABLED must be true before live PayFast can be enabled.',
+        path: ['PAYFAST_LIVE_ENABLED'],
+      });
+    }
+    if (
+      environment.PAYFAST_LIVE_ENABLED === 'true' &&
+      environment.LOCAL_COURIER_ENABLED !== 'true'
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'LOCAL_COURIER_ENABLED must be true before live PayFast can be enabled.',
+        path: ['PAYFAST_LIVE_ENABLED'],
+      });
+    }
+    if (environment.COD_ENABLED === 'true' && environment.LOCAL_COURIER_ENABLED !== 'true') {
+      context.addIssue({
+        code: 'custom',
+        message: 'LOCAL_COURIER_ENABLED must be true before COD can be enabled.',
+        path: ['COD_ENABLED'],
+      });
+    }
+    if (environment.PAYOUTS_ENABLED === 'true' && environment.PAYOUT_ENCRYPTION_KEY === undefined) {
+      context.addIssue({
+        code: 'custom',
+        message: 'PAYOUT_ENCRYPTION_KEY is required when payouts are enabled.',
+        path: ['PAYOUT_ENCRYPTION_KEY'],
+      });
+    }
+    if (
+      environment.WITHHOLDING_BPS > 0 &&
+      environment.WITHHOLDING_RULE_VERSION.startsWith('withholding-unapproved')
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message:
+          'A counsel-approved WITHHOLDING_RULE_VERSION is required for non-zero withholding.',
+        path: ['WITHHOLDING_RULE_VERSION'],
+      });
+    }
     if (environment.PHONE_AUTH_ENABLED === 'true') {
       for (const name of [
         'TWILIO_ACCOUNT_SID',
@@ -219,6 +302,53 @@ const apiEnvironmentSchema = z
     }
 
     const production = environment.DEPLOYMENT_ENV === 'production';
+    if (
+      production &&
+      (environment.PAYFAST_LIVE_ENABLED === 'true' ||
+        environment.COD_ENABLED === 'true' ||
+        environment.PAYOUTS_ENABLED === 'true')
+    ) {
+      for (const name of [
+        'COMMERCIAL_APPROVAL_REFERENCE',
+        'PAYFAST_MARKETPLACE_APPROVAL_REFERENCE',
+      ] as const) {
+        if (environment[name] === undefined || isPlaceholderValue(environment[name])) {
+          context.addIssue({
+            code: 'custom',
+            message: `${name} is required before production money movement.`,
+            path: [name],
+          });
+        }
+      }
+    }
+    if (
+      production &&
+      environment.LOCAL_COURIER_ENABLED === 'true' &&
+      (environment.COURIER_AGREEMENT_REFERENCE === undefined ||
+        isPlaceholderValue(environment.COURIER_AGREEMENT_REFERENCE))
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message:
+          'COURIER_AGREEMENT_REFERENCE is required before the production courier is enabled.',
+        path: ['COURIER_AGREEMENT_REFERENCE'],
+      });
+    }
+    if (environment.PAYFAST_ENABLED === 'true') {
+      for (const name of [
+        'PAYFAST_CHECKOUT_URL',
+        'PAYFAST_STATUS_URL',
+        'PAYFAST_MERCHANT_ID',
+        'PAYFAST_SIGNING_SECRET',
+      ] as const) {
+        if (environment[name] === undefined)
+          context.addIssue({
+            code: 'custom',
+            message: `${name} is required when PayFast is enabled.`,
+            path: [name],
+          });
+      }
+    }
     validateSecureUrl('SUPABASE_URL', environment.SUPABASE_URL, true);
     validateSecureUrl('SUPPORT_URL', environment.SUPPORT_URL, production);
     validateSecureUrl('PRIVACY_POLICY_URL', environment.PRIVACY_POLICY_URL, production);
@@ -314,6 +444,9 @@ export interface ApiConfig {
   readonly aiStylistSessionTurnLimit: number;
   readonly aiStylistTimeoutMs: number;
   readonly conversationMaxStartsPerDay: number;
+  readonly codEnabled: boolean;
+  readonly commercialApprovalReference?: string;
+  readonly courierAgreementReference?: string;
   readonly corsOrigins: readonly string[];
   readonly databasePoolMax: number;
   readonly deploymentEnvironment: DeploymentEnvironment;
@@ -328,6 +461,12 @@ export interface ApiConfig {
   readonly logFormat: 'json' | 'pretty';
   readonly listingImageBucket: string;
   readonly listingImageSignedUrlTtlSeconds: number;
+  readonly localCourierEnabled: boolean;
+  readonly localCourierServiceCities: readonly string[];
+  readonly localCourierServiceCountryCode: string;
+  readonly lahoreDeliveryFeeMinor: number;
+  readonly lahoreDeliveryRateVersion: string;
+  readonly marketplaceCommissionBps: 1000;
   readonly messageMaxBlockedPerHour: number;
   readonly messageMaxSendsPerMinute: number;
   readonly nodeEnv: 'development' | 'test' | 'production';
@@ -342,6 +481,16 @@ export interface ApiConfig {
   readonly phoneVerificationResendCooldownSeconds: number;
   readonly phoneVerificationStartWindowSeconds: number;
   readonly phoneAuthEnabled: boolean;
+  readonly payfastEnabled: boolean;
+  readonly payfastLiveEnabled: boolean;
+  readonly payfastCheckoutUrl?: string;
+  readonly payfastStatusUrl?: string;
+  readonly payfastMerchantId?: string;
+  readonly payfastSigningSecret?: string;
+  readonly payfastMarketplaceApprovalReference?: string;
+  readonly paymentExpiryMinutes: number;
+  readonly payoutsEnabled: boolean;
+  readonly payoutEncryptionKey?: string;
   readonly port: number;
   readonly privacyPolicyUrl?: string;
   readonly profileImageBucket: string;
@@ -365,6 +514,8 @@ export interface ApiConfig {
   readonly termsOfUseUrl?: string;
   readonly communityGuidelinesUrl?: string;
   readonly accountDeletionUrl?: string;
+  readonly withholdingBps: number;
+  readonly withholdingRuleVersion: string;
 }
 
 export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
@@ -397,6 +548,13 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
     aiStylistSessionTurnLimit: parsed.AI_STYLIST_SESSION_TURN_LIMIT,
     aiStylistTimeoutMs: parsed.AI_STYLIST_TIMEOUT_MS,
     conversationMaxStartsPerDay: parsed.CONVERSATION_MAX_STARTS_PER_DAY,
+    codEnabled: parsed.COD_ENABLED === 'true',
+    ...(parsed.COMMERCIAL_APPROVAL_REFERENCE === undefined
+      ? {}
+      : { commercialApprovalReference: parsed.COMMERCIAL_APPROVAL_REFERENCE }),
+    ...(parsed.COURIER_AGREEMENT_REFERENCE === undefined
+      ? {}
+      : { courierAgreementReference: parsed.COURIER_AGREEMENT_REFERENCE }),
     corsOrigins: parseCommaSeparatedList(parsed.CORS_ORIGINS),
     databasePoolMax: parsed.DATABASE_POOL_MAX,
     deploymentEnvironment: parsed.DEPLOYMENT_ENV,
@@ -415,6 +573,12 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
     logFormat: parsed.LOG_FORMAT,
     listingImageBucket: parsed.LISTING_IMAGE_BUCKET,
     listingImageSignedUrlTtlSeconds: parsed.LISTING_IMAGE_SIGNED_URL_TTL_SECONDS,
+    localCourierEnabled: parsed.LOCAL_COURIER_ENABLED === 'true',
+    localCourierServiceCities: parseCommaSeparatedList(parsed.LOCAL_COURIER_SERVICE_CITIES),
+    localCourierServiceCountryCode: parsed.LOCAL_COURIER_SERVICE_COUNTRY_CODE,
+    lahoreDeliveryFeeMinor: parsed.LAHORE_DELIVERY_FEE_MINOR,
+    lahoreDeliveryRateVersion: parsed.LAHORE_DELIVERY_RATE_VERSION,
+    marketplaceCommissionBps: parsed.MARKETPLACE_COMMISSION_BPS as 1000,
     messageMaxBlockedPerHour: parsed.MESSAGE_MAX_BLOCKED_PER_HOUR,
     messageMaxSendsPerMinute: parsed.MESSAGE_MAX_SENDS_PER_MINUTE,
     nodeEnv: parsed.NODE_ENV,
@@ -429,6 +593,28 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
     phoneVerificationResendCooldownSeconds: parsed.PHONE_VERIFICATION_RESEND_COOLDOWN_SECONDS,
     phoneVerificationStartWindowSeconds: parsed.PHONE_VERIFICATION_START_WINDOW_SECONDS,
     phoneAuthEnabled: parsed.PHONE_AUTH_ENABLED === 'true',
+    payfastEnabled: parsed.PAYFAST_ENABLED === 'true',
+    payfastLiveEnabled: parsed.PAYFAST_LIVE_ENABLED === 'true',
+    ...(parsed.PAYFAST_CHECKOUT_URL === undefined
+      ? {}
+      : { payfastCheckoutUrl: parsed.PAYFAST_CHECKOUT_URL }),
+    ...(parsed.PAYFAST_STATUS_URL === undefined
+      ? {}
+      : { payfastStatusUrl: parsed.PAYFAST_STATUS_URL }),
+    ...(parsed.PAYFAST_MERCHANT_ID === undefined
+      ? {}
+      : { payfastMerchantId: parsed.PAYFAST_MERCHANT_ID }),
+    ...(parsed.PAYFAST_SIGNING_SECRET === undefined
+      ? {}
+      : { payfastSigningSecret: parsed.PAYFAST_SIGNING_SECRET }),
+    ...(parsed.PAYFAST_MARKETPLACE_APPROVAL_REFERENCE === undefined
+      ? {}
+      : { payfastMarketplaceApprovalReference: parsed.PAYFAST_MARKETPLACE_APPROVAL_REFERENCE }),
+    paymentExpiryMinutes: parsed.PAYMENT_EXPIRY_MINUTES,
+    payoutsEnabled: parsed.PAYOUTS_ENABLED === 'true',
+    ...(parsed.PAYOUT_ENCRYPTION_KEY === undefined
+      ? {}
+      : { payoutEncryptionKey: parsed.PAYOUT_ENCRYPTION_KEY }),
     port: parsed.PORT ?? parsed.API_PORT,
     ...(parsed.PRIVACY_POLICY_URL === undefined
       ? {}
@@ -468,5 +654,7 @@ export function loadApiConfig(environment: NodeJS.ProcessEnv): ApiConfig {
     ...(parsed.ACCOUNT_DELETION_URL === undefined
       ? {}
       : { accountDeletionUrl: parsed.ACCOUNT_DELETION_URL.replace(/\/$/, '') }),
+    withholdingBps: parsed.WITHHOLDING_BPS,
+    withholdingRuleVersion: parsed.WITHHOLDING_RULE_VERSION,
   });
 }

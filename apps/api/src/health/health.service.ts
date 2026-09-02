@@ -15,6 +15,13 @@ export class HealthService {
     const config = loadApiConfig(process.env);
     return publicRuntimeConfigSchema.parse({
       environment: config.deploymentEnvironment,
+      commerce: {
+        commissionBps: config.marketplaceCommissionBps,
+        deliveryCities: config.localCourierServiceCities,
+        deliveryCountryCode: config.localCourierServiceCountryCode,
+        lahoreDeliveryFeeMinor: config.lahoreDeliveryFeeMinor,
+        paymentExpiryMinutes: config.paymentExpiryMinutes as 15,
+      },
       features: {
         accountDeletion: config.accountDeletionEnabled,
         aiStylist: config.aiStylistEnabled,
@@ -22,6 +29,10 @@ export class HealthService {
         pushNotifications: config.expoPushEnabled,
         registration: config.registrationEnabled,
         sellerVerification: config.sellerVerificationEnabled,
+        cashOnDelivery: config.codEnabled,
+        localCourier: config.localCourierEnabled,
+        payfast: config.payfastEnabled,
+        payouts: config.payoutsEnabled,
       },
       links: {
         accountDeletion: config.accountDeletionUrl ?? null,

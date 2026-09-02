@@ -6,6 +6,7 @@ import { createPrismaClient } from '@thriftage/db';
 
 import { CashOnDeliveryAdapter } from './commerce/cash-on-delivery.adapter';
 import { OrderRepository } from './commerce/order.repository';
+import { FinanceService } from './commerce/finance.service';
 import type { PaymentProvider } from './commerce/payment-provider.interface';
 import { CommunicationRepository } from './communication/communication.repository';
 import { ContactInformationDetector } from './communication/contact-information-detector';
@@ -19,8 +20,10 @@ import type {
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 if (databaseUrl === undefined) throw new Error('TEST_DATABASE_URL is required.');
+process.env.LOCAL_COURIER_ENABLED = 'true';
 const prisma = createPrismaClient(databaseUrl);
 const orders = new OrderRepository(new CashOnDeliveryAdapter(), prisma);
+const finance = new FinanceService(prisma);
 const communication = new CommunicationRepository(prisma);
 const detector = new ContactInformationDetector();
 class FakePush implements PushProvider {
@@ -43,6 +46,14 @@ const fakePush = new FakePush();
 const notificationWorker = new NotificationOutboxWorker(notificationRepository, fakePush);
 
 async function clear(): Promise<void> {
+  await prisma.$executeRawUnsafe(
+    'TRUNCATE TABLE "financial_entries", "inventory_movements", "settlement_allocations", "settlements" CASCADE',
+  );
+  await prisma.adminPermissionGrant.deleteMany();
+  await prisma.payoutItem.deleteMany();
+  await prisma.payoutBatch.deleteMany();
+  await prisma.refund.deleteMany();
+  await prisma.sellerPayoutProfile.deleteMany();
   await prisma.pushDelivery.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.notificationOutbox.deleteMany();
@@ -54,8 +65,8 @@ async function clear(): Promise<void> {
   await prisma.shipment.deleteMany();
   await prisma.payment.deleteMany();
   await prisma.listing.updateMany({
-    data: { reservedOrderId: null, status: 'ACTIVE' },
-    where: { status: 'RESERVED' },
+    data: { stockAvailable: 1, stockReserved: 0, stockSold: 0, status: 'ACTIVE' },
+    where: { status: { in: ['RESERVED', 'SOLD'] } },
   });
   await prisma.order.deleteMany();
   await prisma.conversation.deleteMany();
@@ -80,7 +91,12 @@ async function user(username: string) {
     data: {
       authProviderUserId: `trust-${id}`,
       email: `${id}@example.com`,
+      emailVerified: true,
       fullName: username,
+      phone: `+923${Math.floor(Math.random() * 1_000_000_000)
+        .toString()
+        .padStart(9, '0')}`,
+      phoneVerified: true,
       profile: { create: { username } },
     },
   });
@@ -211,9 +227,55 @@ describe.sequential('trusted communication and commerce PostgreSQL integration',
     const persisted = await prisma.order.findMany({ where: { listingId: listing.id } });
     expect(persisted).toHaveLength(1);
     await expect(prisma.listing.findUnique({ where: { id: listing.id } })).resolves.toMatchObject({
-      reservedOrderId: persisted[0]?.id,
+      stockAvailable: 0,
+      stockReserved: 1,
       status: 'RESERVED',
     });
+  });
+
+  it('never reserves more units than a multi-stock listing has available', async () => {
+    const { address, buyer, listing } = await setup();
+    await prisma.listing.update({ data: { stockAvailable: 3 }, where: { id: listing.id } });
+    const otherBuyers = await Promise.all([
+      user('stock_buyer_two'),
+      user('stock_buyer_three'),
+      user('stock_buyer_four'),
+    ]);
+    const addresses = await Promise.all(
+      otherBuyers.map((otherBuyer, index) =>
+        prisma.address.create({
+          data: {
+            addressLine1: `${index + 20} Synthetic Street`,
+            city: 'Lahore',
+            countryCode: 'PK',
+            label: 'Home',
+            phone: '+923001234567',
+            recipientName: `Synthetic Buyer ${index + 2}`,
+            region: 'Punjab',
+            userId: otherBuyer.id,
+          },
+        }),
+      ),
+    );
+    const attempts = [
+      orders.placeOrder(buyer.id, checkout(listing.id, address.id)),
+      ...otherBuyers.map((otherBuyer, index) =>
+        orders.placeOrder(otherBuyer.id, checkout(listing.id, addresses[index]!.id)),
+      ),
+    ];
+    const results = await Promise.allSettled(attempts);
+    expect(results.filter(({ status }) => status === 'fulfilled')).toHaveLength(3);
+    expect(results.filter(({ status }) => status === 'rejected')).toHaveLength(1);
+    await expect(prisma.order.count({ where: { listingId: listing.id } })).resolves.toBe(3);
+    await expect(prisma.listing.findUnique({ where: { id: listing.id } })).resolves.toMatchObject({
+      stockAvailable: 0,
+      stockReserved: 3,
+      stockSold: 0,
+      status: 'RESERVED',
+    });
+    await expect(
+      prisma.inventoryMovement.count({ where: { listingId: listing.id, type: 'RESERVED' } }),
+    ).resolves.toBe(3);
   });
 
   it('makes checkout retries idempotent and preserves price/address snapshots', async () => {
@@ -248,7 +310,8 @@ describe.sequential('trusted communication and commerce PostgreSQL integration',
     ).rejects.toMatchObject({ code: 'PAYMENT_PROVIDER_UNAVAILABLE' });
     await expect(prisma.order.count({ where: { listingId: listing.id } })).resolves.toBe(0);
     await expect(prisma.listing.findUnique({ where: { id: listing.id } })).resolves.toMatchObject({
-      reservedOrderId: null,
+      stockAvailable: 1,
+      stockReserved: 0,
       status: 'ACTIVE',
     });
   });
@@ -275,23 +338,28 @@ describe.sequential('trusted communication and commerce PostgreSQL integration',
     await expect(orders.transition(placed.id, own.seller.id, 'confirm')).resolves.toMatchObject({
       status: 'CONFIRMED',
     });
+    const operator = await user(`operator_${randomUUID().slice(0, 6)}`);
+    await prisma.adminPermissionGrant.create({
+      data: { grantedById: operator.id, permission: 'OPERATIONS', userId: operator.id },
+    });
     await expect(
-      orders.ship(placed.id, own.seller.id, {
-        providerDisplayName: 'Manual delivery',
-        trackingNumber: null,
-        trackingUrl: null,
+      finance.updateShipment(operator.id, placed.id, {
+        courierReference: 'SYNTHETIC-LHR-001',
+        evidenceReference: 'evidence://synthetic/pickup',
+        feeMinor: 25_000,
+        status: 'IN_TRANSIT',
       }),
-    ).resolves.toMatchObject({ status: 'SHIPPED' });
+    ).resolves.toMatchObject({ status: 'IN_TRANSIT' });
     await expect(orders.confirmDelivery(placed.id, own.buyer.id)).resolves.toMatchObject({
       status: 'DELIVERED',
     });
     await expect(orders.finalizeDelivered()).resolves.toBe(1);
     await expect(
       prisma.order.findUnique({ include: { payment: true }, where: { id: placed.id } }),
-    ).resolves.toMatchObject({ payment: { status: 'COLLECTED' }, status: 'COMPLETED' });
+    ).resolves.toMatchObject({ payment: { status: 'PENDING_COLLECTION' }, status: 'COMPLETED' });
     await expect(
       prisma.listing.findUnique({ where: { id: own.listing.id } }),
-    ).resolves.toMatchObject({ reservedOrderId: null, status: 'SOLD' });
+    ).resolves.toMatchObject({ stockAvailable: 0, stockReserved: 0, stockSold: 1, status: 'SOLD' });
   });
 
   it('cancels idempotently and only releases the matching reservation', async () => {
@@ -308,7 +376,8 @@ describe.sequential('trusted communication and commerce PostgreSQL integration',
       orders.transition(placed.id, buyer.id, 'cancelBuyer', 'Retry'),
     ).resolves.toMatchObject({ status: 'CANCELLED' });
     await expect(prisma.listing.findUnique({ where: { id: listing.id } })).resolves.toMatchObject({
-      reservedOrderId: null,
+      stockAvailable: 1,
+      stockReserved: 0,
       status: 'ACTIVE',
     });
   });

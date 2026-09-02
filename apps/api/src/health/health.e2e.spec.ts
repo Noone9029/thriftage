@@ -55,7 +55,7 @@ describe('health endpoint', () => {
       environment: 'local',
       features: {
         phoneAuth: true,
-        registration: true,
+        registration: false,
       },
       releaseVersion: 'development',
     });

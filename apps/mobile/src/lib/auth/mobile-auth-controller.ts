@@ -62,6 +62,7 @@ export class MobileAuthController {
     private readonly pendingRegistration: PendingRegistrationStoreContract,
     private readonly onboarding: IdentityOnboardingApi,
     private readonly redirects: AuthRedirects,
+    private readonly isPhoneVerificationRequired: () => Promise<boolean> = async () => true,
   ) {}
 
   public getSnapshot = (): MobileAuthState => this.state;
@@ -303,7 +304,7 @@ export class MobileAuthController {
     session: Session,
     account: PrivateUserAccount,
   ): Promise<void> {
-    if (!account.phoneVerified) {
+    if (!account.phoneVerified && (await this.isPhoneVerificationRequired())) {
       this.setState({
         account,
         challenge: await this.onboarding.getCurrentPhoneVerification(),

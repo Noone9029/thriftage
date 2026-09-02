@@ -135,7 +135,11 @@ export default function ListingDetailScreen() {
         <View style={styles.body}>
           <View style={styles.identityRow}>
             <Text style={styles.category}>{listing.category.name.toUpperCase()}</Text>
-            <Text style={styles.posted}>ONE-OF-ONE PIECE</Text>
+            <Text style={styles.posted}>
+              {listing.stockAvailable === 1
+                ? 'LAST AVAILABLE PIECE'
+                : `${listing.stockAvailable} AVAILABLE`}
+            </Text>
           </View>
           <Text style={styles.title}>{listing.title}</Text>
           <View style={styles.priceRow}>
@@ -194,6 +198,7 @@ export default function ListingDetailScreen() {
           <View style={styles.specs}>
             <Spec label="Condition" value={listing.condition.replaceAll('_', ' ')} />
             <Spec label="Size" value={listing.size} />
+            <Spec label="Available" value={String(listing.stockAvailable)} />
             <Spec label="Brand" value={listing.brand ?? 'Not specified'} />
             <Spec label="Color" value={listing.color ?? 'Not specified'} />
           </View>
@@ -290,7 +295,7 @@ export default function ListingDetailScreen() {
             <Text style={styles.stickyPrice}>
               {formatMoney(listing.priceMinor, listing.currency)}
             </Text>
-            <Text style={styles.stickyHint}>Cash on delivery</Text>
+            <Text style={styles.stickyHint}>Thriftage protected checkout</Text>
           </View>
           <Pressable
             accessibilityLabel="Message seller"

@@ -71,6 +71,11 @@ import {
   type FeedbackReviewStatus,
   closedBetaOperationsSchema,
   type ClosedBetaOperations,
+  commerceMetricsSchema,
+  sellerInventoryOperationsSchema,
+  type CommerceMetrics,
+  type CommerceMetricsQuery,
+  type SellerInventoryOperations,
 } from '@thriftage/shared';
 
 export class AdminApiError extends Error {
@@ -100,6 +105,36 @@ export class AdminApi {
 
   public async getClosedBetaOperations(): Promise<ClosedBetaOperations> {
     return closedBetaOperationsSchema.parse(await this.request('/admin/closed-beta/snapshot'));
+  }
+
+  public async getCommerceMetrics(query: CommerceMetricsQuery = {}): Promise<CommerceMetrics> {
+    const params = new URLSearchParams();
+    if (query.from !== undefined) params.set('from', query.from);
+    if (query.to !== undefined) params.set('to', query.to);
+    const suffix = params.size === 0 ? '' : `?${params.toString()}`;
+    return commerceMetricsSchema.parse(await this.request(`/admin/finance/metrics${suffix}`));
+  }
+
+  public async getSellerInventory(): Promise<SellerInventoryOperations> {
+    return sellerInventoryOperationsSchema.parse(await this.request('/admin/finance/sellers'));
+  }
+
+  public async downloadCommerceMetricsCsv(query: CommerceMetricsQuery = {}): Promise<void> {
+    const params = new URLSearchParams();
+    if (query.from !== undefined) params.set('from', query.from);
+    if (query.to !== undefined) params.set('to', query.to);
+    const suffix = params.size === 0 ? '' : `?${params.toString()}`;
+    const response = await fetch(`${this.baseUrl}/admin/finance/metrics.csv${suffix}`, {
+      headers: { Authorization: `Bearer ${this.accessToken}` },
+    });
+    if (!response.ok)
+      throw new AdminApiError('ADMIN_API_ERROR', 'CSV export failed.', response.status);
+    const url = URL.createObjectURL(await response.blob());
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'thriftage-commerce-metrics.csv';
+    anchor.click();
+    URL.revokeObjectURL(url);
   }
 
   public async getAiStylistMetrics(): Promise<AiStylistAdminMetrics> {

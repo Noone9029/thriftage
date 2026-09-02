@@ -4,7 +4,8 @@ import * as Crypto from 'expo-crypto';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import type { PaymentMethod } from '@thriftage/shared';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MarketplaceState } from '../../../src/components/marketplace/marketplace-state';
@@ -17,6 +18,7 @@ import {
   marketplaceSpacing,
 } from '../../../src/components/marketplace/marketplace-theme';
 import { thriftageApiClient } from '../../../src/lib/auth/auth-composition';
+import { useRuntimeConfig } from '../../../src/hooks/use-runtime-config';
 
 export default function CheckoutScreen() {
   const { aiGenerationId, listingId = '' } = useLocalSearchParams<{
@@ -38,6 +40,8 @@ export default function CheckoutScreen() {
     queryKey: ['addresses'],
   });
   const [selected, setSelected] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH_ON_DELIVERY');
+  const runtime = useRuntimeConfig();
   const [form, setForm] = useState({
     addressLine1: '',
     city: '',
@@ -64,7 +68,7 @@ export default function CheckoutScreen() {
         addressId,
         idempotencyKey: Crypto.randomUUID(),
         listingId,
-        paymentMethod: 'CASH_ON_DELIVERY',
+        paymentMethod,
       });
     },
     onSuccess: (order) => {
@@ -83,6 +87,14 @@ export default function CheckoutScreen() {
             orderId: order.id,
           }),
         ]);
+      if (paymentMethod === 'PAYFAST_HOSTED') {
+        void thriftageApiClient
+          .beginPayFastCheckout(order.id)
+          .then((session) => Linking.openURL(session.redirectUrl))
+          .catch(() => undefined)
+          .finally(() => router.replace(`/orders/${order.id}`));
+        return;
+      }
       router.replace(`/orders/${order.id}`);
     },
   });
@@ -118,8 +130,27 @@ export default function CheckoutScreen() {
     form.city.trim() !== '' &&
     form.region.trim() !== '' &&
     form.countryCode.trim().length === 2;
-  const canPlace = saved.length > 0 || formComplete;
+  const selectedAddress = saved.find((address) => address.id === (selected ?? saved[0]?.id));
+  const checkoutCity = selectedAddress?.city ?? form.city;
+  const checkoutCountryCode = selectedAddress?.countryCode ?? form.countryCode;
+  const hasDeliveryAddress = selectedAddress !== undefined || formComplete;
+  const deliveryEligible =
+    runtime.data !== undefined &&
+    runtime.data.features.localCourier &&
+    runtime.data.commerce.deliveryCountryCode.toUpperCase() ===
+      checkoutCountryCode.trim().toUpperCase() &&
+    runtime.data.commerce.deliveryCities.some(
+      (city) => city.trim().toLocaleLowerCase() === checkoutCity.trim().toLocaleLowerCase(),
+    );
+  const canPlace = hasDeliveryAddress && deliveryEligible;
   const cover = listing.data.images[0]?.url;
+  const deliveryMinor = runtime.data?.commerce.lahoreDeliveryFeeMinor ?? 0;
+  const totalMinor = listing.data.priceMinor + deliveryMinor;
+  const codEnabled = runtime.data?.features.cashOnDelivery ?? false;
+  const payfastEnabled = runtime.data?.features.payfast ?? false;
+  const paymentAvailable =
+    (paymentMethod === 'CASH_ON_DELIVERY' && codEnabled) ||
+    (paymentMethod === 'PAYFAST_HOSTED' && payfastEnabled);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -236,25 +267,81 @@ export default function CheckoutScreen() {
             />
           </View>
         ) : null}
+        {hasDeliveryAddress && runtime.data !== undefined && !deliveryEligible ? (
+          <Text style={styles.error}>
+            Beta delivery is currently available only in{' '}
+            {runtime.data.commerce.deliveryCities.join(', ')},{' '}
+            {runtime.data.commerce.deliveryCountryCode}. Choose an eligible address to continue.
+          </Text>
+        ) : null}
 
         <CheckoutSection
           icon="payments"
           label="How you'll pay"
           number="2"
-          subtitle="Simple, familiar payment when the order arrives."
+          subtitle="Choose an enabled method. Both settle to Thriftage before seller payout."
         />
-        <View style={[styles.paymentCard, styles.selected]}>
+        <Pressable
+          accessibilityRole="radio"
+          accessibilityState={{
+            disabled: !payfastEnabled || !deliveryEligible,
+            selected: paymentMethod === 'PAYFAST_HOSTED',
+          }}
+          disabled={!payfastEnabled || !deliveryEligible}
+          onPress={() => setPaymentMethod('PAYFAST_HOSTED')}
+          style={[
+            styles.paymentCard,
+            paymentMethod === 'PAYFAST_HOSTED' && styles.selected,
+            (!payfastEnabled || !deliveryEligible) && styles.disabled,
+          ]}
+        >
+          <View style={styles.paymentIcon}>
+            <MaterialIcons color={marketplaceColors.forest} name="account-balance" size={23} />
+          </View>
+          <View style={styles.paymentCopy}>
+            <Text style={styles.cardTitle}>PayFast hosted checkout</Text>
+            <Text style={styles.cardCopy}>
+              Pay by supported bank, wallet, card, or Raast method. The 15-minute checkout opens
+              only when the beta gate is enabled.
+            </Text>
+          </View>
+          {paymentMethod === 'PAYFAST_HOSTED' ? (
+            <MaterialIcons color={marketplaceColors.success} name="check-circle" size={22} />
+          ) : null}
+        </Pressable>
+        <Pressable
+          accessibilityRole="radio"
+          accessibilityState={{
+            disabled: !codEnabled || !deliveryEligible,
+            selected: paymentMethod === 'CASH_ON_DELIVERY',
+          }}
+          disabled={!codEnabled || !deliveryEligible}
+          onPress={() => setPaymentMethod('CASH_ON_DELIVERY')}
+          style={[
+            styles.paymentCard,
+            paymentMethod === 'CASH_ON_DELIVERY' && styles.selected,
+            (!codEnabled || !deliveryEligible) && styles.disabled,
+          ]}
+        >
           <View style={styles.paymentIcon}>
             <MaterialIcons color={marketplaceColors.forest} name="payments" size={23} />
           </View>
           <View style={styles.paymentCopy}>
             <Text style={styles.cardTitle}>Cash on Delivery</Text>
             <Text style={styles.cardCopy}>
-              Payment stays pending until delivery is confirmed. No online payment is taken.
+              Available only after the courier’s itemized bank-deposit drill is approved. Cash never
+              goes directly to the seller.
             </Text>
           </View>
-          <MaterialIcons color={marketplaceColors.success} name="check-circle" size={22} />
-        </View>
+          {paymentMethod === 'CASH_ON_DELIVERY' ? (
+            <MaterialIcons color={marketplaceColors.success} name="check-circle" size={22} />
+          ) : null}
+        </Pressable>
+        {!codEnabled && !payfastEnabled ? (
+          <Text style={styles.error}>
+            Purchases are temporarily gated while payment and courier approvals are completed.
+          </Text>
+        ) : null}
 
         <CheckoutSection
           icon="receipt-long"
@@ -267,12 +354,16 @@ export default function CheckoutScreen() {
             label="Item"
             value={formatMoney(listing.data.priceMinor, listing.data.currency)}
           />
-          <SummaryLine label="Payment" value="Cash on Delivery" />
+          <SummaryLine label="Delivery" value={formatMoney(deliveryMinor, listing.data.currency)} />
+          <SummaryLine
+            label="Payment"
+            value={
+              paymentMethod === 'PAYFAST_HOSTED' ? 'PayFast hosted checkout' : 'Cash on Delivery'
+            }
+          />
           <View style={styles.totalLine}>
             <Text style={styles.totalLabel}>Order total</Text>
-            <Text style={styles.totalValue}>
-              {formatMoney(listing.data.priceMinor, listing.data.currency)}
-            </Text>
+            <Text style={styles.totalValue}>{formatMoney(totalMinor, listing.data.currency)}</Text>
           </View>
         </View>
         <View style={styles.trustCard}>
@@ -292,16 +383,20 @@ export default function CheckoutScreen() {
         ) : null}
         <Pressable
           accessibilityRole="button"
-          disabled={!canPlace || place.isPending}
+          disabled={!canPlace || !paymentAvailable || place.isPending}
           onPress={() => place.mutate()}
           style={({ pressed }) => [
             styles.button,
-            (!canPlace || place.isPending) && styles.disabled,
+            (!canPlace || !paymentAvailable || place.isPending) && styles.disabled,
             pressed && styles.pressed,
           ]}
         >
           <Text style={styles.buttonText}>
-            {place.isPending ? 'Placing your order…' : 'Place COD order'}
+            {place.isPending
+              ? 'Placing your order…'
+              : paymentMethod === 'PAYFAST_HOSTED'
+                ? 'Continue to PayFast'
+                : 'Place COD order'}
           </Text>
           <MaterialIcons color={marketplaceColors.white} name="arrow-forward" size={19} />
         </Pressable>

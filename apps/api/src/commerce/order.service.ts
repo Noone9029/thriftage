@@ -5,13 +5,11 @@ import {
   orderCancellationInputSchema,
   orderPageSchema,
   orderQuerySchema,
-  shipmentInputSchema,
   type AdminOrderQuery,
   type CheckoutInput,
   type OrderCancellationInput,
   type OrderDetail,
   type OrderPage,
-  type ShipmentInput,
 } from '@thriftage/shared';
 import { z } from 'zod';
 
@@ -182,17 +180,6 @@ export class OrderService {
         await this.repository.transition(orderId, userId, 'cancelSeller', parsed.reason),
       );
       this.events.publish({ actorId: userId, name: 'order_cancelled', orderId });
-      return order;
-    } catch (error) {
-      throw mapCommerceError(error);
-    }
-  }
-  public async ship(userId: string, orderId: string, input: ShipmentInput): Promise<OrderDetail> {
-    try {
-      const order = await this.presenter.detail(
-        await this.repository.ship(orderId, userId, shipmentInputSchema.parse(input)),
-      );
-      this.events.publish({ actorId: userId, name: 'order_shipped', orderId });
       return order;
     } catch (error) {
       throw mapCommerceError(error);

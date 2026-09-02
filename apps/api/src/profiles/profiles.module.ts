@@ -8,6 +8,10 @@ import { ProfileImageService } from './profile-image.service';
 import { ProfileRepository, type ProfileRepositoryContract } from './profile.repository';
 import { ProfileService } from './profile.service';
 import { SupabaseProfileImageStorageAdapter } from './supabase-profile-image-storage.adapter';
+import {
+  MARKETPLACE_EVENT_PUBLISHER,
+  type MarketplaceEventPublisher,
+} from '../common/marketplace-event-publisher';
 
 export const PROFILE_REPOSITORY = Symbol('PROFILE_REPOSITORY');
 
@@ -20,8 +24,9 @@ export const PROFILE_REPOSITORY = Symbol('PROFILE_REPOSITORY');
     ProfileImageProcessor,
     {
       provide: ProfileService,
-      inject: [PROFILE_REPOSITORY],
-      useFactory: (repository: ProfileRepositoryContract) => new ProfileService(repository),
+      inject: [PROFILE_REPOSITORY, MARKETPLACE_EVENT_PUBLISHER],
+      useFactory: (repository: ProfileRepositoryContract, events: MarketplaceEventPublisher) =>
+        new ProfileService(repository, events),
     },
     {
       provide: ProfileImageService,

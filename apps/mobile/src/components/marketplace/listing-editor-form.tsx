@@ -39,6 +39,7 @@ export function ListingEditorForm({ listing, onCreated, onDeleted }: ListingEdit
   const [title, setTitle] = useState(listing?.title ?? '');
   const [description, setDescription] = useState(listing?.description ?? '');
   const [price, setPrice] = useState(listing === undefined ? '' : String(listing.priceMinor / 100));
+  const [stock, setStock] = useState(String(listing?.stockQuantity ?? 1));
   const [size, setSize] = useState(listing?.size ?? '');
   const [brand, setBrand] = useState(listing?.brand ?? '');
   const [color, setColor] = useState(listing?.color ?? '');
@@ -84,8 +85,11 @@ export function ListingEditorForm({ listing, onCreated, onDeleted }: ListingEdit
   const save = useMutation({
     mutationFn: async () => {
       const parsedPrice = Number(price.replaceAll(',', ''));
+      const parsedStock = Number(stock);
       if (!Number.isFinite(parsedPrice) || parsedPrice <= 0)
         throw new Error('Enter a valid price.');
+      if (!Number.isInteger(parsedStock) || parsedStock < 1 || parsedStock > 999)
+        throw new Error('Stock must be a whole number from 1 to 999.');
       const input: ListingDraftInput = {
         brand: brand.trim() || null,
         categoryId,
@@ -94,6 +98,7 @@ export function ListingEditorForm({ listing, onCreated, onDeleted }: ListingEdit
         currency: 'PKR',
         description,
         priceMinor: Math.round(parsedPrice * 100),
+        stockQuantity: parsedStock,
         size,
         title,
         personalization: {
@@ -204,11 +209,15 @@ export function ListingEditorForm({ listing, onCreated, onDeleted }: ListingEdit
   const photoCount = listing?.images.length ?? 0;
   const currentStage = listing === undefined ? 0 : photoCount < 3 ? 1 : 2;
   const parsedPrice = Number(price.replaceAll(',', ''));
+  const parsedStock = Number(stock);
   const formReady =
     title.trim() !== '' &&
     description.trim() !== '' &&
     Number.isFinite(parsedPrice) &&
     parsedPrice > 0 &&
+    Number.isInteger(parsedStock) &&
+    parsedStock >= 1 &&
+    parsedStock <= 999 &&
     categoryId !== '' &&
     styleDefinitionIds.length > 0 &&
     size.trim() !== '' &&
@@ -295,6 +304,25 @@ export function ListingEditorForm({ listing, onCreated, onDeleted }: ListingEdit
           />
           <EditorField label="Size" onChangeText={setSize} value={size} />
         </View>
+        <EditorField
+          keyboardType="numeric"
+          label="Stock quantity (1–999)"
+          onChangeText={setStock}
+          value={stock}
+        />
+        {Number.isFinite(parsedPrice) && parsedPrice > 0 ? (
+          <View style={styles.proceedsCard}>
+            <Text style={styles.proceedsTitle}>Estimated proceeds per sale</Text>
+            <Text style={styles.proceedsValue}>
+              PKR {(parsedPrice * 0.9).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+            </Text>
+            <Text style={styles.proceedsCopy}>
+              Thriftage’s 10% seller commission is deducted from the item price. Delivery is paid by
+              the buyer and is not part of your payout. Any approved withholding is shown before
+              checkout and on your statement.
+            </Text>
+          </View>
+        ) : null}
         <View style={styles.row}>
           <EditorField label="Brand (optional)" onChangeText={setBrand} value={brand} />
           <EditorField label="Color (optional)" onChangeText={setColor} value={color} />
@@ -650,6 +678,15 @@ const styles = StyleSheet.create({
     padding: 15,
   },
   primaryText: { color: marketplaceColors.white, fontSize: 15, fontWeight: '900' },
+  proceedsCard: {
+    backgroundColor: marketplaceColors.forestSoft,
+    borderRadius: marketplaceRadii.md,
+    gap: 4,
+    padding: 12,
+  },
+  proceedsCopy: { color: marketplaceColors.muted, fontSize: 10, lineHeight: 15 },
+  proceedsTitle: { color: marketplaceColors.forest, fontSize: 10, fontWeight: '800' },
+  proceedsValue: { color: marketplaceColors.forestDeep, fontSize: 18, fontWeight: '900' },
   rejection: { backgroundColor: '#F9E9DF', borderRadius: 14, gap: 5, padding: 14 },
   rejectionText: { color: '#714238', fontSize: 13, lineHeight: 19 },
   rejectionTitle: { color: marketplaceColors.danger, fontSize: 13, fontWeight: '900' },

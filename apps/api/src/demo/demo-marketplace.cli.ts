@@ -636,6 +636,12 @@ async function seedOrdersAndReviews(demoUserId: string): Promise<void> {
         buyerUsername,
         sellerUsername: listing.seller,
         priceMinor: listing.priceMinor,
+        itemSubtotalMinor: listing.priceMinor,
+        commissionMinor: Math.floor((listing.priceMinor * 1_000 + 5_000) / 10_000),
+        sellerNetMinor:
+          listing.priceMinor - Math.floor((listing.priceMinor * 1_000 + 5_000) / 10_000),
+        financialPolicyVersion: 'marketplace-fees-v1',
+        withholdingRuleVersion: 'withholding-unapproved-v1',
         shippingMinor,
         totalMinor: listing.priceMinor + shippingMinor,
         currency: 'PKR',

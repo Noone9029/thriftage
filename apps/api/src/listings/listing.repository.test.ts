@@ -1,9 +1,40 @@
 import type { PrismaClient } from '@thriftage/db';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ListingRepository } from './listing.repository';
 
 describe('ListingRepository read hydration', () => {
+  beforeEach(() => {
+    vi.stubEnv('PHONE_AUTH_ENABLED', 'false');
+    vi.stubEnv('SUPABASE_PUBLISHABLE_KEY', 'sb_publishable_test-placeholder');
+    vi.stubEnv('SUPABASE_SECRET_KEY', 'sb_secret_test-placeholder');
+    vi.stubEnv('SUPABASE_URL', 'https://project-ref.supabase.co');
+  });
+
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('allows an email-verified seller when optional phone authentication is disabled', async () => {
+    const create = vi.fn(async () => ({ id: 'listing-1' }));
+    const prisma = {
+      category: { findFirst: vi.fn(async () => ({ id: 'category-1' })) },
+      listing: { create },
+      user: { findUnique: vi.fn(async () => ({ emailVerified: true, phoneVerified: false })) },
+    } as unknown as PrismaClient;
+    const repository = new ListingRepository(prisma);
+
+    await repository.createDraft('seller-1', {
+      categoryId: 'category-1',
+      condition: 'GOOD',
+      currency: 'PKR',
+      description: 'A complete and accurate listing description.',
+      priceMinor: 150_000,
+      size: 'M',
+      title: 'Vintage denim jacket',
+    });
+
+    expect(create).toHaveBeenCalledOnce();
+  });
+
   it('loads nested listing relations with one database join query', async () => {
     const findMany = vi.fn().mockResolvedValue([]);
     const prisma = { listing: { findMany } } as unknown as PrismaClient;

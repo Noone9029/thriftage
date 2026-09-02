@@ -63,7 +63,16 @@ import {
   type OrderPage,
   type PushDevice,
   type PushDeviceInput,
-  type ShipmentInput,
+  sellerPayoutProfileInputSchema,
+  sellerPayoutProfileSchema,
+  sellerStatementEntrySchema,
+  payfastRecoveryStatusSchema,
+  payfastHostedSessionSchema,
+  refundRequestInputSchema,
+  type SellerPayoutProfile,
+  type SellerPayoutProfileInput,
+  type SellerStatementEntry,
+  type RefundRequestInput,
   blockPageSchema,
   currentPolicyPageSchema,
   disputeDetailSchema,
@@ -653,15 +662,50 @@ export class ThriftageApiClient {
       await this.request(`/orders/${id}/cancel-${role}`, { body: { reason }, method: 'PATCH' }),
     );
   }
-  public async shipOrder(id: string, input: ShipmentInput): Promise<OrderDetail> {
-    return orderDetailSchema.parse(
-      await this.request(`/orders/${id}/shipment`, { body: input, method: 'POST' }),
-    );
-  }
   public async confirmDelivery(id: string): Promise<OrderDetail> {
     return orderDetailSchema.parse(
       await this.request(`/orders/${id}/confirm-delivery`, { method: 'PATCH' }),
     );
+  }
+  public async recoverPayFastStatus(
+    id: string,
+  ): Promise<{ orderId: string; status: 'CANCELLED' | 'FAILED' | 'PAID' | 'PENDING' }> {
+    return payfastRecoveryStatusSchema.parse(await this.request(`/payments/payfast/${id}/status`));
+  }
+  public async beginPayFastCheckout(id: string): Promise<{
+    expiresAt: string;
+    redirectUrl: string;
+  }> {
+    return payfastHostedSessionSchema.parse(
+      await this.request(`/payments/payfast/${id}/checkout`, { method: 'POST' }),
+    );
+  }
+  public async getPayoutProfiles(): Promise<readonly SellerPayoutProfile[]> {
+    return sellerPayoutProfileSchema
+      .array()
+      .parse(await this.request('/seller/finance/payout-profiles'));
+  }
+  public async createPayoutProfile(input: SellerPayoutProfileInput): Promise<SellerPayoutProfile> {
+    return sellerPayoutProfileSchema.parse(
+      await this.request('/seller/finance/payout-profiles', {
+        body: sellerPayoutProfileInputSchema.parse(input),
+        method: 'POST',
+      }),
+    );
+  }
+  public async getSellerStatement(): Promise<readonly SellerStatementEntry[]> {
+    return sellerStatementEntrySchema
+      .array()
+      .parse(await this.request('/seller/finance/statement'));
+  }
+  public async requestRefund(
+    id: string,
+    input: RefundRequestInput,
+  ): Promise<{ id: string; status: string; amountMinor: number }> {
+    return (await this.request(`/orders/${id}/refunds`, {
+      body: refundRequestInputSchema.parse(input),
+      method: 'POST',
+    })) as { id: string; status: string; amountMinor: number };
   }
   public async getNotifications(): Promise<NotificationPage> {
     return notificationPageSchema.parse(await this.request('/notifications'));

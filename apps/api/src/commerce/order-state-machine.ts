@@ -9,6 +9,7 @@ const transitions: Readonly<
   Record<OrderAction, readonly { actor: OrderActor; from: OrderStatus; to: OrderStatus }[]>
 > = {
   CANCEL: [
+    { actor: 'BUYER', from: 'AWAITING_PAYMENT', to: 'CANCELLED' },
     { actor: 'BUYER', from: 'PENDING', to: 'CANCELLED' },
     { actor: 'SELLER', from: 'PENDING', to: 'CANCELLED' },
     { actor: 'SELLER', from: 'CONFIRMED', to: 'CANCELLED' },

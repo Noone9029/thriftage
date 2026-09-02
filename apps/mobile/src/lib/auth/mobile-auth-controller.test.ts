@@ -195,6 +195,28 @@ describe('MobileAuthController', () => {
     expect(onboarding.getCurrentPhoneVerification).toHaveBeenCalledOnce();
   });
 
+  it('allows email-verified onboarding when phone authentication is disabled', async () => {
+    resolution = { account: { ...account, phone: null, phoneVerified: false }, status: 'active' };
+    gateway.getSessionResult = session;
+    controller = new MobileAuthController(
+      gateway,
+      provisioning,
+      accounts,
+      pending,
+      onboarding,
+      {
+        emailConfirmation: 'thriftage://auth/callback',
+        passwordRecovery: 'thriftage://auth/reset-password',
+      },
+      async () => false,
+    );
+
+    await controller.bootstrap();
+
+    expect(controller.getSnapshot().status).toBe('AUTHENTICATED_ACTIVE');
+    expect(onboarding.getCurrentPhoneVerification).not.toHaveBeenCalled();
+  });
+
   it('supports phone OTP login without creating a new account', async () => {
     await controller.startPhoneLogin({ phone: '0300 1234567' });
     expect(gateway.startPhoneSignIn).toHaveBeenCalledWith('+923001234567');

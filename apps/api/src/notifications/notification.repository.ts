@@ -126,6 +126,10 @@ export class NotificationRepository {
         title: 'Account restriction',
         body: 'A marketplace restriction was applied to your account.',
       },
+      PAYOUT_DESTINATION_CHANGED: {
+        title: 'Payout destination submitted',
+        body: 'Your new payout destination is under review and a 72-hour hold.',
+      },
     };
     const content = copy[outbox.eventType];
     return this.client.notification.upsert({

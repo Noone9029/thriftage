@@ -2,11 +2,13 @@ import { randomUUID } from 'node:crypto';
 
 import { Inject, Injectable } from '@nestjs/common';
 import { getPrismaClient, Prisma, type PrismaClient } from '@thriftage/db';
-import type { CheckoutInput, OrderQuery, ShipmentInput } from '@thriftage/shared';
+import type { CheckoutInput, OrderQuery } from '@thriftage/shared';
+import { loadApiConfig } from '@thriftage/config/api';
 
 import { CommerceDomainError } from './commerce.errors';
 import { transitionOrder, type OrderActor } from './order-state-machine';
 import { PAYMENT_PROVIDER, type PaymentProvider } from './payment-provider.interface';
+import { calculateOrderFinancialSnapshot } from './financial-policy';
 
 export const orderArgs = {
   include: {
@@ -64,7 +66,7 @@ export class OrderRepository {
 
           const locked = await transaction.$queryRaw<readonly { id: string }[]>(Prisma.sql`
           SELECT id FROM listings
-          WHERE id = ${input.listingId}::uuid AND status = 'ACTIVE'::"ListingStatus" AND reserved_order_id IS NULL
+          WHERE id = ${input.listingId}::uuid AND status = 'ACTIVE'::"ListingStatus" AND stock_available > 0
           FOR UPDATE
         `);
           if (locked.length !== 1) throw new CommerceDomainError('LISTING_NOT_AVAILABLE');
@@ -76,7 +78,7 @@ export class OrderRepository {
             },
             where: { id: input.listingId },
           });
-          if (listing === null || listing.status !== 'ACTIVE')
+          if (listing === null || listing.status !== 'ACTIVE' || listing.stockAvailable < 1)
             throw new CommerceDomainError('LISTING_NOT_AVAILABLE');
           if (listing.sellerId === buyerId)
             throw new CommerceDomainError('SELF_PURCHASE_NOT_ALLOWED');
@@ -95,10 +97,35 @@ export class OrderRepository {
             throw new CommerceDomainError('LISTING_NOT_AVAILABLE');
 
           const id = randomUUID();
+          const config = loadApiConfig(process.env);
+          if (!config.localCourierEnabled) {
+            throw new CommerceDomainError('PAYMENT_METHOD_DISABLED');
+          }
+          const deliveryCityEligible = config.localCourierServiceCities.some(
+            (city) => city.localeCompare(address.city, undefined, { sensitivity: 'accent' }) === 0,
+          );
+          if (
+            address.countryCode.toUpperCase() !== config.localCourierServiceCountryCode ||
+            !deliveryCityEligible
+          ) {
+            throw new CommerceDomainError('ADDRESS_INVALID');
+          }
+          const shippingMinor = config.lahoreDeliveryFeeMinor;
+          const financial = calculateOrderFinancialSnapshot({
+            itemSubtotalMinor: listing.priceMinor,
+            shippingMinor,
+            withholdingBps: config.withholdingBps,
+            withholdingRuleVersion: config.withholdingRuleVersion,
+          });
+          const paymentExpiresAt =
+            input.paymentMethod === 'PAYFAST_HOSTED'
+              ? new Date(Date.now() + config.paymentExpiryMinutes * 60_000)
+              : null;
           const payment = await this.paymentProvider
             .createPayment({
-              amountMinor: listing.priceMinor,
+              amountMinor: financial.totalMinor,
               currency: listing.currency,
+              method: input.paymentMethod,
               orderId: id,
             })
             .catch(() => {
@@ -121,11 +148,13 @@ export class OrderRepository {
               countryCode: address.countryCode,
               deliveryInstructions: address.deliveryInstructions,
               deliveryPhone: address.phone,
+              deliveryRateVersion: config.lahoreDeliveryRateVersion,
               events: {
                 create: {
                   actorId: buyerId,
                   actorType: 'USER',
-                  nextState: 'PENDING',
+                  nextState:
+                    input.paymentMethod === 'PAYFAST_HOSTED' ? 'AWAITING_PAYMENT' : 'PENDING',
                   type: 'ORDER_CREATED',
                 },
               },
@@ -137,8 +166,12 @@ export class OrderRepository {
               orderNumber: orderNumber(id),
               payment: {
                 create: {
-                  amountMinor: listing.priceMinor,
+                  amountMinor: financial.totalMinor,
+                  ...(payment.checkoutUrl === undefined
+                    ? {}
+                    : { checkoutUrl: payment.checkoutUrl }),
                   currency: listing.currency,
+                  expiresAt: payment.expiresAt ?? paymentExpiresAt,
                   method: input.paymentMethod,
                   provider: payment.provider,
                   providerReference: payment.providerReference,
@@ -146,22 +179,51 @@ export class OrderRepository {
                 },
               },
               paymentMethod: input.paymentMethod,
+              paymentExpiresAt,
               postalCode: address.postalCode,
               priceMinor: listing.priceMinor,
+              quantity: financial.quantity,
+              itemSubtotalMinor: financial.itemSubtotalMinor,
+              commissionBps: financial.commissionBps,
+              commissionMinor: financial.commissionMinor,
+              withholdingBps: financial.withholdingBps,
+              withholdingMinor: financial.withholdingMinor,
+              sellerNetMinor: financial.sellerNetMinor,
+              financialPolicyVersion: financial.financialPolicyVersion,
+              withholdingRuleVersion: financial.withholdingRuleVersion,
               recipientName: address.recipientName,
               region: address.region,
               sellerId: listing.sellerId,
               sellerUsername: listing.seller.profile.username,
-              shippingMinor: 0,
-              totalMinor: listing.priceMinor,
+              shippingMinor,
+              status: input.paymentMethod === 'PAYFAST_HOSTED' ? 'AWAITING_PAYMENT' : 'PENDING',
+              totalMinor: financial.totalMinor,
               currency: listing.currency,
             },
           });
+          const availableAfter = listing.stockAvailable - 1;
+          const reservedAfter = listing.stockReserved + 1;
           const reserved = await transaction.listing.updateMany({
-            data: { reservedOrderId: id, status: 'RESERVED' },
-            where: { id: listing.id, reservedOrderId: null, status: 'ACTIVE' },
+            data: {
+              stockAvailable: availableAfter,
+              stockReserved: reservedAfter,
+              status: availableAfter > 0 ? 'ACTIVE' : 'RESERVED',
+            },
+            where: { id: listing.id, stockAvailable: listing.stockAvailable, status: 'ACTIVE' },
           });
           if (reserved.count !== 1) throw new CommerceDomainError('LISTING_NOT_AVAILABLE');
+          await transaction.inventoryMovement.create({
+            data: {
+              actorId: buyerId,
+              availableAfter,
+              listingId: listing.id,
+              orderId: id,
+              quantity: 1,
+              reservedAfter,
+              soldAfter: listing.stockSold,
+              type: 'RESERVED',
+            },
+          });
           await transaction.notificationOutbox.create({
             data: notificationData({
               actorUserId: buyerId,
@@ -295,19 +357,56 @@ export class OrderRepository {
       const next = transitionOrder(order.status, isCancel ? 'CANCEL' : 'CONFIRM', actor);
       const now = new Date();
       if (isCancel) {
-        await this.paymentProvider
-          .cancel({ paymentId: order.payment?.id ?? '', orderId })
-          .catch(() => {
-            throw new CommerceDomainError('PAYMENT_PROVIDER_UNAVAILABLE');
+        if (order.payment?.status === 'COLLECTED') {
+          await transaction.refund.upsert({
+            create: {
+              amountMinor: order.totalMinor,
+              commissionReversalMinor: order.commissionMinor,
+              orderId,
+              paymentId: order.payment.id,
+              reason: `VALID_CANCELLATION: ${reason ?? 'Order cancelled before shipment.'}`,
+              requestedById: actorId,
+            },
+            update: {},
+            where: { orderId },
           });
-        await transaction.payment.update({ data: { status: 'CANCELLED' }, where: { orderId } });
+          await transaction.payment.update({
+            data: { status: 'REFUND_PENDING' },
+            where: { orderId },
+          });
+        } else {
+          await this.paymentProvider
+            .cancel({ method: order.paymentMethod, paymentId: order.payment?.id ?? '', orderId })
+            .catch(() => {
+              throw new CommerceDomainError('PAYMENT_PROVIDER_UNAVAILABLE');
+            });
+          await transaction.payment.update({ data: { status: 'CANCELLED' }, where: { orderId } });
+        }
         await transaction.shipment.updateMany({
           data: { status: 'CANCELLED' },
           where: { orderId },
         });
-        await transaction.listing.updateMany({
-          data: { reservedOrderId: null, status: 'ACTIVE' },
-          where: { id: order.listingId, reservedOrderId: orderId, status: 'RESERVED' },
+        const listing = await transaction.listing.findUnique({ where: { id: order.listingId } });
+        if (listing === null || listing.stockReserved < 1)
+          throw new CommerceDomainError('LISTING_NOT_AVAILABLE');
+        const availableAfter = listing.stockAvailable + 1;
+        const reservedAfter = listing.stockReserved - 1;
+        await transaction.listing.update({
+          data: { stockAvailable: availableAfter, stockReserved: reservedAfter, status: 'ACTIVE' },
+          where: { id: listing.id },
+        });
+        await transaction.inventoryMovement.create({
+          data: {
+            actorId,
+            availableAfter,
+            listingId: listing.id,
+            orderId,
+            quantity: 1,
+            reason: reason ?? 'Order cancelled before shipment.',
+            reservedAfter,
+            soldAfter: listing.stockSold,
+            type: 'RELEASED',
+          },
         });
       }
       await transaction.orderEvent.create({
@@ -350,44 +449,6 @@ export class OrderRepository {
     });
   }
 
-  public ship(orderId: string, sellerId: string, input: ShipmentInput): Promise<OrderRecord> {
-    return this.client.$transaction(async (transaction) => {
-      const order = await this.lockOrder(transaction, orderId);
-      if (order.sellerId !== sellerId) throw new CommerceDomainError('ORDER_FORBIDDEN');
-      if (order.status === 'SHIPPED') return order;
-      const next = transitionOrder(order.status, 'SHIP', 'SELLER');
-      const now = new Date();
-      await transaction.shipment.create({
-        data: { ...input, orderId, shippedAt: now, status: 'SHIPPED' },
-      });
-      await transaction.orderEvent.create({
-        data: {
-          actorId: sellerId,
-          actorType: 'USER',
-          nextState: next,
-          orderId,
-          previousState: order.status,
-          type: 'MARKED_SHIPPED',
-        },
-      });
-      await transaction.notificationOutbox.create({
-        data: notificationData({
-          actorUserId: sellerId,
-          dedupeKey: `order:${orderId}:shipped`,
-          eventType: 'ORDER_SHIPPED',
-          listingId: order.listingId,
-          orderId,
-          recipientId: order.buyerId,
-        }),
-      });
-      return transaction.order.update({
-        ...orderArgs,
-        data: { shippedAt: now, status: next },
-        where: { id: orderId },
-      });
-    });
-  }
-
   public confirmDelivery(orderId: string, buyerId: string): Promise<OrderRecord> {
     return this.client.$transaction(async (transaction) => {
       const order = await this.lockOrder(transaction, orderId);
@@ -421,7 +482,11 @@ export class OrderRepository {
       });
       return transaction.order.update({
         ...orderArgs,
-        data: { deliveredAt: now, status: next },
+        data: {
+          deliveredAt: now,
+          disputeWindowEndsAt: new Date(now.getTime() + 48 * 60 * 60 * 1000),
+          status: next,
+        },
         where: { id: orderId },
       });
     });
@@ -439,45 +504,79 @@ export class OrderRepository {
         const order = await this.lockOrder(transaction, candidate.id);
         if (order.status !== 'DELIVERED' || order.payment === null) return false;
         const next = transitionOrder(order.status, 'COMPLETE', 'SYSTEM');
-        const result = await this.paymentProvider
-          .collect({ paymentId: order.payment.id, orderId: order.id })
-          .catch(() => {
-            throw new CommerceDomainError('PAYMENT_PROVIDER_UNAVAILABLE');
-          });
         const now = new Date();
-        await transaction.payment.update({
+        await transaction.orderEvent.create({
           data: {
-            collectedAt: now,
-            providerReference: result.providerReference,
-            status: result.status,
+            actorType: 'SYSTEM',
+            nextState: next,
+            orderId: order.id,
+            previousState: order.status,
+            type: 'COMPLETED',
           },
-          where: { id: order.payment.id },
         });
-        await transaction.orderEvent.createMany({
-          data: [
-            {
-              actorType: 'SYSTEM',
-              nextState: 'COLLECTED',
-              orderId: order.id,
-              previousState: order.payment.status,
-              type: 'PAYMENT_STATUS_CHANGED',
-            },
-            {
-              actorType: 'SYSTEM',
-              nextState: next,
-              orderId: order.id,
-              previousState: order.status,
-              type: 'COMPLETED',
-            },
-          ],
-        });
+        const disputeWindowEndsAt =
+          order.disputeWindowEndsAt ?? new Date(now.getTime() + 48 * 60 * 60 * 1000);
         await transaction.order.update({
-          data: { completedAt: now, status: next },
+          data: {
+            completedAt: now,
+            disputeWindowEndsAt,
+            payoutEligibleAt: disputeWindowEndsAt,
+            status: next,
+          },
           where: { id: order.id },
         });
-        await transaction.listing.updateMany({
-          data: { reservedOrderId: null, status: 'SOLD' },
-          where: { id: order.listingId, reservedOrderId: order.id, status: 'RESERVED' },
+        const listing = await transaction.listing.findUnique({ where: { id: order.listingId } });
+        if (listing === null || listing.stockReserved < 1) return false;
+        const reservedAfter = listing.stockReserved - 1;
+        const soldAfter = listing.stockSold + 1;
+        const status =
+          listing.stockAvailable > 0 ? 'ACTIVE' : reservedAfter > 0 ? 'RESERVED' : 'SOLD';
+        await transaction.listing.update({
+          data: { stockReserved: reservedAfter, stockSold: soldAfter, status },
+          where: { id: listing.id },
+        });
+        await transaction.inventoryMovement.create({
+          data: {
+            availableAfter: listing.stockAvailable,
+            listingId: listing.id,
+            orderId: order.id,
+            quantity: 1,
+            reservedAfter,
+            soldAfter,
+            type: 'SOLD',
+          },
+        });
+        await transaction.financialEntry.createMany({
+          data: [
+            {
+              amountMinor: order.commissionMinor,
+              currency: order.currency,
+              occurredAt: now,
+              orderId: order.id,
+              ruleVersion: order.financialPolicyVersion,
+              type: 'COMMISSION',
+            },
+            ...(order.withholdingMinor === 0
+              ? []
+              : [
+                  {
+                    amountMinor: order.withholdingMinor,
+                    currency: order.currency,
+                    occurredAt: now,
+                    orderId: order.id,
+                    ruleVersion: order.withholdingRuleVersion,
+                    type: 'WITHHOLDING' as const,
+                  },
+                ]),
+            {
+              amountMinor: order.sellerNetMinor,
+              currency: order.currency,
+              occurredAt: now,
+              orderId: order.id,
+              ruleVersion: order.financialPolicyVersion,
+              type: 'SELLER_PAYABLE',
+            },
+          ],
         });
         await transaction.profile.updateMany({
           data: { completedSalesCount: { increment: 1 } },

@@ -234,7 +234,6 @@ export class AccountDeletionRepository {
             fitType: null,
             garmentRole: null,
             rejectionReason: null,
-            reservedOrderId: null,
             size: 'N/A',
             sizeCompatibilityKey: null,
             sizeSystem: null,

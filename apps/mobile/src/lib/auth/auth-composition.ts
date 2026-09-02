@@ -54,5 +54,12 @@ export const mobileAuthController = new MobileAuthController(
     emailConfirmation: EMAIL_CONFIRMATION_REDIRECT_URL,
     passwordRecovery: PASSWORD_RECOVERY_REDIRECT_URL,
   },
+  async () => {
+    try {
+      return (await thriftageApiClient.getRuntimeConfig()).features.phoneAuth;
+    } catch {
+      return true;
+    }
+  },
 );
 sessionProvider.setInvalidationHandler(mobileAuthController.sessionBecameInvalid);

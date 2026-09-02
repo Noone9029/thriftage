@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common';
+import { getPrismaClient, type PrismaClient } from '@thriftage/db';
 
 export interface MarketplaceEvent {
   readonly actorId?: string;
@@ -12,6 +13,8 @@ export interface MarketplaceEvent {
   readonly outfitId?: string;
   readonly sellerVerificationId?: string;
   readonly name:
+    | 'user_registered'
+    | 'profile_completed'
     | 'item_liked'
     | 'item_saved'
     | 'listing_approved'
@@ -74,5 +77,31 @@ export class StructuredLogMarketplaceEventPublisher implements MarketplaceEventP
 
   public publish(event: MarketplaceEvent): void {
     this.logger.log({ event });
+  }
+}
+
+export class PersistentMarketplaceEventPublisher implements MarketplaceEventPublisher {
+  private readonly logger = new Logger('MarketplaceEvents');
+
+  public constructor(private readonly prisma?: PrismaClient) {}
+
+  public publish(event: MarketplaceEvent): void {
+    this.logger.log({ event });
+    const client = this.prisma ?? getPrismaClient();
+    void client.marketplaceAnalyticsEvent
+      .create({
+        data: {
+          ...(event.actorId === undefined ? {} : { actorId: event.actorId }),
+          ...(event.categoryId === undefined ? {} : { categoryId: event.categoryId }),
+          ...(event.conversationId === undefined ? {} : { conversationId: event.conversationId }),
+          ...(event.listingId === undefined ? {} : { listingId: event.listingId }),
+          name: event.name,
+          ...(event.orderId === undefined ? {} : { orderId: event.orderId }),
+          ...(event.targetUserId === undefined ? {} : { targetUserId: event.targetUserId }),
+        },
+      })
+      .catch(() =>
+        this.logger.warn({ code: 'MARKETPLACE_EVENT_PERSIST_FAILED', name: event.name }),
+      );
   }
 }

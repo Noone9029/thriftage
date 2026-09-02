@@ -2,7 +2,7 @@ import { Global, Module } from '@nestjs/common';
 
 import {
   MARKETPLACE_EVENT_PUBLISHER,
-  StructuredLogMarketplaceEventPublisher,
+  PersistentMarketplaceEventPublisher,
 } from './marketplace-event-publisher';
 
 @Global()
@@ -11,7 +11,7 @@ import {
   providers: [
     {
       provide: MARKETPLACE_EVENT_PUBLISHER,
-      useFactory: () => new StructuredLogMarketplaceEventPublisher(),
+      useFactory: () => new PersistentMarketplaceEventPublisher(),
     },
   ],
 })

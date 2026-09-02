@@ -19,6 +19,7 @@ import {
 import { thriftageApiClient } from '../../../src/lib/auth/auth-composition';
 
 const statusLabels: Readonly<Record<OrderStatus, string>> = {
+  AWAITING_PAYMENT: 'Awaiting payment',
   PENDING: 'Awaiting seller',
   CONFIRMED: 'Confirmed',
   SHIPPED: 'On the way',

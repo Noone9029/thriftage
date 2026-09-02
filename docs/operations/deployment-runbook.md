@@ -43,7 +43,7 @@ Supabase Realtime REST broadcast uses `/realtime/v1/api/broadcast/{topic}/events
 
 Promotion order: approved release commit -> successful staging soak/acceptance -> go/no-go approval -> verified backup/restore point -> production migration -> API/admin deploy -> health/readiness/smoke -> production native build or compatible OTA update. Do not automatically deploy production from every merge.
 
-Set `REGISTRATION_ENABLED=false`, `AI_STYLIST_ENABLED=false`, and optional-provider flags off until each production provider passes its gate. Enable one controlled capability at a time.
+Set `REGISTRATION_ENABLED=false`, `AI_STYLIST_ENABLED=false`, `PAYFAST_ENABLED=false`, `PAYFAST_LIVE_ENABLED=false`, `COD_ENABLED=false`, `PAYOUTS_ENABLED=false`, and `LOCAL_COURIER_ENABLED=false` until each production provider and commercial gate passes. Enable one controlled capability at a time. Follow `docs/release/monetized-lahore-beta.md` and `docs/operations/commerce-finance-runbook.md`; the old preview APK is not a durable Play distribution artifact.
 
 ## Rollback
 

@@ -2,8 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MarketplaceState } from '../../../src/components/marketplace/marketplace-state';
@@ -26,28 +25,26 @@ const eventLabels: Readonly<Record<string, string>> = {
   MARKED_DELIVERED: 'Delivered',
   COMPLETED: 'Order complete',
   PAYMENT_STATUS_CHANGED: 'Payment updated',
+  PAYMENT_EXPIRED: 'Payment expired',
+  REFUND_STATUS_CHANGED: 'Refund updated',
 };
 
 export default function OrderDetailScreen() {
   const { orderId = '' } = useLocalSearchParams<{ orderId?: string }>();
   const { state } = useAuth();
   const cache = useQueryClient();
-  const [courier, setCourier] = useState('Manual delivery');
-  const [tracking, setTracking] = useState('');
   const query = useQuery({
     queryFn: () => thriftageApiClient.getOrder(orderId),
     queryKey: ['order', orderId],
     refetchInterval: 10_000,
   });
   const action = useMutation({
-    mutationFn: async (kind: 'confirm' | 'cancel' | 'ship' | 'delivery') => {
+    mutationFn: async (kind: 'confirm' | 'cancel' | 'delivery' | 'payment') => {
       if (kind === 'confirm') return thriftageApiClient.confirmOrder(orderId);
-      if (kind === 'ship')
-        return thriftageApiClient.shipOrder(orderId, {
-          providerDisplayName: courier,
-          trackingNumber: tracking.trim() || null,
-          trackingUrl: null,
-        });
+      if (kind === 'payment') {
+        await thriftageApiClient.recoverPayFastStatus(orderId);
+        return thriftageApiClient.getOrder(orderId);
+      }
       if (kind === 'delivery') return thriftageApiClient.confirmDelivery(orderId);
       const role =
         query.data?.seller.id === (state.status === 'AUTHENTICATED_ACTIVE' ? state.account.id : '')
@@ -131,6 +128,18 @@ export default function OrderDetailScreen() {
           <Line label="Shipping" value={formatMoney(order.shippingMinor, order.currency)} />
           <Line label="Payment method" value={order.payment.method.replaceAll('_', ' ')} />
           <Line label="Payment status" value={order.payment.status.replaceAll('_', ' ')} />
+          {seller ? (
+            <Line
+              label="Thriftage commission"
+              value={formatMoney(order.commissionMinor, order.currency)}
+            />
+          ) : null}
+          {seller ? (
+            <Line
+              label="Estimated seller net"
+              value={formatMoney(order.sellerNetMinor, order.currency)}
+            />
+          ) : null}
           <View style={styles.totalLine}>
             <Text style={styles.totalLabel}>Total</Text>
             <Text style={styles.totalValue}>{formatMoney(order.totalMinor, order.currency)}</Text>
@@ -157,7 +166,7 @@ export default function OrderDetailScreen() {
             <View style={styles.shipmentCopy}>
               <Text style={styles.shipmentTitle}>{order.shipment.providerDisplayName}</Text>
               <Text style={styles.shipmentText}>
-                {order.shipment.trackingNumber ?? 'Tracking number not provided'}
+                {order.shipment.courierReference ?? 'Courier reference pending'}
               </Text>
             </View>
             <View style={styles.statusPill}>
@@ -234,31 +243,20 @@ export default function OrderDetailScreen() {
         ) : null}
         {seller && order.status === 'CONFIRMED' ? (
           <View style={styles.form}>
-            <Text style={styles.formTitle}>Add delivery details</Text>
+            <Text style={styles.formTitle}>Thriftage is arranging pickup</Text>
             <Text style={styles.formCopy}>
-              Tell the buyer how the piece is moving. Only mark it shipped after handoff.
+              Operations books the Lahore courier and updates the structured tracking status. Do not
+              hand cash to, or arrange direct settlement with, the buyer or courier.
             </Text>
-            <TextInput
-              onChangeText={setCourier}
-              placeholder="Courier or delivery method"
-              placeholderTextColor={marketplaceColors.mutedLight}
-              style={styles.input}
-              value={courier}
-            />
-            <TextInput
-              onChangeText={setTracking}
-              placeholder="Tracking number (optional)"
-              placeholderTextColor={marketplaceColors.mutedLight}
-              style={styles.input}
-              value={tracking}
-            />
-            <PrimaryOrderAction
-              disabled={action.isPending || courier.trim() === ''}
-              icon="local-shipping"
-              label="Mark as shipped"
-              onPress={() => action.mutate('ship')}
-            />
           </View>
+        ) : null}
+        {buyer && order.status === 'AWAITING_PAYMENT' ? (
+          <PrimaryOrderAction
+            disabled={action.isPending}
+            icon="refresh"
+            label="Refresh PayFast status"
+            onPress={() => action.mutate('payment')}
+          />
         ) : null}
         {buyer && order.status === 'SHIPPED' ? (
           <PrimaryOrderAction

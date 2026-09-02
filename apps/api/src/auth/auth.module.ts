@@ -10,9 +10,15 @@ import { OptionalAuthenticationGuard } from './optional-authentication.guard';
 import { ProvisionUserService } from './provision-user.service';
 import { RoleGuard } from './role.guard';
 import { SupabaseAuthAdapter } from './supabase-auth.adapter';
+import {
+  MARKETPLACE_EVENT_PUBLISHER,
+  type MarketplaceEventPublisher,
+} from '../common/marketplace-event-publisher';
+import { MarketplaceEventsModule } from '../common/marketplace-events.module';
 
 @Module({
   controllers: [AuthController],
+  imports: [MarketplaceEventsModule],
   exports: [
     ApplicationUserResolver,
     AuthenticationGuard,
@@ -35,11 +41,12 @@ import { SupabaseAuthAdapter } from './supabase-auth.adapter';
     RoleGuard,
     {
       provide: ProvisionUserService,
-      inject: [AUTHORITATIVE_AUTH_USER_PROVIDER],
-      useFactory: (authUserProvider: SupabaseAuthAdapter) =>
+      inject: [AUTHORITATIVE_AUTH_USER_PROVIDER, MARKETPLACE_EVENT_PUBLISHER],
+      useFactory: (authUserProvider: SupabaseAuthAdapter, events: MarketplaceEventPublisher) =>
         new ProvisionUserService(
           authUserProvider,
           () => loadApiConfig(process.env).registrationEnabled,
+          events,
         ),
     },
   ],

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { cursorPageQuerySchema, currencyCodeSchema } from '../marketplace/listing-contracts';
 
 export const orderStatusValues = [
+  'AWAITING_PAYMENT',
   'PENDING',
   'CONFIRMED',
   'SHIPPED',
@@ -10,18 +11,35 @@ export const orderStatusValues = [
   'COMPLETED',
   'CANCELLED',
 ] as const;
-export const paymentMethodValues = ['CASH_ON_DELIVERY'] as const;
+export const paymentMethodValues = ['CASH_ON_DELIVERY', 'PAYFAST_HOSTED'] as const;
 export const paymentStatusValues = [
+  'REQUIRES_ACTION',
   'PENDING_COLLECTION',
   'COLLECTED',
   'FAILED',
   'CANCELLED',
+  'REFUND_PENDING',
+  'REFUNDED',
 ] as const;
-export const shipmentStatusValues = ['PENDING', 'SHIPPED', 'DELIVERED', 'CANCELLED'] as const;
+export const paymentProviderValues = ['CASH_ON_DELIVERY', 'PAYFAST'] as const;
+export const shipmentStatusValues = [
+  'PENDING',
+  'BOOKED',
+  'PICKED_UP',
+  'IN_TRANSIT',
+  'SHIPPED',
+  'DELIVERED',
+  'FAILED',
+  'RETURNING',
+  'RETURNED',
+  'LOST',
+  'CANCELLED',
+] as const;
 
 export const orderStatusSchema = z.enum(orderStatusValues);
 export const paymentMethodSchema = z.enum(paymentMethodValues);
 export const paymentStatusSchema = z.enum(paymentStatusValues);
+export const paymentProviderSchema = z.enum(paymentProviderValues);
 export const shipmentStatusSchema = z.enum(shipmentStatusValues);
 
 const optionalTrimmed = (max: number) =>
@@ -88,6 +106,22 @@ export const shipmentInputSchema = z
     trackingUrl: value.trackingUrl ?? null,
   }));
 
+export const adminShipmentInputSchema = z.strictObject({
+  courierReference: z.string().trim().min(1).max(120),
+  evidenceReference: z.string().trim().min(1).max(255),
+  feeMinor: z.number().int().nonnegative(),
+  status: z.enum([
+    'BOOKED',
+    'PICKED_UP',
+    'IN_TRANSIT',
+    'DELIVERED',
+    'FAILED',
+    'RETURNING',
+    'RETURNED',
+    'LOST',
+  ]),
+});
+
 export const orderPartySchema = z.strictObject({
   id: z.string().uuid(),
   profileImageUrl: z.string().url().nullable(),
@@ -114,17 +148,27 @@ export const paymentSchema = z.strictObject({
   failureCode: z.string().nullable(),
   id: z.string().uuid(),
   method: paymentMethodSchema,
-  provider: z.literal('CASH_ON_DELIVERY'),
+  checkoutUrl: z.string().url().nullable(),
+  expiresAt: z.string().datetime({ offset: true }).nullable(),
+  provider: paymentProviderSchema,
   providerReference: z.string().nullable(),
   status: paymentStatusSchema,
+  refundedAt: z.string().datetime({ offset: true }).nullable(),
   updatedAt: z.string().datetime({ offset: true }),
 });
 
 export const shipmentSchema = z.strictObject({
+  bookedAt: z.string().datetime({ offset: true }).nullable(),
+  courierReference: z.string().nullable(),
   createdAt: z.string().datetime({ offset: true }),
   deliveredAt: z.string().datetime({ offset: true }).nullable(),
+  evidenceReference: z.string().nullable(),
+  feeMinor: z.number().int().nonnegative(),
   id: z.string().uuid(),
   providerDisplayName: z.string(),
+  providerCode: z.literal('LOCAL_COURIER_MANUAL'),
+  pickedUpAt: z.string().datetime({ offset: true }).nullable(),
+  returnedAt: z.string().datetime({ offset: true }).nullable(),
   shippedAt: z.string().datetime({ offset: true }).nullable(),
   status: shipmentStatusSchema,
   trackingNumber: z.string().nullable(),
@@ -149,6 +193,8 @@ export const orderEventSchema = z.strictObject({
     'MARKED_DELIVERED',
     'COMPLETED',
     'PAYMENT_STATUS_CHANGED',
+    'PAYMENT_EXPIRED',
+    'REFUND_STATUS_CHANGED',
   ]),
 });
 
@@ -162,6 +208,7 @@ const orderBaseShape = {
   createdAt: z.string().datetime({ offset: true }),
   currency: currencyCodeSchema,
   deliveredAt: z.string().datetime({ offset: true }).nullable(),
+  deliveryRateVersion: z.string().min(1).max(40),
   id: z.string().uuid(),
   listingId: z.string().uuid(),
   listingImageUrl: z.string().url().nullable(),
@@ -169,6 +216,18 @@ const orderBaseShape = {
   orderNumber: z.string().min(1).max(32),
   paymentMethod: paymentMethodSchema,
   priceMinor: z.number().int().positive(),
+  quantity: z.literal(1),
+  itemSubtotalMinor: z.number().int().positive(),
+  commissionBps: z.literal(1000),
+  commissionMinor: z.number().int().nonnegative(),
+  withholdingBps: z.number().int().min(0).max(10_000),
+  withholdingMinor: z.number().int().nonnegative(),
+  sellerNetMinor: z.number().int().nonnegative(),
+  financialPolicyVersion: z.string().min(1).max(40),
+  withholdingRuleVersion: z.string().min(1).max(40),
+  paymentExpiresAt: z.string().datetime({ offset: true }).nullable(),
+  disputeWindowEndsAt: z.string().datetime({ offset: true }).nullable(),
+  payoutEligibleAt: z.string().datetime({ offset: true }).nullable(),
   seller: orderPartySchema,
   shippedAt: z.string().datetime({ offset: true }).nullable(),
   shippingMinor: z.number().int().nonnegative(),
@@ -212,10 +271,27 @@ export const commerceErrorCodeValues = [
   'ORDER_NOT_FOUND',
   'PAYMENT_FAILED',
   'PAYMENT_PROVIDER_UNAVAILABLE',
+  'PAYMENT_METHOD_DISABLED',
+  'PAYMENT_SIGNATURE_INVALID',
+  'PAYMENT_STATUS_MISMATCH',
+  'PAYOUT_DESTINATION_INVALID',
+  'PAYOUT_NOT_ELIGIBLE',
+  'PAYOUT_SEPARATION_OF_DUTIES_REQUIRED',
+  'REFUND_NOT_ALLOWED',
+  'SETTLEMENT_MISMATCH',
   'SELF_PURCHASE_NOT_ALLOWED',
   'SHIPMENT_INVALID_STATE',
 ] as const;
 export const commerceErrorCodeSchema = z.enum(commerceErrorCodeValues);
+export const payfastRecoveryStatusSchema = z.strictObject({
+  orderId: z.string().uuid(),
+  status: z.enum(['CANCELLED', 'FAILED', 'PAID', 'PENDING']),
+});
+
+export const payfastHostedSessionSchema = z.strictObject({
+  expiresAt: z.string().datetime({ offset: true }),
+  redirectUrl: z.string().url(),
+});
 
 export type Address = z.infer<typeof addressSchema>;
 export type AddressInput = z.infer<typeof addressInputSchema>;
@@ -228,5 +304,7 @@ export type OrderDetail = z.infer<typeof orderDetailSchema>;
 export type OrderPage = z.infer<typeof orderPageSchema>;
 export type OrderQuery = z.infer<typeof orderQuerySchema>;
 export type OrderStatus = z.infer<typeof orderStatusSchema>;
+export type PaymentMethod = z.infer<typeof paymentMethodSchema>;
 export type OrderSummary = z.infer<typeof orderSummarySchema>;
 export type ShipmentInput = z.infer<typeof shipmentInputSchema>;
+export type AdminShipmentInput = z.infer<typeof adminShipmentInputSchema>;

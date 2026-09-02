@@ -67,6 +67,10 @@ const definitions: Record<
   },
   REPORT_NOT_FOUND: { message: 'Report not found.', status: HttpStatus.NOT_FOUND },
   SELLER_NOT_FOUND: { message: 'Seller not found.', status: HttpStatus.NOT_FOUND },
+  SELLER_PHONE_VERIFICATION_REQUIRED: {
+    message: 'Verify your phone number before creating a listing.',
+    status: HttpStatus.FORBIDDEN,
+  },
   SELF_INTERACTION_FORBIDDEN: {
     message: 'You cannot perform this action on your own marketplace content.',
     status: HttpStatus.CONFLICT,

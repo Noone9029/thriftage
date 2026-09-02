@@ -14,6 +14,7 @@ import {
   type AuthoritativeAuthUserProvider,
 } from './auth-provider.interface';
 import type { AuthenticatedRequestContext } from './auth.types';
+import type { MarketplaceEventPublisher } from '../common/marketplace-event-publisher';
 
 function isUniqueConstraintError(error: unknown): boolean {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002';
@@ -60,6 +61,7 @@ export class ProvisionUserService {
     @Inject(AUTHORITATIVE_AUTH_USER_PROVIDER)
     private readonly authUserProvider: AuthoritativeAuthUserProvider,
     private readonly registrationIsEnabled: () => boolean = () => true,
+    private readonly events?: MarketplaceEventPublisher,
   ) {}
 
   public async provision(
@@ -96,7 +98,7 @@ export class ProvisionUserService {
       }
 
       try {
-        return await prisma.user.create({
+        const created = await prisma.user.create({
           data: {
             authProviderUserId: parsedSubject.data,
             email,
@@ -106,6 +108,8 @@ export class ProvisionUserService {
             phoneVerified: authoritativeUser.phoneVerified,
           },
         });
+        this.events?.publish({ actorId: created.id, name: 'user_registered' });
+        return created;
       } catch (error: unknown) {
         if (!isUniqueConstraintError(error)) throw error;
 

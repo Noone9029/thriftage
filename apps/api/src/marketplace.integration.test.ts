@@ -101,7 +101,12 @@ async function user(username: string, role: 'ADMIN' | 'USER' = 'USER') {
     data: {
       authProviderUserId: `market-${value}`,
       email: `${value}@example.com`,
+      emailVerified: true,
       fullName: username,
+      phone: `+923${Math.floor(Math.random() * 1_000_000_000)
+        .toString()
+        .padStart(9, '0')}`,
+      phoneVerified: true,
       profile: { create: { username } },
       role,
     },

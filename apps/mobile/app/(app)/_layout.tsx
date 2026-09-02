@@ -53,6 +53,7 @@ export default function ProtectedAppLayout() {
       <Stack.Screen name="safety" />
       <Stack.Screen name="style-profile" />
       <Stack.Screen name="personalization-settings" />
+      <Stack.Screen name="payout-settings" />
       <Stack.Screen name="account-deletion" />
       <Stack.Screen name="beta-feedback" />
       <Stack.Screen name="about" />

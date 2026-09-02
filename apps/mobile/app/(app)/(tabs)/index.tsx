@@ -186,42 +186,26 @@ export default function DiscoveryScreen() {
               ))}
             </ScrollView>
 
-            <Pressable
-              accessibilityLabel={
-                stylistEnabled ? 'Open AI Fashion Stylist' : 'Open AI Stylist preview'
-              }
-              accessibilityRole="button"
-              onPress={() => router.push('/stylist')}
-              style={({ pressed }) => [
-                styles.stylistCard,
-                !stylistEnabled && styles.stylistCardPaused,
-                pressed && styles.pressed,
-              ]}
-            >
-              <View style={styles.stylistIcon}>
-                <MaterialIcons
-                  color={marketplaceColors.white}
-                  name={stylistEnabled ? 'auto-awesome' : 'style'}
-                  size={23}
-                />
-              </View>
-              <View style={styles.stylistCopy}>
-                <Text style={styles.stylistEyebrow}>
-                  {stylistEnabled ? 'YOUR AI STYLIST' : 'STYLIST PREVIEW'}
-                </Text>
-                <Text style={styles.stylistTitle}>
-                  {stylistEnabled
-                    ? 'Turn an idea into a shoppable look'
-                    : 'See what your next look could become'}
-                </Text>
-                <Text style={styles.stylistBody}>
-                  {stylistEnabled
-                    ? 'Try an occasion, budget, color, or favorite piece.'
-                    : 'The live Stylist is resting. Preview the experience and tune your private style profile.'}
-                </Text>
-              </View>
-              <MaterialIcons color={marketplaceColors.forest} name="arrow-forward" size={20} />
-            </Pressable>
+            {stylistEnabled ? (
+              <Pressable
+                accessibilityLabel="Open AI Fashion Stylist"
+                accessibilityRole="button"
+                onPress={() => router.push('/stylist')}
+                style={({ pressed }) => [styles.stylistCard, pressed && styles.pressed]}
+              >
+                <View style={styles.stylistIcon}>
+                  <MaterialIcons color={marketplaceColors.white} name="auto-awesome" size={23} />
+                </View>
+                <View style={styles.stylistCopy}>
+                  <Text style={styles.stylistEyebrow}>YOUR AI STYLIST</Text>
+                  <Text style={styles.stylistTitle}>Turn an idea into a shoppable look</Text>
+                  <Text style={styles.stylistBody}>
+                    Try an occasion, budget, color, or favorite piece.
+                  </Text>
+                </View>
+                <MaterialIcons color={marketplaceColors.forest} name="arrow-forward" size={20} />
+              </Pressable>
+            ) : null}
 
             <View style={styles.feedHeading}>
               <SectionHeader

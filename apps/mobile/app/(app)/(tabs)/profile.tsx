@@ -156,6 +156,11 @@ export default function OwnProfileScreen() {
             <Text style={styles.groupTitle}>Marketplace & preferences</Text>
             <View style={styles.hub}>
               <HubAction
+                icon="account-balance-wallet"
+                label="Payouts & seller statement"
+                onPress={() => router.push('/payout-settings' as never)}
+              />
+              <HubAction
                 icon="tune"
                 label="Personalization & privacy"
                 onPress={() => router.push('/personalization-settings')}

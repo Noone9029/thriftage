@@ -21,17 +21,18 @@ import { getSupabaseBrowserClient } from '../lib/supabase';
 import { TrustOperationsWorkspace } from '../components/trust-operations-workspace';
 import { FeedbackOperationsWorkspace } from '../components/feedback-operations-workspace';
 import { ClosedBetaOperationsWorkspace } from '../components/closed-beta-operations-workspace';
+import { CommerceFinanceWorkspace } from '../components/commerce-finance-workspace';
 
 type Workspace =
   | 'BETA_STATUS'
   | 'CATEGORIES'
+  | 'FINANCE'
   | 'LISTINGS'
   | 'REPORTS'
   | 'MESSAGES'
   | 'ORDERS'
   | 'TRUST'
   | 'PERSONALIZATION'
-  | 'AI_STYLIST'
   | 'FEEDBACK';
 type AccessState = 'CHECKING' | 'DENIED' | 'SIGNED_OUT' | 'AUTHORIZED';
 
@@ -122,13 +123,13 @@ export default function AdminHome() {
           {(
             [
               'BETA_STATUS',
+              'FINANCE',
               'LISTINGS',
               'MESSAGES',
               'ORDERS',
               'REPORTS',
               'TRUST',
               'PERSONALIZATION',
-              'AI_STYLIST',
               'FEEDBACK',
               'CATEGORIES',
             ] as const
@@ -138,16 +139,15 @@ export default function AdminHome() {
               key={item}
               onClick={() => setWorkspace(item)}
             >
-              {item === 'AI_STYLIST'
-                ? 'AI Stylist'
-                : item === 'BETA_STATUS'
-                  ? 'Beta status'
-                  : item.charAt(0) + item.slice(1).toLowerCase()}
+              {item === 'BETA_STATUS'
+                ? 'Beta status'
+                : item.charAt(0) + item.slice(1).toLowerCase()}
             </button>
           ))}
         </nav>
         <section>
           {workspace === 'BETA_STATUS' ? <ClosedBetaOperationsWorkspace api={api} /> : null}
+          {workspace === 'FINANCE' ? <CommerceFinanceWorkspace api={api} /> : null}
           {workspace === 'LISTINGS' ? <ListingWorkspace api={api} /> : null}
           {workspace === 'REPORTS' ? <ReportWorkspace api={api} /> : null}
           {workspace === 'CATEGORIES' ? <CategoryWorkspace api={api} /> : null}
@@ -155,7 +155,6 @@ export default function AdminHome() {
           {workspace === 'ORDERS' ? <OrderWorkspace api={api} /> : null}
           {workspace === 'TRUST' ? <TrustOperationsWorkspace api={api} /> : null}
           {workspace === 'PERSONALIZATION' ? <PersonalizationWorkspace api={api} /> : null}
-          {workspace === 'AI_STYLIST' ? <AiStylistWorkspace api={api} /> : null}
           {workspace === 'FEEDBACK' ? <FeedbackOperationsWorkspace api={api} /> : null}
         </section>
       </div>
@@ -163,6 +162,8 @@ export default function AdminHome() {
   );
 }
 
+// Kept for a future gated phase; there is deliberately no navigation or render path in this beta.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function AiStylistWorkspace({ api }: { readonly api: ReturnType<typeof createAdminApi> }) {
   const [metrics, setMetrics] = useState<AiStylistAdminMetrics | null>(null);
   const [error, setError] = useState<string | null>(null);

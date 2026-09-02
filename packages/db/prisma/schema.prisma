@@ -179,6 +179,7 @@ enum MessageFlagStatus {
 }
 
 enum OrderStatus {
+  AWAITING_PAYMENT
   PENDING
   CONFIRMED
   SHIPPED
@@ -196,6 +197,8 @@ enum OrderEventType {
   MARKED_DELIVERED
   COMPLETED
   PAYMENT_STATUS_CHANGED
+  PAYMENT_EXPIRED
+  REFUND_STATUS_CHANGED
 }
 
 enum OrderActorType {
@@ -206,24 +209,120 @@ enum OrderActorType {
 
 enum PaymentMethod {
   CASH_ON_DELIVERY
+  PAYFAST_HOSTED
 }
 
 enum PaymentProviderCode {
   CASH_ON_DELIVERY
+  PAYFAST
 }
 
 enum PaymentStatus {
+  REQUIRES_ACTION
   PENDING_COLLECTION
   COLLECTED
   FAILED
   CANCELLED
+  REFUND_PENDING
+  REFUNDED
 }
 
 enum ShipmentStatus {
   PENDING
+  BOOKED
+  PICKED_UP
+  IN_TRANSIT
   SHIPPED
   DELIVERED
+  FAILED
+  RETURNING
+  RETURNED
+  LOST
   CANCELLED
+}
+
+enum InventoryMovementType {
+  RESERVED
+  RELEASED
+  SOLD
+  RESTOCKED
+  ADJUSTED
+}
+
+enum PayoutDestinationType {
+  BANK_IBAN
+  EASYPAISA
+  JAZZCASH
+}
+
+enum PayoutProfileStatus {
+  PENDING_REVIEW
+  ACTIVE
+  REJECTED
+  SUPERSEDED
+}
+
+enum SettlementSource {
+  PAYFAST
+  COURIER_COD
+  MANUAL_BANK
+}
+
+enum SettlementStatus {
+  PENDING
+  MATCHED
+  EXCEPTION
+  REVERSED
+}
+
+enum RefundStatus {
+  REQUESTED
+  APPROVED
+  SUBMITTED
+  SUCCEEDED
+  FAILED
+  REJECTED
+  STOCK_PENDING_INSPECTION
+  STOCK_RESTORED
+}
+
+enum FinancialEntryType {
+  PAYFAST_SETTLEMENT
+  COURIER_COD_DEPOSIT
+  REFUND
+  PROVIDER_COST
+  COURIER_COST
+  WITHHOLDING
+  COMMISSION
+  SELLER_PAYABLE
+  PAYOUT
+}
+
+enum PayoutBatchStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  PROCESSING
+  PAID
+  FAILED
+  CANCELLED
+}
+
+enum PayoutItemStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+}
+
+enum AdminPermissionCode {
+  MODERATION
+  OPERATIONS
+  FINANCE_RECONCILIATION
+  PAYOUT_CREATE
+  PAYOUT_APPROVE
+  RELEASE
+  BILLING
 }
 
 enum NotificationType {
@@ -247,6 +346,7 @@ enum NotificationType {
   SELLER_VERIFICATION_APPROVED
   SELLER_VERIFICATION_REJECTED
   ACCOUNT_RESTRICTED
+  PAYOUT_DESTINATION_CHANGED
 }
 
 enum ReviewDirection {
@@ -526,80 +626,93 @@ enum AiAttributionEventType {
 }
 
 model User {
-  id                          String                     @id @default(uuid()) @db.Uuid
-  authProviderUserId          String                     @unique(map: "users_auth_provider_user_id_key") @map("auth_provider_user_id") @db.VarChar(255)
-  email                       String?                    @unique(map: "users_email_key") @db.VarChar(320)
-  phone                       String?                    @unique(map: "users_phone_key") @db.VarChar(32)
-  fullName                    String                     @map("full_name") @db.VarChar(120)
-  role                        UserRole                   @default(USER)
-  accountStatus               AccountStatus              @default(ACTIVE) @map("account_status")
-  emailVerified               Boolean                    @default(false) @map("email_verified")
-  phoneVerified               Boolean                    @default(false) @map("phone_verified")
-  createdAt                   DateTime                   @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt                   DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(3)
-  deletedAt                   DateTime?                  @map("deleted_at") @db.Timestamptz(3)
+  id                          String                      @id @default(uuid()) @db.Uuid
+  authProviderUserId          String                      @unique(map: "users_auth_provider_user_id_key") @map("auth_provider_user_id") @db.VarChar(255)
+  email                       String?                     @unique(map: "users_email_key") @db.VarChar(320)
+  phone                       String?                     @unique(map: "users_phone_key") @db.VarChar(32)
+  fullName                    String                      @map("full_name") @db.VarChar(120)
+  role                        UserRole                    @default(USER)
+  accountStatus               AccountStatus               @default(ACTIVE) @map("account_status")
+  emailVerified               Boolean                     @default(false) @map("email_verified")
+  phoneVerified               Boolean                     @default(false) @map("phone_verified")
+  createdAt                   DateTime                    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                   DateTime                    @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt                   DateTime?                   @map("deleted_at") @db.Timestamptz(3)
   profile                     Profile?
   phoneVerificationAttempts   PhoneVerificationAttempt[]
-  listings                    Listing[]                  @relation("ListingSeller")
+  listings                    Listing[]                   @relation("ListingSeller")
   listingLikes                ListingLike[]
   savedListings               SavedListing[]
-  following                   Follow[]                   @relation("Follower")
-  followers                   Follow[]                   @relation("Followed")
-  reportsCreated              ModerationReport[]         @relation("ReportReporter")
-  reportsTargetingUser        ModerationReport[]         @relation("ReportTargetUser")
-  reportsAssigned             ModerationReport[]         @relation("ReportAssignedAdmin")
-  moderationAudits            ModerationAudit[]          @relation("ModerationActor")
-  conversationsAsSeller       Conversation[]             @relation("ConversationSeller")
-  conversationsAsBuyer        Conversation[]             @relation("ConversationBuyer")
-  messagesSent                Message[]                  @relation("MessageSender")
-  messageFlagsReviewed        MessageModerationFlag[]    @relation("MessageFlagReviewer")
-  messageModerationAudits     MessageModerationAudit[]   @relation("MessageModerationActor")
+  following                   Follow[]                    @relation("Follower")
+  followers                   Follow[]                    @relation("Followed")
+  reportsCreated              ModerationReport[]          @relation("ReportReporter")
+  reportsTargetingUser        ModerationReport[]          @relation("ReportTargetUser")
+  reportsAssigned             ModerationReport[]          @relation("ReportAssignedAdmin")
+  moderationAudits            ModerationAudit[]           @relation("ModerationActor")
+  conversationsAsSeller       Conversation[]              @relation("ConversationSeller")
+  conversationsAsBuyer        Conversation[]              @relation("ConversationBuyer")
+  messagesSent                Message[]                   @relation("MessageSender")
+  messageFlagsReviewed        MessageModerationFlag[]     @relation("MessageFlagReviewer")
+  messageModerationAudits     MessageModerationAudit[]    @relation("MessageModerationActor")
   addresses                   Address[]
-  ordersAsBuyer               Order[]                    @relation("OrderBuyer")
-  ordersAsSeller              Order[]                    @relation("OrderSeller")
-  orderCancellations          Order[]                    @relation("OrderCancelledBy")
-  orderEvents                 OrderEvent[]               @relation("OrderEventActor")
-  notifications               Notification[]             @relation("NotificationRecipient")
-  notificationActors          Notification[]             @relation("NotificationActor")
+  ordersAsBuyer               Order[]                     @relation("OrderBuyer")
+  ordersAsSeller              Order[]                     @relation("OrderSeller")
+  orderCancellations          Order[]                     @relation("OrderCancelledBy")
+  orderEvents                 OrderEvent[]                @relation("OrderEventActor")
+  notifications               Notification[]              @relation("NotificationRecipient")
+  notificationActors          Notification[]              @relation("NotificationActor")
   pushDevices                 PushDevice[]
-  notificationOutbox          NotificationOutbox[]       @relation("OutboxRecipient")
-  notificationOutboxActions   NotificationOutbox[]       @relation("OutboxActor")
-  reviewsGiven                Review[]                   @relation("ReviewReviewer")
-  reviewsReceived             Review[]                   @relation("ReviewReviewee")
-  reviewReports               ReviewReport[]             @relation("ReviewReportReporter")
-  reviewReportsAssigned       ReviewReport[]             @relation("ReviewReportAdmin")
-  reviewModerationAudits      ReviewModerationAudit[]    @relation("ReviewModerationActor")
-  blocksCreated               UserBlock[]                @relation("Blocker")
-  blocksReceived              UserBlock[]                @relation("BlockedUser")
+  notificationOutbox          NotificationOutbox[]        @relation("OutboxRecipient")
+  notificationOutboxActions   NotificationOutbox[]        @relation("OutboxActor")
+  reviewsGiven                Review[]                    @relation("ReviewReviewer")
+  reviewsReceived             Review[]                    @relation("ReviewReviewee")
+  reviewReports               ReviewReport[]              @relation("ReviewReportReporter")
+  reviewReportsAssigned       ReviewReport[]              @relation("ReviewReportAdmin")
+  reviewModerationAudits      ReviewModerationAudit[]     @relation("ReviewModerationActor")
+  blocksCreated               UserBlock[]                 @relation("Blocker")
+  blocksReceived              UserBlock[]                 @relation("BlockedUser")
   policyAcceptances           PolicyAcceptance[]
-  policiesPublished           PolicyVersion[]            @relation("PolicyPublisher")
-  disputesOpened              Dispute[]                  @relation("DisputeOpener")
-  disputesAgainst             Dispute[]                  @relation("DisputeCounterparty")
-  disputesAssigned            Dispute[]                  @relation("DisputeAdmin")
-  disputeEvidenceUploaded     DisputeEvidence[]          @relation("DisputeEvidenceUploader")
-  disputeEvents               DisputeEvent[]             @relation("DisputeEventActor")
-  sellerVerifications         SellerVerification[]       @relation("SellerVerificationUser")
-  sellerVerificationsReviewed SellerVerification[]       @relation("SellerVerificationReviewer")
-  restrictions                UserRestriction[]          @relation("RestrictedUser")
-  restrictionsCreated         UserRestriction[]          @relation("RestrictionCreator")
-  safetyActionsTaken          SafetyAction[]             @relation("SafetyActionActor")
-  safetyActionsReceived       SafetyAction[]             @relation("SafetyActionTarget")
-  trustAuditsPerformed        TrustAudit[]               @relation("TrustAuditActor")
-  trustAuditsTargeting        TrustAudit[]               @relation("TrustAuditTarget")
+  policiesPublished           PolicyVersion[]             @relation("PolicyPublisher")
+  disputesOpened              Dispute[]                   @relation("DisputeOpener")
+  disputesAgainst             Dispute[]                   @relation("DisputeCounterparty")
+  disputesAssigned            Dispute[]                   @relation("DisputeAdmin")
+  disputeEvidenceUploaded     DisputeEvidence[]           @relation("DisputeEvidenceUploader")
+  disputeEvents               DisputeEvent[]              @relation("DisputeEventActor")
+  sellerVerifications         SellerVerification[]        @relation("SellerVerificationUser")
+  sellerVerificationsReviewed SellerVerification[]        @relation("SellerVerificationReviewer")
+  restrictions                UserRestriction[]           @relation("RestrictedUser")
+  restrictionsCreated         UserRestriction[]           @relation("RestrictionCreator")
+  safetyActionsTaken          SafetyAction[]              @relation("SafetyActionActor")
+  safetyActionsReceived       SafetyAction[]              @relation("SafetyActionTarget")
+  trustAuditsPerformed        TrustAudit[]                @relation("TrustAuditActor")
+  trustAuditsTargeting        TrustAudit[]                @relation("TrustAuditTarget")
   styleProfile                UserStyleProfile?
   recommendationFeedback      RecommendationFeedback[]
   recommendationEvents        RecommendationEvent[]
-  personalizationAudits       PersonalizationAudit[]     @relation("PersonalizationAuditUser")
-  personalizationAuditActions PersonalizationAudit[]     @relation("PersonalizationAuditActor")
+  personalizationAudits       PersonalizationAudit[]      @relation("PersonalizationAuditUser")
+  personalizationAuditActions PersonalizationAudit[]      @relation("PersonalizationAuditActor")
   aiStylistConversations      AiStylistConversation[]
   aiStylistGenerations        AiGeneration[]
   savedOutfits                SavedOutfit[]
   aiAttributionEvents         AiAttributionEvent[]
   accountDeletionRequest      AccountDeletionRequest?
-  betaFeedbackSubmitted       BetaFeedback[]             @relation("BetaFeedbackSubmitter")
-  betaFeedbackReviewed        BetaFeedback[]             @relation("BetaFeedbackReviewer")
-  aiResponseFeedback          AiResponseFeedback[]       @relation("AiFeedbackSubmitter")
-  aiResponseFeedbackReviewed  AiResponseFeedback[]       @relation("AiFeedbackReviewer")
+  betaFeedbackSubmitted       BetaFeedback[]              @relation("BetaFeedbackSubmitter")
+  betaFeedbackReviewed        BetaFeedback[]              @relation("BetaFeedbackReviewer")
+  aiResponseFeedback          AiResponseFeedback[]        @relation("AiFeedbackSubmitter")
+  aiResponseFeedbackReviewed  AiResponseFeedback[]        @relation("AiFeedbackReviewer")
+  inventoryMovementsCreated   InventoryMovement[]         @relation("InventoryMovementActor")
+  payoutProfiles              SellerPayoutProfile[]       @relation("PayoutProfileSeller")
+  payoutProfilesReviewed      SellerPayoutProfile[]       @relation("PayoutProfileReviewer")
+  refundsRequested            Refund[]                    @relation("RefundRequester")
+  refundsReviewed             Refund[]                    @relation("RefundReviewer")
+  payoutBatchesCreated        PayoutBatch[]               @relation("PayoutBatchCreator")
+  payoutBatchesApproved       PayoutBatch[]               @relation("PayoutBatchApprover")
+  payoutItems                 PayoutItem[]                @relation("PayoutItemSeller")
+  settlementsRecorded         Settlement[]                @relation("SettlementRecorder")
+  financialEntriesRecorded    FinancialEntry[]            @relation("FinancialEntryActor")
+  analyticsEvents             MarketplaceAnalyticsEvent[]
+  adminPermissionGrants       AdminPermissionGrant[]      @relation("AdminPermissionUser")
+  adminPermissionsGranted     AdminPermissionGrant[]      @relation("AdminPermissionGrantor")
 
   @@index([accountStatus], map: "users_account_status_idx")
   @@index([createdAt], map: "users_created_at_idx")
@@ -755,6 +868,9 @@ model Listing {
   sizeSystem             SizeSystem?              @map("size_system")
   sizeCompatibilityKey   String?                  @map("size_compatibility_key") @db.VarChar(40)
   status                 ListingStatus            @default(DRAFT)
+  stockAvailable         Int                      @default(1) @map("stock_available")
+  stockReserved          Int                      @default(0) @map("stock_reserved")
+  stockSold              Int                      @default(0) @map("stock_sold")
   rejectionReason        String?                  @map("rejection_reason") @db.VarChar(500)
   submittedAt            DateTime?                @map("submitted_at") @db.Timestamptz(3)
   moderatedAt            DateTime?                @map("moderated_at") @db.Timestamptz(3)
@@ -771,8 +887,7 @@ model Listing {
   moderationAudits       ModerationAudit[]
   conversations          Conversation[]
   orders                 Order[]                  @relation("OrderListing")
-  reservedOrderId        String?                  @unique(map: "listings_reserved_order_id_key") @map("reserved_order_id") @db.Uuid
-  reservedByOrder        Order?                   @relation("CurrentListingReservation", fields: [reservedOrderId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "listings_reserved_order_id_fkey")
+  inventoryMovements     InventoryMovement[]
   notifications          Notification[]
   notificationOutbox     NotificationOutbox[]
   styles                 ListingStyle[]
@@ -1005,55 +1120,72 @@ model Address {
 }
 
 model Order {
-  id                   String               @id @default(uuid()) @db.Uuid
-  orderNumber          String               @unique(map: "orders_order_number_key") @map("order_number") @db.VarChar(32)
-  idempotencyKey       String               @map("idempotency_key") @db.Uuid
-  listingId            String               @map("listing_id") @db.Uuid
-  conversationId       String?              @map("conversation_id") @db.Uuid
-  buyerId              String               @map("buyer_id") @db.Uuid
-  sellerId             String               @map("seller_id") @db.Uuid
-  listingTitle         String               @map("listing_title") @db.VarChar(120)
-  listingImageKey      String?              @map("listing_image_key") @db.VarChar(255)
-  buyerUsername        String               @map("buyer_username") @db.VarChar(30)
-  sellerUsername       String               @map("seller_username") @db.VarChar(30)
-  priceMinor           Int                  @map("price_minor")
-  shippingMinor        Int                  @default(0) @map("shipping_minor")
-  totalMinor           Int                  @map("total_minor")
-  currency             CurrencyCode
-  paymentMethod        PaymentMethod        @map("payment_method")
-  status               OrderStatus          @default(PENDING)
-  recipientName        String               @map("recipient_name") @db.VarChar(120)
-  deliveryPhone        String               @map("delivery_phone") @db.VarChar(32)
-  addressLine1         String               @map("address_line_1") @db.VarChar(180)
-  addressLine2         String?              @map("address_line_2") @db.VarChar(180)
-  city                 String               @db.VarChar(100)
-  region               String               @db.VarChar(100)
-  postalCode           String?              @map("postal_code") @db.VarChar(32)
-  countryCode          String               @map("country_code") @db.Char(2)
-  deliveryInstructions String?              @map("delivery_instructions") @db.VarChar(500)
-  cancellationReason   String?              @map("cancellation_reason") @db.VarChar(500)
-  cancelledById        String?              @map("cancelled_by_id") @db.Uuid
-  confirmedAt          DateTime?            @map("confirmed_at") @db.Timestamptz(3)
-  shippedAt            DateTime?            @map("shipped_at") @db.Timestamptz(3)
-  deliveredAt          DateTime?            @map("delivered_at") @db.Timestamptz(3)
-  completedAt          DateTime?            @map("completed_at") @db.Timestamptz(3)
-  cancelledAt          DateTime?            @map("cancelled_at") @db.Timestamptz(3)
-  createdAt            DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt            DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
-  listing              Listing              @relation("OrderListing", fields: [listingId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "orders_listing_id_fkey")
-  conversation         Conversation?        @relation(fields: [conversationId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "orders_conversation_id_fkey")
-  buyer                User                 @relation("OrderBuyer", fields: [buyerId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "orders_buyer_id_fkey")
-  seller               User                 @relation("OrderSeller", fields: [sellerId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "orders_seller_id_fkey")
-  cancelledBy          User?                @relation("OrderCancelledBy", fields: [cancelledById], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "orders_cancelled_by_id_fkey")
-  reservationFor       Listing?             @relation("CurrentListingReservation")
-  payment              Payment?
-  shipment             Shipment?
-  events               OrderEvent[]
-  notifications        Notification[]
-  notificationOutbox   NotificationOutbox[]
-  aiAttributionEvents  AiAttributionEvent[]
-  reviews              Review[]
-  disputes             Dispute[]
+  id                     String                 @id @default(uuid()) @db.Uuid
+  orderNumber            String                 @unique(map: "orders_order_number_key") @map("order_number") @db.VarChar(32)
+  idempotencyKey         String                 @map("idempotency_key") @db.Uuid
+  listingId              String                 @map("listing_id") @db.Uuid
+  conversationId         String?                @map("conversation_id") @db.Uuid
+  buyerId                String                 @map("buyer_id") @db.Uuid
+  sellerId               String                 @map("seller_id") @db.Uuid
+  listingTitle           String                 @map("listing_title") @db.VarChar(120)
+  listingImageKey        String?                @map("listing_image_key") @db.VarChar(255)
+  buyerUsername          String                 @map("buyer_username") @db.VarChar(30)
+  sellerUsername         String                 @map("seller_username") @db.VarChar(30)
+  priceMinor             Int                    @map("price_minor")
+  quantity               Int                    @default(1)
+  itemSubtotalMinor      Int                    @map("item_subtotal_minor")
+  shippingMinor          Int                    @default(0) @map("shipping_minor")
+  deliveryRateVersion    String                 @default("lahore-flat-v1") @map("delivery_rate_version") @db.VarChar(40)
+  totalMinor             Int                    @map("total_minor")
+  commissionBps          Int                    @default(1000) @map("commission_bps")
+  commissionMinor        Int                    @map("commission_minor")
+  withholdingBps         Int                    @default(0) @map("withholding_bps")
+  withholdingMinor       Int                    @default(0) @map("withholding_minor")
+  sellerNetMinor         Int                    @map("seller_net_minor")
+  financialPolicyVersion String                 @map("financial_policy_version") @db.VarChar(40)
+  withholdingRuleVersion String                 @map("withholding_rule_version") @db.VarChar(40)
+  currency               CurrencyCode
+  paymentMethod          PaymentMethod          @map("payment_method")
+  status                 OrderStatus            @default(PENDING)
+  recipientName          String                 @map("recipient_name") @db.VarChar(120)
+  deliveryPhone          String                 @map("delivery_phone") @db.VarChar(32)
+  addressLine1           String                 @map("address_line_1") @db.VarChar(180)
+  addressLine2           String?                @map("address_line_2") @db.VarChar(180)
+  city                   String                 @db.VarChar(100)
+  region                 String                 @db.VarChar(100)
+  postalCode             String?                @map("postal_code") @db.VarChar(32)
+  countryCode            String                 @map("country_code") @db.Char(2)
+  deliveryInstructions   String?                @map("delivery_instructions") @db.VarChar(500)
+  cancellationReason     String?                @map("cancellation_reason") @db.VarChar(500)
+  cancelledById          String?                @map("cancelled_by_id") @db.Uuid
+  confirmedAt            DateTime?              @map("confirmed_at") @db.Timestamptz(3)
+  shippedAt              DateTime?              @map("shipped_at") @db.Timestamptz(3)
+  deliveredAt            DateTime?              @map("delivered_at") @db.Timestamptz(3)
+  completedAt            DateTime?              @map("completed_at") @db.Timestamptz(3)
+  cancelledAt            DateTime?              @map("cancelled_at") @db.Timestamptz(3)
+  paymentExpiresAt       DateTime?              @map("payment_expires_at") @db.Timestamptz(3)
+  disputeWindowEndsAt    DateTime?              @map("dispute_window_ends_at") @db.Timestamptz(3)
+  payoutEligibleAt       DateTime?              @map("payout_eligible_at") @db.Timestamptz(3)
+  createdAt              DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt              DateTime               @updatedAt @map("updated_at") @db.Timestamptz(3)
+  listing                Listing                @relation("OrderListing", fields: [listingId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "orders_listing_id_fkey")
+  conversation           Conversation?          @relation(fields: [conversationId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "orders_conversation_id_fkey")
+  buyer                  User                   @relation("OrderBuyer", fields: [buyerId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "orders_buyer_id_fkey")
+  seller                 User                   @relation("OrderSeller", fields: [sellerId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "orders_seller_id_fkey")
+  cancelledBy            User?                  @relation("OrderCancelledBy", fields: [cancelledById], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "orders_cancelled_by_id_fkey")
+  payment                Payment?
+  shipment               Shipment?
+  events                 OrderEvent[]
+  notifications          Notification[]
+  notificationOutbox     NotificationOutbox[]
+  aiAttributionEvents    AiAttributionEvent[]
+  reviews                Review[]
+  disputes               Dispute[]
+  inventoryMovements     InventoryMovement[]
+  settlementAllocations  SettlementAllocation[]
+  financialEntries       FinancialEntry[]
+  refunds                Refund[]
+  payoutItems            PayoutItem[]
 
   @@unique([buyerId, idempotencyKey], map: "orders_buyer_id_idempotency_key_key")
   @@index([buyerId, createdAt, id], map: "orders_buyer_created_id_idx")
@@ -1064,20 +1196,25 @@ model Order {
 }
 
 model Payment {
-  id                String                 @id @default(uuid()) @db.Uuid
-  orderId           String                 @unique(map: "payments_order_id_key") @map("order_id") @db.Uuid
-  method            PaymentMethod
-  provider          PaymentProviderCode
-  providerReference String?                @map("provider_reference") @db.VarChar(255)
-  amountMinor       Int                    @map("amount_minor")
-  currency          CurrencyCode
-  status            PaymentStatus          @default(PENDING_COLLECTION)
-  failureCode       String?                @map("failure_code") @db.VarChar(64)
-  collectedAt       DateTime?              @map("collected_at") @db.Timestamptz(3)
-  createdAt         DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt         DateTime               @updatedAt @map("updated_at") @db.Timestamptz(3)
-  order             Order                  @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "payments_order_id_fkey")
-  providerEvents    PaymentProviderEvent[]
+  id                    String                 @id @default(uuid()) @db.Uuid
+  orderId               String                 @unique(map: "payments_order_id_key") @map("order_id") @db.Uuid
+  method                PaymentMethod
+  provider              PaymentProviderCode
+  providerReference     String?                @map("provider_reference") @db.VarChar(255)
+  amountMinor           Int                    @map("amount_minor")
+  currency              CurrencyCode
+  status                PaymentStatus          @default(PENDING_COLLECTION)
+  failureCode           String?                @map("failure_code") @db.VarChar(64)
+  collectedAt           DateTime?              @map("collected_at") @db.Timestamptz(3)
+  checkoutUrl           String?                @map("checkout_url") @db.VarChar(2048)
+  expiresAt             DateTime?              @map("expires_at") @db.Timestamptz(3)
+  refundedAt            DateTime?              @map("refunded_at") @db.Timestamptz(3)
+  createdAt             DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime               @updatedAt @map("updated_at") @db.Timestamptz(3)
+  order                 Order                  @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "payments_order_id_fkey")
+  providerEvents        PaymentProviderEvent[]
+  settlementAllocations SettlementAllocation[]
+  refunds               Refund[]
 
   @@index([status, updatedAt], map: "payments_status_updated_idx")
   @@map("payments")
@@ -1102,15 +1239,227 @@ model Shipment {
   providerDisplayName String         @map("provider_display_name") @db.VarChar(100)
   trackingNumber      String?        @map("tracking_number") @db.VarChar(120)
   trackingUrl         String?        @map("tracking_url") @db.VarChar(2048)
+  providerCode        String         @default("LOCAL_COURIER_MANUAL") @map("provider_code") @db.VarChar(40)
+  courierReference    String?        @map("courier_reference") @db.VarChar(120)
+  feeMinor            Int            @default(0) @map("fee_minor")
+  evidenceReference   String?        @map("evidence_reference") @db.VarChar(255)
   status              ShipmentStatus @default(PENDING)
+  bookedAt            DateTime?      @map("booked_at") @db.Timestamptz(3)
+  pickedUpAt          DateTime?      @map("picked_up_at") @db.Timestamptz(3)
   shippedAt           DateTime?      @map("shipped_at") @db.Timestamptz(3)
   deliveredAt         DateTime?      @map("delivered_at") @db.Timestamptz(3)
+  returnedAt          DateTime?      @map("returned_at") @db.Timestamptz(3)
   createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt           DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
   order               Order          @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "shipments_order_id_fkey")
 
   @@index([status, updatedAt], map: "shipments_status_updated_idx")
   @@map("shipments")
+}
+
+model InventoryMovement {
+  id             String                @id @default(uuid()) @db.Uuid
+  listingId      String                @map("listing_id") @db.Uuid
+  orderId        String?               @map("order_id") @db.Uuid
+  actorId        String?               @map("actor_id") @db.Uuid
+  type           InventoryMovementType
+  quantity       Int                   @default(1)
+  availableAfter Int                   @map("available_after")
+  reservedAfter  Int                   @map("reserved_after")
+  soldAfter      Int                   @map("sold_after")
+  reason         String?               @db.VarChar(500)
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  listing        Listing               @relation(fields: [listingId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "inventory_movements_listing_id_fkey")
+  order          Order?                @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "inventory_movements_order_id_fkey")
+  actor          User?                 @relation("InventoryMovementActor", fields: [actorId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "inventory_movements_actor_id_fkey")
+
+  @@index([listingId, createdAt], map: "inventory_movements_listing_created_idx")
+  @@index([orderId, createdAt], map: "inventory_movements_order_created_idx")
+  @@map("inventory_movements")
+}
+
+model SellerPayoutProfile {
+  id                     String                @id @default(uuid()) @db.Uuid
+  sellerId               String                @map("seller_id") @db.Uuid
+  type                   PayoutDestinationType
+  destinationCiphertext  String                @map("destination_ciphertext") @db.Text
+  destinationIv          String                @map("destination_iv") @db.VarChar(64)
+  destinationAuthTag     String                @map("destination_auth_tag") @db.VarChar(64)
+  destinationFingerprint String                @map("destination_fingerprint") @db.VarChar(64)
+  displayLabel           String                @map("display_label") @db.VarChar(80)
+  accountTitle           String                @map("account_title") @db.VarChar(120)
+  status                 PayoutProfileStatus   @default(PENDING_REVIEW)
+  heldUntil              DateTime              @map("held_until") @db.Timestamptz(3)
+  reviewedById           String?               @map("reviewed_by_id") @db.Uuid
+  reviewReason           String?               @map("review_reason") @db.VarChar(500)
+  reviewedAt             DateTime?             @map("reviewed_at") @db.Timestamptz(3)
+  createdAt              DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt              DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
+  seller                 User                  @relation("PayoutProfileSeller", fields: [sellerId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "seller_payout_profiles_seller_id_fkey")
+  reviewedBy             User?                 @relation("PayoutProfileReviewer", fields: [reviewedById], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "seller_payout_profiles_reviewed_by_id_fkey")
+  payoutItems            PayoutItem[]
+
+  @@unique([sellerId, destinationFingerprint], map: "seller_payout_profiles_seller_fingerprint_key")
+  @@index([sellerId, status, createdAt], map: "seller_payout_profiles_seller_status_idx")
+  @@index([status, heldUntil], map: "seller_payout_profiles_status_hold_idx")
+  @@map("seller_payout_profiles")
+}
+
+model Settlement {
+  id                String                 @id @default(uuid()) @db.Uuid
+  recordedById      String                 @map("recorded_by_id") @db.Uuid
+  source            SettlementSource
+  externalReference String                 @map("external_reference") @db.VarChar(255)
+  amountMinor       Int                    @map("amount_minor")
+  currency          CurrencyCode
+  status            SettlementStatus       @default(PENDING)
+  evidenceReference String?                @map("evidence_reference") @db.VarChar(255)
+  receivedAt        DateTime               @map("received_at") @db.Timestamptz(3)
+  matchedAt         DateTime?              @map("matched_at") @db.Timestamptz(3)
+  createdAt         DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  allocations       SettlementAllocation[]
+  recordedBy        User                   @relation("SettlementRecorder", fields: [recordedById], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "settlements_recorded_by_id_fkey")
+
+  @@unique([source, externalReference], map: "settlements_source_reference_key")
+  @@index([status, receivedAt], map: "settlements_status_received_idx")
+  @@map("settlements")
+}
+
+model SettlementAllocation {
+  id           String     @id @default(uuid()) @db.Uuid
+  settlementId String     @map("settlement_id") @db.Uuid
+  orderId      String     @map("order_id") @db.Uuid
+  paymentId    String     @map("payment_id") @db.Uuid
+  amountMinor  Int        @map("amount_minor")
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  settlement   Settlement @relation(fields: [settlementId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "settlement_allocations_settlement_id_fkey")
+  order        Order      @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "settlement_allocations_order_id_fkey")
+  payment      Payment    @relation(fields: [paymentId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "settlement_allocations_payment_id_fkey")
+
+  @@unique([settlementId, orderId], map: "settlement_allocations_settlement_order_key")
+  @@index([orderId], map: "settlement_allocations_order_idx")
+  @@map("settlement_allocations")
+}
+
+model Refund {
+  id                      String       @id @default(uuid()) @db.Uuid
+  orderId                 String       @map("order_id") @db.Uuid
+  paymentId               String       @map("payment_id") @db.Uuid
+  requestedById           String       @map("requested_by_id") @db.Uuid
+  reviewedById            String?      @map("reviewed_by_id") @db.Uuid
+  status                  RefundStatus @default(REQUESTED)
+  reason                  String       @db.VarChar(500)
+  amountMinor             Int          @map("amount_minor")
+  commissionReversalMinor Int          @map("commission_reversal_minor")
+  providerReference       String?      @map("provider_reference") @db.VarChar(255)
+  stockRestoredAt         DateTime?    @map("stock_restored_at") @db.Timestamptz(3)
+  reviewedAt              DateTime?    @map("reviewed_at") @db.Timestamptz(3)
+  completedAt             DateTime?    @map("completed_at") @db.Timestamptz(3)
+  createdAt               DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt               DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+  order                   Order        @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "refunds_order_id_fkey")
+  payment                 Payment      @relation(fields: [paymentId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "refunds_payment_id_fkey")
+  requestedBy             User         @relation("RefundRequester", fields: [requestedById], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "refunds_requested_by_id_fkey")
+  reviewedBy              User?        @relation("RefundReviewer", fields: [reviewedById], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "refunds_reviewed_by_id_fkey")
+
+  @@unique([orderId], map: "refunds_order_id_key")
+  @@index([status, createdAt], map: "refunds_status_created_idx")
+  @@map("refunds")
+}
+
+model FinancialEntry {
+  id                String             @id @default(uuid()) @db.Uuid
+  orderId           String?            @map("order_id") @db.Uuid
+  actorId           String?            @map("actor_id") @db.Uuid
+  type              FinancialEntryType
+  amountMinor       Int                @map("amount_minor")
+  currency          CurrencyCode
+  externalReference String?            @map("external_reference") @db.VarChar(255)
+  ruleVersion       String             @map("rule_version") @db.VarChar(40)
+  occurredAt        DateTime           @map("occurred_at") @db.Timestamptz(3)
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  order             Order?             @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "financial_entries_order_id_fkey")
+  actor             User?              @relation("FinancialEntryActor", fields: [actorId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "financial_entries_actor_id_fkey")
+
+  @@unique([type, externalReference], map: "financial_entries_type_reference_key")
+  @@index([orderId, occurredAt], map: "financial_entries_order_occurred_idx")
+  @@index([type, occurredAt], map: "financial_entries_type_occurred_idx")
+  @@index([actorId, occurredAt], map: "financial_entries_actor_occurred_idx")
+  @@map("financial_entries")
+}
+
+model PayoutBatch {
+  id         String            @id @default(uuid()) @db.Uuid
+  creatorId  String            @map("creator_id") @db.Uuid
+  approverId String?           @map("approver_id") @db.Uuid
+  status     PayoutBatchStatus @default(DRAFT)
+  currency   CurrencyCode
+  totalMinor Int               @map("total_minor")
+  approvedAt DateTime?         @map("approved_at") @db.Timestamptz(3)
+  paidAt     DateTime?         @map("paid_at") @db.Timestamptz(3)
+  createdAt  DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+  creator    User              @relation("PayoutBatchCreator", fields: [creatorId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "payout_batches_creator_id_fkey")
+  approver   User?             @relation("PayoutBatchApprover", fields: [approverId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "payout_batches_approver_id_fkey")
+  items      PayoutItem[]
+
+  @@index([status, createdAt], map: "payout_batches_status_created_idx")
+  @@map("payout_batches")
+}
+
+model PayoutItem {
+  id                String              @id @default(uuid()) @db.Uuid
+  batchId           String              @map("batch_id") @db.Uuid
+  orderId           String              @map("order_id") @db.Uuid
+  payoutProfileId   String              @map("payout_profile_id") @db.Uuid
+  sellerId          String              @map("seller_id") @db.Uuid
+  amountMinor       Int                 @map("amount_minor")
+  status            PayoutItemStatus    @default(PENDING)
+  providerReference String?             @map("provider_reference") @db.VarChar(255)
+  createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+  batch             PayoutBatch         @relation(fields: [batchId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "payout_items_batch_id_fkey")
+  order             Order               @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "payout_items_order_id_fkey")
+  payoutProfile     SellerPayoutProfile @relation(fields: [payoutProfileId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "payout_items_profile_id_fkey")
+  seller            User                @relation("PayoutItemSeller", fields: [sellerId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "payout_items_seller_id_fkey")
+
+  @@unique([orderId], map: "payout_items_order_id_key")
+  @@index([batchId, status], map: "payout_items_batch_status_idx")
+  @@index([sellerId, createdAt], map: "payout_items_seller_created_idx")
+  @@map("payout_items")
+}
+
+model MarketplaceAnalyticsEvent {
+  id             String   @id @default(uuid()) @db.Uuid
+  name           String   @db.VarChar(80)
+  actorId        String?  @map("actor_id") @db.Uuid
+  targetUserId   String?  @map("target_user_id") @db.Uuid
+  categoryId     String?  @map("category_id") @db.Uuid
+  listingId      String?  @map("listing_id") @db.Uuid
+  conversationId String?  @map("conversation_id") @db.Uuid
+  orderId        String?  @map("order_id") @db.Uuid
+  occurredAt     DateTime @default(now()) @map("occurred_at") @db.Timestamptz(3)
+  actor          User?    @relation(fields: [actorId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "marketplace_analytics_events_actor_id_fkey")
+
+  @@index([name, occurredAt], map: "marketplace_analytics_events_name_occurred_idx")
+  @@index([actorId, occurredAt], map: "marketplace_analytics_events_actor_occurred_idx")
+  @@index([listingId, occurredAt], map: "marketplace_analytics_events_listing_occurred_idx")
+  @@index([orderId, occurredAt], map: "marketplace_analytics_events_order_occurred_idx")
+  @@map("marketplace_analytics_events")
+}
+
+model AdminPermissionGrant {
+  id          String              @id @default(uuid()) @db.Uuid
+  userId      String              @map("user_id") @db.Uuid
+  permission  AdminPermissionCode
+  grantedById String              @map("granted_by_id") @db.Uuid
+  createdAt   DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  user        User                @relation("AdminPermissionUser", fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "admin_permission_grants_user_id_fkey")
+  grantedBy   User                @relation("AdminPermissionGrantor", fields: [grantedById], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "admin_permission_grants_granted_by_id_fkey")
+
+  @@unique([userId, permission], map: "admin_permission_grants_user_permission_key")
+  @@index([permission, userId], map: "admin_permission_grants_permission_user_idx")
+  @@map("admin_permission_grants")
 }
 
 model OrderEvent {

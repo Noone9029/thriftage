@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { Injectable } from '@nestjs/common';
+import { loadApiConfig } from '@thriftage/config/api';
 import { getPrismaClient, Prisma, type PrismaClient } from '@thriftage/db';
 import type {
   ListingDraftInput,
@@ -79,6 +80,18 @@ export class ListingRepository {
   }
 
   public async createDraft(userId: string, input: ListingDraftInput): Promise<ListingRecord> {
+    const seller = await this.client.user.findUnique({
+      select: { emailVerified: true, phoneVerified: true },
+      where: { id: userId },
+    });
+    const phoneVerificationRequired = loadApiConfig(process.env).phoneAuthEnabled;
+    if (
+      seller === null ||
+      !seller.emailVerified ||
+      (phoneVerificationRequired && !seller.phoneVerified)
+    ) {
+      throw new MarketplaceDomainError('SELLER_PHONE_VERIFICATION_REQUIRED');
+    }
     const category = await this.client.category.findFirst({
       where: { id: input.categoryId, isActive: true },
     });
@@ -96,6 +109,7 @@ export class ListingRepository {
         currency: input.currency,
         description: input.description,
         priceMinor: input.priceMinor,
+        stockAvailable: input.stockQuantity ?? 1,
         sellerId: userId,
         size: input.size,
         title: input.title,
@@ -146,6 +160,7 @@ export class ListingRepository {
           ...(input.currency === undefined ? {} : { currency: input.currency }),
           ...(input.description === undefined ? {} : { description: input.description }),
           ...(input.priceMinor === undefined ? {} : { priceMinor: input.priceMinor }),
+          ...(input.stockQuantity === undefined ? {} : { stockAvailable: input.stockQuantity }),
           ...(input.size === undefined ? {} : { size: input.size }),
           ...(input.title === undefined ? {} : { title: input.title }),
           ...(input.personalization === undefined

@@ -29,7 +29,7 @@ export function ClosedBetaOperationsWorkspace({ api }: { readonly api: AdminApi 
           <p className="text-xs font-bold tracking-[0.2em] text-[#d66b45]">CLOSED BETA</p>
           <h2 className="mt-2 text-2xl font-semibold">Operational snapshot</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-black/55">
-            Privacy-safe marketplace, safety, worker, and AI aggregates for the last 24 hours.
+            Privacy-safe marketplace, safety, and worker aggregates for the last 24 hours.
           </p>
         </div>
         <button
@@ -65,7 +65,6 @@ function Snapshot({ snapshot }: { readonly snapshot: ClosedBetaOperations }) {
             <Flag label="Registration" on={snapshot.runtime.registration} />
             <Flag label="Phone" on={snapshot.runtime.phoneAuth} />
             <Flag label="Push" on={snapshot.runtime.pushNotifications} />
-            <Flag label="AI" on={snapshot.runtime.aiStylist} />
             <Flag label="Deletion" on={snapshot.runtime.accountDeletion} />
             <Flag label="Seller verification" on={snapshot.runtime.sellerVerification} />
           </div>
@@ -83,7 +82,6 @@ function Snapshot({ snapshot }: { readonly snapshot: ClosedBetaOperations }) {
         <Metric label="Open disputes" value={snapshot.safety.openDisputes} alert />
         <Metric label="Open reports" value={snapshot.safety.openReports} alert />
         <Metric label="Open message flags" value={snapshot.safety.openMessageFlags} alert />
-        <Metric label="Open AI reports" value={snapshot.safety.openAiFeedback} alert />
         <Metric label="Notification backlog" value={snapshot.workers.notificationPending} alert />
         <Metric label="Notification failures" value={snapshot.workers.notificationFailed} alert />
         <Metric
@@ -92,12 +90,6 @@ function Snapshot({ snapshot }: { readonly snapshot: ClosedBetaOperations }) {
           alert
         />
         <Metric label="Deletion failures" value={snapshot.workers.accountDeletionFailed} alert />
-        <Metric label="AI generations" value={snapshot.ai.generations} />
-        <Metric label="AI failures" value={snapshot.ai.failedGenerations} alert />
-        <Metric
-          label="Estimated AI cost"
-          value={`$${(snapshot.ai.estimatedCostMicroUsd / 1_000_000).toFixed(4)}`}
-        />
         <Metric
           label="Oldest notification"
           value={

@@ -1,14 +1,14 @@
 # Auth Email Delivery Runbook
 
-Supabase custom SMTP is mandatory for staging/production; do not rely on the default development sender. The business owner must select the provider, verify the sending domain, provide a monitored sender/support identity, and store credentials in the Supabase project secret configuration—not source control or Expo variables.
+Supabase custom SMTP through an organization-owned Resend account is mandatory for staging/production; do not rely on the Supabase default sender. Verify an authenticated Thriftage subdomain, provide a monitored sender/support identity, and store Resend SMTP credentials in each isolated Supabase project's secret configuration—not source control or Expo variables.
 
 ## Configuration
 
-1. Configure sender name `Thriftage`, verified sender address/domain, SMTP host/port/user/password, and conservative initial limits in each separate Supabase project.
+1. Create separate Resend API/SMTP credentials for staging and production. Configure sender name `Thriftage`, a verified `auth` subdomain sender, SMTP host/port/user/password, and conservative initial limits in each separate Supabase project.
 2. Set the exact Site URL and allowlisted mobile callback URLs. Templates use `{{ .ConfirmationURL }}` for Supabase's single-use action and `{{ .SiteURL }}/support` as the public fallback/help path.
 3. Disable provider click/link tracking or rewriting for Auth links; rewritten single-use links can invalidate verification.
 4. Load `supabase/email-templates/confirmation.html` and `recovery.html`, replacing no variables with secrets.
-5. Configure SPF, DKIM, and DMARC according to the selected provider; keep provider credentials in the organization vault.
+5. Publish and verify Resend's SPF and DKIM records, configure DMARC for the organizational domain, and keep provider credentials in the organization vault.
 
 ## Staging QA
 
