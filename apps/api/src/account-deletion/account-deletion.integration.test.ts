@@ -14,6 +14,14 @@ if (testDatabaseUrl === undefined) throw new Error('TEST_DATABASE_URL is require
 const prisma = createPrismaClient(testDatabaseUrl);
 
 async function clear(): Promise<void> {
+  await prisma.$executeRawUnsafe(
+    'TRUNCATE TABLE "financial_entries", "inventory_movements", "settlement_allocations", "settlements" CASCADE',
+  );
+  await prisma.adminPermissionGrant.deleteMany();
+  await prisma.payoutItem.deleteMany();
+  await prisma.payoutBatch.deleteMany();
+  await prisma.refund.deleteMany();
+  await prisma.sellerPayoutProfile.deleteMany();
   await prisma.aiResponseFeedback.deleteMany();
   await prisma.betaFeedback.deleteMany();
   await prisma.accountDeletionRequest.deleteMany();
@@ -136,6 +144,8 @@ describe.sequential('account deletion workflow', () => {
         sellerId: seller.id,
         size: 'M',
         status: 'SOLD',
+        stockAvailable: 0,
+        stockSold: 1,
         title: 'Personal listing title',
       },
     });

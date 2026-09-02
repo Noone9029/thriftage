@@ -86,6 +86,7 @@ async function clearMarketplace(): Promise<void> {
   await prisma.savedListing.deleteMany();
   await prisma.listingLike.deleteMany();
   await prisma.follow.deleteMany();
+  await prisma.userBlock.deleteMany();
   await prisma.listingImage.deleteMany();
   await prisma.listing.deleteMany();
   await prisma.category.deleteMany();

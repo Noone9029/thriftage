@@ -250,7 +250,10 @@ describe.sequential('AI Stylist PostgreSQL integration', () => {
       code: 'AI_CONVERSATION_FORBIDDEN',
     });
 
-    await prisma.listing.update({ data: { status: 'SOLD' }, where: { id: listings[2]!.id } });
+    await prisma.listing.update({
+      data: { status: 'SOLD', stockAvailable: 0, stockSold: 1 },
+      where: { id: listings[2]!.id },
+    });
     const stale = await stylist.savedOutfit(viewer.id, saved.id);
     expect(
       stale.items.find(({ listingReferenceId }) => listingReferenceId === listings[2]!.id),
@@ -312,7 +315,10 @@ describe.sequential('AI Stylist PostgreSQL integration', () => {
     await prisma.userBlock.deleteMany();
     const mutatingProvider: AiStylistProvider = {
       generate: async (request) => {
-        await prisma.listing.update({ data: { status: 'SOLD' }, where: { id: listings[2]!.id } });
+        await prisma.listing.update({
+          data: { status: 'SOLD', stockAvailable: 0, stockSold: 1 },
+          where: { id: listings[2]!.id },
+        });
         const selected = request.initialCandidates[0]!;
         return {
           latencyMs: 5,

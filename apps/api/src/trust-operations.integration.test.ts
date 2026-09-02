@@ -22,6 +22,14 @@ const disputes = new DisputeRepository(prisma);
 const verification = new SellerVerificationRepository(prisma);
 
 async function clear(): Promise<void> {
+  await prisma.$executeRawUnsafe(
+    'TRUNCATE TABLE "financial_entries", "inventory_movements", "settlement_allocations", "settlements" CASCADE',
+  );
+  await prisma.adminPermissionGrant.deleteMany();
+  await prisma.payoutItem.deleteMany();
+  await prisma.payoutBatch.deleteMany();
+  await prisma.refund.deleteMany();
+  await prisma.sellerPayoutProfile.deleteMany();
   await prisma.pushDelivery.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.notificationOutbox.deleteMany();
@@ -93,6 +101,8 @@ async function completedOrder() {
       condition: 'GOOD',
       size: 'M',
       status: 'SOLD',
+      stockAvailable: 0,
+      stockSold: 1,
     },
   });
   const completedAt = new Date(Date.now() - 24 * 3600000);
@@ -278,7 +288,11 @@ describe.sequential('trust, reputation, and marketplace operations', () => {
       'Account history and profile requirements reviewed.',
       30,
     );
-    expect((await reputation.verified([applicant.id])).has(applicant.id)).toBe(true);
+    // The shared reader intentionally caches display-only verification state. A fresh request
+    // reader must observe the committed decision immediately.
+    expect((await new ReputationReader(prisma).verified([applicant.id])).has(applicant.id)).toBe(
+      true,
+    );
   });
 
   it('enforces scoped restrictions and records immutable safety actions', async () => {

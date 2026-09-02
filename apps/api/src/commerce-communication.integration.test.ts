@@ -342,10 +342,22 @@ describe.sequential('trusted communication and commerce PostgreSQL integration',
     await prisma.adminPermissionGrant.create({
       data: { grantedById: operator.id, permission: 'OPERATIONS', userId: operator.id },
     });
+    await finance.updateShipment(operator.id, placed.id, {
+      courierReference: 'SYNTHETIC-LHR-001',
+      evidenceReference: 'evidence://synthetic/booking',
+      feeMinor: 25_000,
+      status: 'BOOKED',
+    });
+    await finance.updateShipment(operator.id, placed.id, {
+      courierReference: 'SYNTHETIC-LHR-001',
+      evidenceReference: 'evidence://synthetic/pickup',
+      feeMinor: 25_000,
+      status: 'PICKED_UP',
+    });
     await expect(
       finance.updateShipment(operator.id, placed.id, {
         courierReference: 'SYNTHETIC-LHR-001',
-        evidenceReference: 'evidence://synthetic/pickup',
+        evidenceReference: 'evidence://synthetic/transit',
         feeMinor: 25_000,
         status: 'IN_TRANSIT',
       }),
